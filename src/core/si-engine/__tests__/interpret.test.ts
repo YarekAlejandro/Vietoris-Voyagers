@@ -16,7 +16,7 @@ const diffRequest: InterpretRequest = { kind: "diff", payload: diffPayload, mode
 
 const iss = missionPresets[0];
 const [topResult] = rankRuns(psiDataset.runs, investigationsById, iss, iss.atmosphere);
-const rankPayload = buildRankPayload(topResult, iss, iss.atmosphere);
+const rankPayload = buildRankPayload(topResult, iss, iss.atmosphere, investigationsById);
 const rankRequest: InterpretRequest = { kind: "rank", payload: rankPayload, mode: "student", lang: "es" };
 
 describe("buildDiffPayload", () => {
@@ -29,7 +29,8 @@ describe("buildDiffPayload", () => {
   });
 
   it("marca como «missing» los valores sin dato", () => {
-    expect(diffPayload.rows.find(({ id }) => id === "width_cm")).toMatchObject({ valueA: "missing", valueB: 40, status: "missing", delta: null });
+    expect(diffPayload.rows.find(({ id }) => id === "width_cm")).toMatchObject({ valueA: "missing", valueB: 40, status: "missing", delta: null, missingIn: "A" });
+    expect(diffPayload.rows.find(({ id }) => id === "oxygen_pct")?.missingIn).toBeNull();
     // Los valores van redondeados como en la tabla: 10.399 psia → 10.40 (2 decimales).
     expect(diffPayload.rows.find(({ id }) => id === "pressure_psia")).toMatchObject({ valueA: 10.4, valueB: 7.92, delta: -2.48 });
     expect(diffPayload.rows.find(({ id }) => id === "cabin_heat_added_kj")?.relativeDelta_pct).toBe(113.3);
@@ -37,24 +38,33 @@ describe("buildDiffPayload", () => {
 });
 
 describe("buildRankPayload", () => {
-  it("expone puntaje, componentes, pesos y la atmósfera objetivo", () => {
+  it("expone el FSRS y sus componentes redondeados como en la interfaz", () => {
     expect(rankPayload).toMatchObject({
-      score: Math.round(topResult.score * 10) / 10, atmosphereSimilarity_pct: Math.round(topResult.atmosphere * 1000) / 10,
-      fuelMatch: topResult.fuelMatch, pillarMatch: topResult.pillarMatch,
-      profile: { id: "iss", scoreWeights: iss.scoreWeights },
+      score: Math.round(topResult.score * 10) / 10, scoreMax: 100,
+      atmosphere_pct: Math.round(topResult.atmosphere_pct),
+      flow_pct: Math.round(topResult.flow_pct),
+      gravityBridge_pct: Math.round(topResult.gravityBridge_pct),
+      bonus_pts: topResult.bonus_pts,
+      profile: { id: "iss", name: iss.name, priority: iss.priority },
+      study: { id: topResult.run.investigationId, safetyPillars: [...investigationsById.get(topResult.run.investigationId)!.safetyPillars] },
       target: { ...iss.atmosphere },
     });
     expect(rankPayload.target.oxygen_partial_pressure_psia).toBeCloseTo(3.087);
+    // No lleva pesos ni constantes de la fórmula.
+    expect(JSON.stringify(rankPayload)).not.toMatch(/Weights|targetFuel|fuelMatch/);
   });
 });
 
 describe("templateInterpretation", () => {
   it("resume cambios, iguales y faltantes de la comparación", () => {
     const { paragraphs, caveats } = templateInterpretation(diffRequest);
-    expect(paragraphs[0]).toContain("Calor añadido a cabina (estim.) (233 kJ → 497 kJ)");
+    // El calor añadido es un resultado observado: se lista aparte de las condiciones.
+    expect(paragraphs[0]).toMatch(/cambiaron varias condiciones: .*Oxígeno \(26\.5 % O₂ → 30\.3 % O₂\)/);
+    expect(paragraphs[0]).toContain("Resultados observados que cambiaron: Calor añadido a cabina (estim.) (233 kJ → 497 kJ)");
+    expect(paragraphs[0].split("Resultados observados")[0]).not.toContain("Calor añadido");
     expect(paragraphs[1]).toContain("Se mantienen iguales");
     expect(paragraphs[1]).toContain("Ancho de muestra");
-    expect(caveats.join(" ")).toMatch(/varias variables/);
+    expect(caveats.join(" ")).toMatch(/varias condiciones/);
     expect(caveats.join(" ")).toMatch(/0 g/);
   });
 
@@ -62,10 +72,12 @@ describe("templateInterpretation", () => {
     const artemis = missionPresets.find(({ id }) => id === "artemis")!;
     const [result] = rankRuns(psiDataset.runs, investigationsById, artemis, artemis.atmosphere);
     const { paragraphs, caveats } = templateInterpretation({
-      kind: "rank", payload: buildRankPayload(result, artemis, artemis.atmosphere), mode: "engineer", lang: "en",
+      kind: "rank", payload: buildRankPayload(result, artemis, artemis.atmosphere, investigationsById), mode: "engineer", lang: "en",
     });
     expect(paragraphs[0]).toContain(`${result.score.toFixed(1)} out of 100`);
-    expect(caveats[0]).toContain("0.165 g");
+    expect(paragraphs[0]).toContain(`atmosphere ${Math.round(result.atmosphere_pct)} %`);
+    expect(paragraphs[0]).toMatch(/priority pillar \(prevention\)/);
+    expect(caveats.join(" ")).toContain("0.165 g");
   });
 
   it("solo usa números presentes en el payload", () => {
@@ -121,7 +133,7 @@ describe("valores nominales", () => {
   it("en el ranking avisa que los ejes nominales no se midieron", () => {
     const mining = missionPresets.find(({ id }) => id === "mining")!;
     const result = rankRuns(psiDataset.runs, investigationsById, mining, mining.atmosphere).find(({ run }) => run.id === "SAME-R-77")!;
-    const payload = buildRankPayload(result, mining, mining.atmosphere);
+    const payload = buildRankPayload(result, mining, mining.atmosphere, investigationsById);
     expect(payload.run.nominal?.fields).toEqual(["oxygen_pct", "pressure_psia"]);
     const { paragraphs, caveats } = templateInterpretation({ kind: "rank", payload, mode: "engineer", lang: "es" });
     expect(paragraphs[1]).toContain("21.0 % O₂ (nominal)");
@@ -132,6 +144,42 @@ describe("valores nominales", () => {
   it("falla ante un estado de diff desconocido", () => {
     expect(diffStatus("nominal")).toBe("nominal");
     expect(() => diffStatus("otro")).toThrow();
+  });
+});
+
+describe("atmósfera parcial y perfiles nominales PSI", () => {
+  const daft = runsById.get("DAFT-REF-CABIN")!;
+  const sameR = runsById.get("SAME-R-77")!;
+  const refRows = compareRuns(daft, sameR, investigationsById).filter(({ valueA, valueB }) => valueA !== undefined || valueB !== undefined);
+  const refPayload = buildDiffPayload(daft, sameR, refRows, investigationsById);
+  const refRequest: InterpretRequest = { kind: "diff", payload: refPayload, mode: "engineer", lang: "es" };
+
+  it("marca los ejes que la corrida no reporta y la presión parcial como «missing»", () => {
+    expect(daft.reference).toBe(true);
+    expect(refPayload.runs.a).toMatchObject({ reference: true, oxygen_partial_pressure_psia: "missing" });
+    expect(refPayload.runs.b).toMatchObject({ reference: false });
+    expect(refPayload.rows.find(({ id }) => id === "oxygen_pct")).toMatchObject({ valueA: "missing", status: "missing" });
+  });
+
+  it("la plantilla avisa que A es un perfil nominal y no compara ejes faltantes", () => {
+    const { paragraphs, caveats } = templateInterpretation(refRequest);
+    expect(caveats).toContain(`A: ${daft.label} es un perfil nominal PSI: describe condiciones de referencia, no es una corrida medida.`);
+    expect(paragraphs.join(" ")).toContain("La presión parcial de O₂ solo está disponible en B: 3.09 psia (nominal).");
+    expect(paragraphs[0]).not.toMatch(/Oxígeno \(/);
+    expect(validateNumbers([...paragraphs, ...caveats].join(" "), refPayload).ok).toBe(true);
+    expect(parseInterpretRequest(JSON.parse(JSON.stringify(refRequest)))).toEqual(refRequest);
+  });
+
+  it("en el ranking de un perfil nominal avisa los ejes no reportados", () => {
+    const result = rankRuns(psiDataset.runs, investigationsById, iss, iss.atmosphere).find(({ run }) => run.id === "DAFT-REF-CABIN")!;
+    const payload = buildRankPayload(result, iss, iss.atmosphere, investigationsById);
+    expect(payload.run.atmosphere).toMatchObject({ oxygen_pct: "missing", pressure_psia: "missing", flow_velocity_cm_s: "missing" });
+    const { paragraphs, caveats } = templateInterpretation({ kind: "rank", payload, mode: "engineer", lang: "es" });
+    expect(paragraphs[1]).toContain("% O₂ sin dato");
+    expect(caveats.join(" ")).toContain("perfil nominal PSI");
+    expect(caveats.join(" ")).toContain("no reporta oxígeno, presión, flujo");
+    expect(validateNumbers([...paragraphs, ...caveats].join(" "), payload).ok).toBe(true);
+    expect(parseInterpretRequest(JSON.parse(JSON.stringify({ kind: "rank", payload, mode: "engineer", lang: "es" })))).not.toBeNull();
   });
 });
 

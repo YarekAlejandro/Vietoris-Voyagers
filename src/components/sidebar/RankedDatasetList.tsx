@@ -4,7 +4,7 @@ import type { FSRS, rankRuns } from "../../core/si-engine/fsrs-ranker";
 import { buildRankPayload, interpretationKey, type InterpretRequest } from "../../core/si-engine/interpret";
 import { InterpretationCard } from "../nexus/InterpretationCard";
 import type { EvidenceSearchResults } from "../../core/si-engine/semantic-search";
-import { psiDataset } from "../../data/psi";
+import { investigationsById, psiDataset } from "../../data/psi";
 import { evidenceTopics, facilities } from "../../data/psi_vocabulary";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { EvidenceTopicId, Investigation } from "../../types/psi";
@@ -137,7 +137,7 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, search, cu
             const active = current?.kind === "run" && current.id === run.id;
             const interpreting = opened?.payload.run.id === run.id;
             const request = (): Extract<InterpretRequest, { kind: "rank" }> =>
-              ({ kind: "rank", payload: buildRankPayload(result, profile, atmosphere), mode, lang: "es" });
+              ({ kind: "rank", payload: buildRankPayload(result, profile, atmosphere, investigationsById), mode, lang: "es" });
             return (
               <li className="run-card" key={run.id} data-active={active}>
                 <button type="button" className="run-top" aria-pressed={active} onClick={() => inspect({ kind: "run", id: run.id })}>

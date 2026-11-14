@@ -10,6 +10,11 @@ type DiffRow = ReturnType<typeof compareRuns>[number];
 type RankResult = ReturnType<typeof rankRuns>[number];
 type Missing = "missing";
 type AtmosphereAxis = keyof Atmosphere;
+/** Un eje medido o "missing" si la corrida no lo reporta (la atmósfera del catálogo puede ser parcial). */
+type Measured = number | Missing;
+export type PayloadAtmosphere = Record<AtmosphereAxis, Measured>;
+
+const atmosphereAxisList: readonly AtmosphereAxis[] = ["gravity_g", "oxygen_pct", "pressure_psia", "flow_velocity_cm_s"];
 
 /** Estados de `compareRuns`. Un estado nuevo hace fallar `diffStatus` (y sus pruebas) en lugar de pasar en silencio. */
 export const diffStatuses = ["equal", "changed", "missing", "nominal"] as const;
@@ -34,6 +39,22 @@ function shown(value: number | string | undefined, decimals: number | null): num
   return typeof value === "number" && decimals !== null ? round(value, decimals) : value;
 }
 
+function measuredAtmosphere(atmosphere: Partial<Atmosphere>): PayloadAtmosphere {
+  return {
+    gravity_g: atmosphere.gravity_g ?? "missing",
+    oxygen_pct: atmosphere.oxygen_pct ?? "missing",
+    pressure_psia: atmosphere.pressure_psia ?? "missing",
+    flow_velocity_cm_s: atmosphere.flow_velocity_cm_s ?? "missing",
+  };
+}
+
+/** Presión parcial de O₂, solo si la corrida reporta oxígeno y presión. */
+function partialPressure(atmosphere: Partial<Atmosphere>): Measured {
+  const { oxygen_pct, pressure_psia } = atmosphere;
+  if (oxygen_pct === undefined || pressure_psia === undefined) return "missing";
+  return round(oxygenPartialPressure_psia({ gravity_g: 0, flow_velocity_cm_s: 0, oxygen_pct, pressure_psia }), 2);
+}
+
 /** Ejes de la atmósfera que no se midieron y usan un valor nominal documentado. */
 export type PayloadNominal = { fields: AtmosphereAxis[]; basis: string } | null;
 
@@ -42,8 +63,10 @@ export interface PayloadRun {
   label: string;
   investigationId: string;
   facility: string | Missing;
-  gravity_g: number;
-  oxygen_partial_pressure_psia: number;
+  /** Perfil nominal PSI: describe condiciones de referencia, no es una corrida medida. */
+  reference: boolean;
+  gravity_g: Measured;
+  oxygen_partial_pressure_psia: Measured;
   /** La presión parcial se calcula con O₂ o presión nominales, así que también es nominal. */
   oxygen_partial_pressure_nominal: boolean;
   nominal: PayloadNominal;
@@ -69,6 +92,10 @@ export interface DiffPayloadRow {
   /** El valor de A o de B es nominal (no medido); en ese caso status es "nominal" y no hay delta. */
   nominalA: boolean;
   nominalB: boolean;
+  /** Resultado observado (true) o condición del ensayo (false). */
+  outcome: boolean;
+  /** En qué corrida falta el dato: "A", "B" o "both"; null si ambas lo reportan. */
+  missingIn: "A" | "B" | "both" | null;
   status: DiffStatus;
   delta: number | null;
   relativeDelta_pct: number | null;
@@ -79,24 +106,24 @@ export interface DiffPayload {
   rows: DiffPayloadRow[];
 }
 
+/**
+ * Desglose del FSRS tal como lo calcula `computeFSRS` (`fsrs-ranker.ts`) y lo muestra la interfaz.
+ * No incluye pesos ni constantes de la fórmula: si la fórmula cambia, la interpretación sigue siendo válida.
+ */
 export interface RankPayload {
-  run: Omit<PayloadRun, "facility"> & { atmosphere: Atmosphere; fuel: string; fuelCategory: string };
-  profile: {
-    id: string;
-    name: string;
-    targetFuel: string;
-    priority: string;
-    scoreWeights: EnvironmentPreset["scoreWeights"];
-    distanceWeights: EnvironmentPreset["distanceWeights"];
-  };
+  run: Omit<PayloadRun, "facility"> & { atmosphere: PayloadAtmosphere; fuel: string; fuelCategory: string };
+  study: { id: string; safetyPillars: string[] } | null;
+  profile: { id: string; name: string; priority: string };
   target: Atmosphere & { oxygen_partial_pressure_psia: number };
   score: number;
   scoreMax: 100;
-  /** Similitud de atmósfera del FSRS, en % (0–100), redondeada a 1 decimal. */
-  atmosphereSimilarity_pct: number;
-  fuelMatch: boolean;
-  pillarMatch: boolean;
-  bounds: { axis: keyof Atmosphere; side: "inferior" | "superior"; outside: boolean }[];
+  /** Componentes en %, redondeados como en la interfaz: atmósfera (O₂ y presión), flujo y gravedad/puente. */
+  atmosphere_pct: number;
+  flow_pct: number;
+  gravityBridge_pct: number;
+  /** Bonificación por escenario, en puntos. */
+  bonus_pts: number;
+  bounds: { axis: AtmosphereAxis; side: "inferior" | "superior"; outside: boolean }[];
 }
 
 export type InterpretRequest =
@@ -121,8 +148,9 @@ function payloadRun(run: ExperimentalRun, investigations: ReadonlyMap<string, In
     label: run.label,
     investigationId: run.investigationId,
     facility: investigations.get(run.investigationId)?.facility ?? "missing",
-    gravity_g: run.atmosphere.gravity_g,
-    oxygen_partial_pressure_psia: round(oxygenPartialPressure_psia(run.atmosphere), 2),
+    reference: run.reference === true,
+    gravity_g: run.atmosphere.gravity_g ?? "missing",
+    oxygen_partial_pressure_psia: partialPressure(run.atmosphere),
     oxygen_partial_pressure_nominal: partialPressureIsNominal(run),
     nominal: payloadNominal(run),
     source: { label: run.source.label, url: run.source.url },
@@ -137,7 +165,8 @@ export function buildDiffPayload(
 ): DiffPayload {
   return {
     runs: { a: payloadRun(a, investigations), b: payloadRun(b, investigations) },
-    rows: rows.map(({ field, valueA, valueB, nominalA, nominalB, status, delta, relativeDelta_pct }) => {
+    // Se respeta el orden de compareRuns: resultados, cambios, faltantes e iguales.
+    rows: rows.map(({ field, valueA, valueB, nominalA, nominalB, outcome, status, delta, relativeDelta_pct }) => {
       const unit = "unit" in field ? field.unit : null;
       const decimals = "decimals" in field ? field.decimals : null;
       return {
@@ -150,6 +179,8 @@ export function buildDiffPayload(
         valueB: shown(valueB, decimals),
         nominalA,
         nominalB,
+        outcome,
+        missingIn: valueA === undefined && valueB === undefined ? "both" : valueA === undefined ? "A" : valueB === undefined ? "B" : null,
         status: diffStatus(status), // compareRuns lo infiere como string
         delta: delta === undefined ? null : decimals === null ? delta : round(delta, decimals),
         relativeDelta_pct: relativeDelta_pct === undefined ? null : round(relativeDelta_pct, 1),
@@ -158,36 +189,39 @@ export function buildDiffPayload(
   };
 }
 
-export function buildRankPayload(result: RankResult, profile: EnvironmentPreset, target: Atmosphere): RankPayload {
+export function buildRankPayload(
+  result: RankResult,
+  profile: EnvironmentPreset,
+  target: Atmosphere,
+  investigations: ReadonlyMap<string, Investigation>,
+): RankPayload {
   const { run } = result;
+  const study = investigations.get(run.investigationId);
   return {
     run: {
       id: run.id,
       label: run.label,
       investigationId: run.investigationId,
-      gravity_g: run.atmosphere.gravity_g,
-      oxygen_partial_pressure_psia: round(oxygenPartialPressure_psia(run.atmosphere), 2),
+      reference: run.reference === true,
+      gravity_g: run.atmosphere.gravity_g ?? "missing",
+      oxygen_partial_pressure_psia: partialPressure(run.atmosphere),
       oxygen_partial_pressure_nominal: partialPressureIsNominal(run),
       nominal: payloadNominal(run),
       source: { label: run.source.label, url: run.source.url },
-      atmosphere: { ...run.atmosphere },
+      atmosphere: measuredAtmosphere(run.atmosphere),
       fuel: run.fuel,
       fuelCategory: run.fuelCategory,
     },
-    profile: {
-      id: profile.id,
-      name: profile.name,
-      targetFuel: profile.targetFuel,
-      priority: profile.priority,
-      scoreWeights: { ...profile.scoreWeights },
-      distanceWeights: { ...profile.distanceWeights },
-    },
+    study: study ? { id: study.id, safetyPillars: [...study.safetyPillars] } : null,
+    profile: { id: profile.id, name: profile.name, priority: profile.priority },
     target: { ...target, oxygen_partial_pressure_psia: round(oxygenPartialPressure_psia(target), 2) },
     score: round(result.score, 1),
     scoreMax: 100,
-    atmosphereSimilarity_pct: round(result.atmosphere * 100, 1),
-    fuelMatch: result.fuelMatch,
-    pillarMatch: result.pillarMatch,
+    // Redondeo como ScoreDetails (Math.round) en RankedDatasetList.
+    atmosphere_pct: Math.round(result.atmosphere_pct),
+    flow_pct: Math.round(result.flow_pct),
+    gravityBridge_pct: Math.round(result.gravityBridge_pct),
+    bonus_pts: Math.round(result.bonus_pts),
     bounds: result.bounds.map((bound) => ({ ...bound })),
   };
 }
@@ -196,54 +230,70 @@ export function buildRankPayload(result: RankResult, profile: EnvironmentPreset,
 
 const text = {
   es: {
-    changed: (n: number, a: string, b: string) => `Entre ${a} (A) y ${b} (B) ${n === 1 ? "cambió una variable" : "cambiaron varias variables"}: `,
-    noChange: (a: string, b: string) => `Entre ${a} (A) y ${b} (B) no cambió ninguna variable registrada.`,
+    changed: (n: number, a: string, b: string) => `Entre ${a} (A) y ${b} (B) ${n === 1 ? "cambió una condición" : "cambiaron varias condiciones"}: `,
+    noChange: (a: string, b: string) => `Entre ${a} (A) y ${b} (B) no cambió ninguna condición registrada.`,
+    outcomes: "Resultados observados que cambiaron: ",
     equal: "Se mantienen iguales: ",
     missing: "Sin dato en al menos una corrida: ",
     nominalRows: "Valor nominal, no medido: ",
     nominalBasis: (side: string, basis: string) => `Valor nominal en ${side}: ${basis}`,
-    nominalAxes: (axes: string, basis: string) => `Valores nominales, no medidos (${axes}): ${basis} El FSRS no los pondera.`,
+    nominalAxes: (axes: string, basis: string) => `Valores nominales, no medidos (${axes}): ${basis} El FSRS no los usa como mediciones.`,
+    missingAxes: (axes: string) => `La corrida no reporta ${axes}; esos ejes no se pueden comparar con el objetivo.`,
+    reference: (side: string, label: string) => `${side}${label} es un perfil nominal PSI: describe condiciones de referencia, no es una corrida medida.`,
     nominalTag: "nominal",
+    noData: "sin dato",
     partial: { engineer: "La presión parcial de O₂ es", student: "La presión que aporta el oxígeno es" },
     partialPair: (a: string, b: string) => ` ${a} en A y ${b} en B.`,
-    many: "Cambiaron varias variables a la vez; no se puede atribuir la diferencia de resultados a una sola.",
+    partialOnly: { engineer: "La presión parcial de O₂ solo está disponible en", student: "La presión que aporta el oxígeno solo está disponible en" },
+    many: "Cambiaron varias condiciones a la vez; no se puede atribuir la diferencia de resultados a una sola.",
     gaps: (labels: string) => `Faltan datos en: ${labels}.`,
     zeroG: "Ambas corridas son de 0 g; no hay datos de gravedad parcial en PSI.",
     score: (label: string, score: string, max: string, profile: string) => `${label} obtiene ${score} de ${max} en FSRS para el perfil ${profile}.`,
-    similarity: (pct: string, weight: string) => ` La similitud de atmósfera es ${pct} % (peso ${weight});`,
-    fuel: (match: boolean, weight: string) => ` el material ${match ? "coincide" : "no coincide"} con el objetivo (peso ${weight})`,
-    pillar: (match: boolean, weight: string) => ` y el pilar de seguridad ${match ? "coincide" : "no coincide"} (peso ${weight}).`,
+    components: (atm: string, flow: string, grav: string) => ` Componentes: atmósfera ${atm} %, flujo ${flow} % y gravedad/puente ${grav} %.`,
+    bonus: (pts: string) => ` Incluye una bonificación por escenario de ${pts} pts.`,
+    pillar: (match: boolean, pillar: string) => match
+      ? ` El estudio cubre el pilar prioritario del perfil (${pillar}).`
+      : ` El estudio no cubre el pilar prioritario del perfil (${pillar}).`,
     bounds: (list: string) => ` Además, la corrida es cota ${list}.`,
     bound: (side: string, axis: string, outside: boolean) => `${side} en ${axis}${outside ? " (objetivo fuera del rango medido)" : ""}`,
-    conditions: (run: string, target: string) => `Condiciones medidas: ${run}. Objetivo: ${target}.`,
+    conditions: (run: string, target: string) => `Condiciones de la corrida: ${run}. Objetivo: ${target}.`,
     gravity: (run: string, target: string) => `La corrida es de ${run} g y el objetivo es ${target} g; no hay datos de gravedad parcial en PSI.`,
     axes: { gravity_g: "gravedad", oxygen_pct: "oxígeno", pressure_psia: "presión", flow_velocity_cm_s: "flujo" },
     sides: { inferior: "inferior", superior: "superior" },
+    pillars: { PREVENTION: "prevención", DETECTION: "detección", SUPPRESSION: "supresión" } as Record<string, string>,
   },
   en: {
-    changed: (n: number, a: string, b: string) => `Between ${a} (A) and ${b} (B), ${n === 1 ? "one variable changed" : "several variables changed"}: `,
-    noChange: (a: string, b: string) => `Between ${a} (A) and ${b} (B), no recorded variable changed.`,
+    changed: (n: number, a: string, b: string) => `Between ${a} (A) and ${b} (B), ${n === 1 ? "one condition changed" : "several conditions changed"}: `,
+    noChange: (a: string, b: string) => `Between ${a} (A) and ${b} (B), no recorded condition changed.`,
+    outcomes: "Observed outcomes that changed: ",
     equal: "Unchanged: ",
     missing: "Missing in at least one run: ",
     nominalRows: "Nominal value, not measured: ",
     nominalBasis: (side: string, basis: string) => `Nominal value in ${side}: ${basis}`,
-    nominalAxes: (axes: string, basis: string) => `Nominal, unmeasured values (${axes}): ${basis} FSRS does not weight them.`,
+    nominalAxes: (axes: string, basis: string) => `Nominal, unmeasured values (${axes}): ${basis} FSRS does not use them as measurements.`,
+    missingAxes: (axes: string) => `The run does not report ${axes}; those axes cannot be compared with the target.`,
+    reference: (side: string, label: string) => `${side}${label} is a PSI nominal profile: it describes reference conditions, not a measured run.`,
     nominalTag: "nominal",
+    noData: "no data",
     partial: { engineer: "The O₂ partial pressure is", student: "The pressure contributed by oxygen is" },
     partialPair: (a: string, b: string) => ` ${a} in A and ${b} in B.`,
-    many: "Several variables changed at once; the difference in outcomes cannot be attributed to a single one.",
+    partialOnly: { engineer: "The O₂ partial pressure is only available in", student: "The pressure contributed by oxygen is only available in" },
+    many: "Several conditions changed at once; the difference in outcomes cannot be attributed to a single one.",
     gaps: (labels: string) => `Missing data in: ${labels}.`,
     zeroG: "Both runs are at 0 g; PSI has no partial-gravity data.",
     score: (label: string, score: string, max: string, profile: string) => `${label} scores ${score} out of ${max} on FSRS for the ${profile} profile.`,
-    similarity: (pct: string, weight: string) => ` Atmosphere similarity is ${pct} % (weight ${weight});`,
-    fuel: (match: boolean, weight: string) => ` the material ${match ? "matches" : "does not match"} the target (weight ${weight})`,
-    pillar: (match: boolean, weight: string) => ` and the safety pillar ${match ? "matches" : "does not match"} (weight ${weight}).`,
+    components: (atm: string, flow: string, grav: string) => ` Components: atmosphere ${atm} %, flow ${flow} % and gravity/bridge ${grav} %.`,
+    bonus: (pts: string) => ` It includes a scenario bonus of ${pts} pts.`,
+    pillar: (match: boolean, pillar: string) => match
+      ? ` The study covers the profile's priority pillar (${pillar}).`
+      : ` The study does not cover the profile's priority pillar (${pillar}).`,
     bounds: (list: string) => ` The run also bounds the target ${list}.`,
     bound: (side: string, axis: string, outside: boolean) => `${side} in ${axis}${outside ? " (target outside the measured range)" : ""}`,
-    conditions: (run: string, target: string) => `Measured conditions: ${run}. Target: ${target}.`,
+    conditions: (run: string, target: string) => `Run conditions: ${run}. Target: ${target}.`,
     gravity: (run: string, target: string) => `The run is at ${run} g and the target is ${target} g; PSI has no partial-gravity data.`,
     axes: { gravity_g: "gravity", oxygen_pct: "oxygen", pressure_psia: "pressure", flow_velocity_cm_s: "flow" },
     sides: { inferior: "from below", superior: "from above" },
+    pillars: { PREVENTION: "prevention", DETECTION: "detection", SUPPRESSION: "suppression" } as Record<string, string>,
   },
 } as const;
 
@@ -258,75 +308,102 @@ function sentence(value: string) {
   return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
-function atmosphereText(atmosphere: Atmosphere, nominal: readonly AtmosphereAxis[] = [], tag = "") {
-  const mark = (axis: AtmosphereAxis) => (nominal.includes(axis) ? ` (${tag})` : "");
-  return [
-    `${atmosphere.gravity_g.toFixed(3)} g${mark("gravity_g")}`,
-    `${atmosphere.oxygen_pct.toFixed(1)} % O₂${mark("oxygen_pct")}`,
-    `${atmosphere.pressure_psia.toFixed(2)} psia${mark("pressure_psia")}`,
-    `${atmosphere.flow_velocity_cm_s.toFixed(1)} cm/s${mark("flow_velocity_cm_s")}`,
-  ].join(", ");
+const axisFormat: Record<AtmosphereAxis, { decimals: number; unit: string }> = {
+  gravity_g: { decimals: 3, unit: "g" },
+  oxygen_pct: { decimals: 1, unit: "% O₂" },
+  pressure_psia: { decimals: 2, unit: "psia" },
+  flow_velocity_cm_s: { decimals: 1, unit: "cm/s" },
+};
+
+function atmosphereText(atmosphere: Record<AtmosphereAxis, Measured>, noData: string, nominal: readonly AtmosphereAxis[] = [], tag = "") {
+  return atmosphereAxisList.map((axis) => {
+    const value = atmosphere[axis];
+    const { decimals, unit } = axisFormat[axis];
+    if (value === "missing") return `${unit} ${noData}`;
+    return `${value.toFixed(decimals)} ${unit}${nominal.includes(axis) ? ` (${tag})` : ""}`;
+  }).join(", ");
+}
+
+function partialText(run: PayloadRun, t: (typeof text)[InterpretLang]) {
+  const value = run.oxygen_partial_pressure_psia;
+  if (value === "missing") return t.noData;
+  return `${value.toFixed(2)} psia${run.oxygen_partial_pressure_nominal ? ` (${t.nominalTag})` : ""}`;
 }
 
 function diffTemplate(payload: DiffPayload, mode: InterpretMode, lang: InterpretLang): Interpretation {
   const t = text[lang];
   const { a, b } = payload.runs;
-  const changed = payload.rows.filter(({ status }) => status === "changed");
+  const changedRows = payload.rows.filter(({ status }) => status === "changed");
+  const conditions = changedRows.filter(({ outcome }) => !outcome);
+  const outcomes = changedRows.filter(({ outcome }) => outcome);
   const equal = payload.rows.filter(({ status }) => status === "equal");
   const missing = payload.rows.filter(({ status }) => status === "missing");
   const nominal = payload.rows.filter(({ status }) => status === "nominal");
+  const change = (row: DiffPayloadRow) =>
+    `${row.label} (${format(row.valueA, row.decimals, row.unit)} → ${format(row.valueB, row.decimals, row.unit)})`;
   // Una sola nota si A y B comparten la misma base nominal.
   const bases = a.nominal && b.nominal && a.nominal.basis === b.nominal.basis
     ? [t.nominalBasis("A/B", a.nominal.basis)]
     : [a.nominal && t.nominalBasis("A", a.nominal.basis), b.nominal && t.nominalBasis("B", b.nominal.basis)];
 
-  const first = changed.length === 0
-    ? t.noChange(a.label, b.label)
-    : t.changed(changed.length, a.label, b.label) + changed.map((row) =>
-      `${row.label} (${format(row.valueA, row.decimals, row.unit)} → ${format(row.valueB, row.decimals, row.unit)})`).join("; ") + ".";
+  const first = [
+    conditions.length === 0
+      ? t.noChange(a.label, b.label)
+      : t.changed(conditions.length, a.label, b.label) + conditions.map(change).join("; ") + ".",
+    outcomes.length > 0 ? t.outcomes + outcomes.map(change).join("; ") + "." : "",
+  ].filter(Boolean).join(" ");
+  const missingA = a.oxygen_partial_pressure_psia === "missing";
+  const missingB = b.oxygen_partial_pressure_psia === "missing";
+  const partialSentence = missingA && missingB ? ""
+    : missingA ? `${t.partialOnly[mode]} B: ${partialText(b, t)}.`
+      : missingB ? `${t.partialOnly[mode]} A: ${partialText(a, t)}.`
+        : t.partial[mode] + t.partialPair(partialText(a, t), partialText(b, t));
   const second = [
     equal.length > 0 ? t.equal + equal.map(({ label }) => label).join(", ") + "." : "",
     missing.length > 0 ? t.missing + missing.map(({ label }) => label).join(", ") + "." : "",
     nominal.length > 0 ? t.nominalRows + nominal.map(({ label }) => label).join(", ") + "." : "",
-    t.partial[mode] + t.partialPair(
-      `${a.oxygen_partial_pressure_psia.toFixed(2)} psia${a.oxygen_partial_pressure_nominal ? ` (${t.nominalTag})` : ""}`,
-      `${b.oxygen_partial_pressure_psia.toFixed(2)} psia${b.oxygen_partial_pressure_nominal ? ` (${t.nominalTag})` : ""}`),
+    partialSentence,
   ].filter(Boolean).join(" ");
 
   const caveats = [
-    changed.length > 1 ? t.many : "",
+    conditions.length > 1 ? t.many : "",
+    a.reference ? t.reference("A: ", a.label) : "",
+    b.reference ? t.reference("B: ", b.label) : "",
     missing.length > 0 ? t.gaps(missing.map(({ label }) => label).join(", ")) : "",
     ...(nominal.length > 0 ? bases.map((basis) => (basis ? sentence(basis) : "")) : []),
     a.gravity_g === 0 && b.gravity_g === 0 ? t.zeroG : "",
   ].filter((caveat): caveat is string => Boolean(caveat));
 
-  return { paragraphs: [first, second], caveats, fieldsUsed: payload.rows.map(({ id }) => id) };
+  return { paragraphs: [first, second].filter(Boolean), caveats, fieldsUsed: payload.rows.map(({ id }) => id) };
 }
 
 function rankTemplate(payload: RankPayload, lang: InterpretLang): Interpretation {
   const t = text[lang];
-  const { run, profile, target } = payload;
-  const { scoreWeights } = profile;
+  const { run, profile, target, study } = payload;
   const bounds = payload.bounds.map(({ axis, side, outside }) => t.bound(t.sides[side], t.axes[axis], outside));
+  const pillar = t.pillars[profile.priority] ?? profile.priority;
   const first = t.score(run.label, payload.score.toFixed(1), String(payload.scoreMax), profile.name) +
-    t.similarity(payload.atmosphereSimilarity_pct.toFixed(1), scoreWeights.atmosphere.toFixed(2)) +
-    t.fuel(payload.fuelMatch, scoreWeights.fuel.toFixed(2)) +
-    t.pillar(payload.pillarMatch, scoreWeights.pillar.toFixed(2)) +
+    t.components(String(payload.atmosphere_pct), String(payload.flow_pct), String(payload.gravityBridge_pct)) +
+    (payload.bonus_pts > 0 ? t.bonus(String(payload.bonus_pts)) : "") +
+    (study ? t.pillar(study.safetyPillars.includes(profile.priority), pillar) : "") +
     (bounds.length > 0 ? t.bounds(bounds.join(", ")) : "");
   const nominalAxes = run.nominal?.fields ?? [];
-  const second = t.conditions(atmosphereText(run.atmosphere, nominalAxes, t.nominalTag), atmosphereText(target));
+  const missingAxes = atmosphereAxisList.filter((axis) => run.atmosphere[axis] === "missing");
+  const second = t.conditions(atmosphereText(run.atmosphere, t.noData, nominalAxes, t.nominalTag), atmosphereText(target, t.noData));
   const caveats = [
+    run.reference ? t.reference("", run.label) : "",
+    missingAxes.length > 0 ? t.missingAxes(missingAxes.map((axis) => t.axes[axis]).join(", ")) : "",
     run.nominal && nominalAxes.length > 0
       ? t.nominalAxes(nominalAxes.map((axis) => t.axes[axis]).join(", "), sentence(run.nominal.basis))
       : "",
-    run.atmosphere.gravity_g !== target.gravity_g
+    typeof run.atmosphere.gravity_g === "number" && run.atmosphere.gravity_g !== target.gravity_g
       ? t.gravity(run.atmosphere.gravity_g.toFixed(3), target.gravity_g.toFixed(3))
       : "",
   ].filter(Boolean);
   return {
     paragraphs: [first, second],
     caveats,
-    fieldsUsed: ["score", "atmosphereSimilarity_pct", "fuelMatch", "pillarMatch", "bounds", "run.atmosphere", "target"],
+    fieldsUsed: ["score", "atmosphere_pct", "flow_pct", "gravityBridge_pct", "bonus_pts", "study.safetyPillars", "bounds", "run.atmosphere", "target"],
   };
 }
 
@@ -394,27 +471,34 @@ const isObject = (value: unknown): value is Record<string, unknown> => typeof va
 const atmosphereAxes: readonly string[] = ["gravity_g", "oxygen_pct", "pressure_psia", "flow_velocity_cm_s"];
 const isNominal = (value: unknown) => value === null || (isObject(value) && typeof value.basis === "string" &&
   Array.isArray(value.fields) && value.fields.every((axis) => typeof axis === "string" && atmosphereAxes.includes(axis)));
+const isMeasured = (value: unknown) => typeof value === "number" || value === "missing";
 const isRun = (value: unknown) => isObject(value) && typeof value.id === "string" && typeof value.label === "string" &&
-  typeof value.oxygen_partial_pressure_psia === "number" && typeof value.gravity_g === "number" && isNominal(value.nominal) &&
-  typeof value.oxygen_partial_pressure_nominal === "boolean" &&
+  isMeasured(value.oxygen_partial_pressure_psia) && isMeasured(value.gravity_g) && isNominal(value.nominal) &&
+  typeof value.oxygen_partial_pressure_nominal === "boolean" && typeof value.reference === "boolean" &&
   isObject(value.source) && typeof value.source.label === "string" && typeof value.source.url === "string";
 const isValue = (value: unknown) => typeof value === "number" || typeof value === "string";
 const isAtmosphere = (value: unknown) => isObject(value) &&
   atmosphereAxes.every((axis) => typeof value[axis] === "number");
+const isMeasuredAtmosphere = (value: unknown) => isObject(value) && atmosphereAxes.every((axis) => isMeasured(value[axis]));
 
 function isDiffPayload(value: unknown): value is DiffPayload {
   return isObject(value) && isObject(value.runs) && isRun(value.runs.a) && isRun(value.runs.b) &&
     Array.isArray(value.rows) && value.rows.every((row) => isObject(row) &&
       typeof row.id === "string" && typeof row.label === "string" && isValue(row.valueA) && isValue(row.valueB) &&
-      typeof row.nominalA === "boolean" && typeof row.nominalB === "boolean" &&
+      typeof row.nominalA === "boolean" && typeof row.nominalB === "boolean" && typeof row.outcome === "boolean" &&
+      (row.missingIn === null || row.missingIn === "A" || row.missingIn === "B" || row.missingIn === "both") &&
       diffStatuses.some((status) => status === row.status));
 }
 
 function isRankPayload(value: unknown): value is RankPayload {
-  return isObject(value) && isRun(value.run) && isObject(value.run) && isAtmosphere(value.run.atmosphere) &&
-    isObject(value.profile) && typeof value.profile.name === "string" && isObject(value.profile.scoreWeights) &&
-    isAtmosphere(value.target) && typeof value.score === "number" && value.scoreMax === 100 && typeof value.atmosphereSimilarity_pct === "number" &&
-    typeof value.fuelMatch === "boolean" && typeof value.pillarMatch === "boolean" && Array.isArray(value.bounds);
+  const isStudy = (study: unknown) => study === null || (isObject(study) && typeof study.id === "string" &&
+    Array.isArray(study.safetyPillars) && study.safetyPillars.every((pillar) => typeof pillar === "string"));
+  return isObject(value) && isRun(value.run) && isObject(value.run) && isMeasuredAtmosphere(value.run.atmosphere) &&
+    isStudy(value.study) && isObject(value.profile) && typeof value.profile.name === "string" &&
+    typeof value.profile.priority === "string" && isAtmosphere(value.target) &&
+    typeof value.score === "number" && value.scoreMax === 100 &&
+    ["atmosphere_pct", "flow_pct", "gravityBridge_pct", "bonus_pts"].every((key) => typeof value[key] === "number") &&
+    Array.isArray(value.bounds);
 }
 
 export function parseInterpretRequest(body: unknown): InterpretRequest | null {
