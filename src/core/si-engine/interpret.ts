@@ -21,6 +21,19 @@ export function diffStatus(status: string): DiffStatus {
   return known;
 }
 
+// El payload lleva los números ya redondeados como se muestran: así el modelo, la plantilla y
+// validateNumbers trabajan con las mismas cifras.
+function round(value: number, decimals: number) {
+  const scale = 10 ** decimals;
+  return Math.round(value * scale) / scale;
+}
+
+/** Valor tal como lo muestra la tabla del comparador (redondeado a los decimales del campo). */
+function shown(value: number | string | undefined, decimals: number | null): number | string | Missing {
+  if (value === undefined) return "missing";
+  return typeof value === "number" && decimals !== null ? round(value, decimals) : value;
+}
+
 /** Ejes de la atmósfera que no se midieron y usan un valor nominal documentado. */
 export type PayloadNominal = { fields: AtmosphereAxis[]; basis: string } | null;
 
@@ -79,7 +92,8 @@ export interface RankPayload {
   target: Atmosphere & { oxygen_partial_pressure_psia: number };
   score: number;
   scoreMax: 100;
-  atmosphereSimilarity: number;
+  /** Similitud de atmósfera del FSRS, en % (0–100), redondeada a 1 decimal. */
+  atmosphereSimilarity_pct: number;
   fuelMatch: boolean;
   pillarMatch: boolean;
   bounds: { axis: keyof Atmosphere; side: "inferior" | "superior"; outside: boolean }[];
@@ -108,7 +122,7 @@ function payloadRun(run: ExperimentalRun, investigations: ReadonlyMap<string, In
     investigationId: run.investigationId,
     facility: investigations.get(run.investigationId)?.facility ?? "missing",
     gravity_g: run.atmosphere.gravity_g,
-    oxygen_partial_pressure_psia: oxygenPartialPressure_psia(run.atmosphere),
+    oxygen_partial_pressure_psia: round(oxygenPartialPressure_psia(run.atmosphere), 2),
     oxygen_partial_pressure_nominal: partialPressureIsNominal(run),
     nominal: payloadNominal(run),
     source: { label: run.source.label, url: run.source.url },
@@ -125,19 +139,20 @@ export function buildDiffPayload(
     runs: { a: payloadRun(a, investigations), b: payloadRun(b, investigations) },
     rows: rows.map(({ field, valueA, valueB, nominalA, nominalB, status, delta, relativeDelta_pct }) => {
       const unit = "unit" in field ? field.unit : null;
+      const decimals = "decimals" in field ? field.decimals : null;
       return {
         id: field.id,
         label: field.label,
         unit,
         deltaUnit: "deltaUnit" in field ? field.deltaUnit : unit,
-        decimals: "decimals" in field ? field.decimals : null,
-        valueA: valueA ?? "missing",
-        valueB: valueB ?? "missing",
+        decimals,
+        valueA: shown(valueA, decimals),
+        valueB: shown(valueB, decimals),
         nominalA,
         nominalB,
         status: diffStatus(status), // compareRuns lo infiere como string
-        delta: delta ?? null,
-        relativeDelta_pct: relativeDelta_pct ?? null,
+        delta: delta === undefined ? null : decimals === null ? delta : round(delta, decimals),
+        relativeDelta_pct: relativeDelta_pct === undefined ? null : round(relativeDelta_pct, 1),
       };
     }),
   };
@@ -151,7 +166,7 @@ export function buildRankPayload(result: RankResult, profile: EnvironmentPreset,
       label: run.label,
       investigationId: run.investigationId,
       gravity_g: run.atmosphere.gravity_g,
-      oxygen_partial_pressure_psia: oxygenPartialPressure_psia(run.atmosphere),
+      oxygen_partial_pressure_psia: round(oxygenPartialPressure_psia(run.atmosphere), 2),
       oxygen_partial_pressure_nominal: partialPressureIsNominal(run),
       nominal: payloadNominal(run),
       source: { label: run.source.label, url: run.source.url },
@@ -167,10 +182,10 @@ export function buildRankPayload(result: RankResult, profile: EnvironmentPreset,
       scoreWeights: { ...profile.scoreWeights },
       distanceWeights: { ...profile.distanceWeights },
     },
-    target: { ...target, oxygen_partial_pressure_psia: oxygenPartialPressure_psia(target) },
-    score: result.score,
+    target: { ...target, oxygen_partial_pressure_psia: round(oxygenPartialPressure_psia(target), 2) },
+    score: round(result.score, 1),
     scoreMax: 100,
-    atmosphereSimilarity: result.atmosphere,
+    atmosphereSimilarity_pct: round(result.atmosphere * 100, 1),
     fuelMatch: result.fuelMatch,
     pillarMatch: result.pillarMatch,
     bounds: result.bounds.map((bound) => ({ ...bound })),
@@ -294,7 +309,7 @@ function rankTemplate(payload: RankPayload, lang: InterpretLang): Interpretation
   const { scoreWeights } = profile;
   const bounds = payload.bounds.map(({ axis, side, outside }) => t.bound(t.sides[side], t.axes[axis], outside));
   const first = t.score(run.label, payload.score.toFixed(1), String(payload.scoreMax), profile.name) +
-    t.similarity((payload.atmosphereSimilarity * 100).toFixed(1), scoreWeights.atmosphere.toFixed(2)) +
+    t.similarity(payload.atmosphereSimilarity_pct.toFixed(1), scoreWeights.atmosphere.toFixed(2)) +
     t.fuel(payload.fuelMatch, scoreWeights.fuel.toFixed(2)) +
     t.pillar(payload.pillarMatch, scoreWeights.pillar.toFixed(2)) +
     (bounds.length > 0 ? t.bounds(bounds.join(", ")) : "");
@@ -311,7 +326,7 @@ function rankTemplate(payload: RankPayload, lang: InterpretLang): Interpretation
   return {
     paragraphs: [first, second],
     caveats,
-    fieldsUsed: ["score", "atmosphereSimilarity", "fuelMatch", "pillarMatch", "bounds", "run.atmosphere", "target"],
+    fieldsUsed: ["score", "atmosphereSimilarity_pct", "fuelMatch", "pillarMatch", "bounds", "run.atmosphere", "target"],
   };
 }
 
@@ -398,7 +413,7 @@ function isDiffPayload(value: unknown): value is DiffPayload {
 function isRankPayload(value: unknown): value is RankPayload {
   return isObject(value) && isRun(value.run) && isObject(value.run) && isAtmosphere(value.run.atmosphere) &&
     isObject(value.profile) && typeof value.profile.name === "string" && isObject(value.profile.scoreWeights) &&
-    isAtmosphere(value.target) && typeof value.score === "number" && value.scoreMax === 100 && typeof value.atmosphereSimilarity === "number" &&
+    isAtmosphere(value.target) && typeof value.score === "number" && value.scoreMax === 100 && typeof value.atmosphereSimilarity_pct === "number" &&
     typeof value.fuelMatch === "boolean" && typeof value.pillarMatch === "boolean" && Array.isArray(value.bounds);
 }
 

@@ -2,7 +2,7 @@ import { anthropicProvider } from "./anthropic";
 import { geminiProvider } from "./gemini";
 import type { LlmProvider, ProviderId } from "./types";
 
-export type { LlmProvider, ProviderId } from "./types";
+export type { LlmProvider, ProviderId, ProviderResult } from "./types";
 
 const providers: Record<ProviderId, { call: LlmProvider; keyVar: string }> = {
   anthropic: { call: anthropicProvider, keyVar: "ANTHROPIC_API_KEY" },

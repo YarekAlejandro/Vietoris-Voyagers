@@ -1,4 +1,4 @@
-import type { LlmProvider, ProviderArgs } from "./types";
+import { failed, succeeded, type LlmProvider, type ProviderArgs } from "./types";
 
 // API de Anthropic (Messages) con fetch, sin SDK, como pide el brief.
 export const anthropicDefaultModel = "claude-haiku-5-5";
@@ -42,7 +42,8 @@ export const anthropicProvider: LlmProvider = async ({ apiKey, signal, ...args }
   });
   if (!response.ok) {
     console.error(`[interpret] Anthropic respondió ${response.status}`);
-    return null;
+    // 429 (límite), 500/503 y 529 (sobrecarga) son pasajeros.
+    return failed([429, 500, 503, 529].includes(response.status));
   }
-  return extractAnthropicText(await response.json());
+  return succeeded(extractAnthropicText(await response.json()));
 };

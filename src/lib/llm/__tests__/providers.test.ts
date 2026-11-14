@@ -71,8 +71,8 @@ describe("Gemini", () => {
   it("manda la key en el header y devuelve el texto", async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(geminiCompleted));
     vi.stubGlobal("fetch", fetchMock);
-    const text = await geminiProvider({ ...args, apiKey: "clave", signal: new AbortController().signal });
-    expect(text).toBe(answer);
+    const result = await geminiProvider({ ...args, apiKey: "clave", signal: new AbortController().signal });
+    expect(result).toEqual({ ok: true, text: answer });
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/interactions");
     expect(init.headers["x-goog-api-key"]).toBe("clave");
@@ -80,13 +80,15 @@ describe("Gemini", () => {
   });
 
   it.each([
-    [400, { error: { code: "safety", message: "bloqueado" } }],
-    [401, { error: { code: "authentication", message: "key inválida" } }],
-    [429, { error: { code: "quota_exceeded", message: "límite" } }],
-  ])("devuelve null ante un %i sin lanzar error ni registrar la key", async (status, body) => {
+    [400, { error: { code: "safety", message: "bloqueado" } }, false],
+    [401, { error: { code: "authentication", message: "key inválida" } }, false],
+    [429, { error: { code: "quota_exceeded", message: "cuota diaria" } }, false],
+    [429, { error: { code: "rate_limit_exceeded", message: "por minuto" } }, true],
+    [503, { error: { code: "service_unavailable", message: "saturado" } }, true],
+  ])("falla ante un %i (%j) sin lanzar error ni registrar la key", async (status, body, retryable) => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(body, status)));
-    await expect(geminiProvider({ ...args, apiKey: "clave-secreta", signal: new AbortController().signal })).resolves.toBeNull();
+    await expect(geminiProvider({ ...args, apiKey: "clave-secreta", signal: new AbortController().signal })).resolves.toEqual({ ok: false, retryable });
     expect(errors.mock.calls.flat().join(" ")).toContain(String(status));
     expect(errors.mock.calls.flat().join(" ")).not.toContain("clave-secreta");
   });
@@ -111,7 +113,7 @@ describe("Anthropic", () => {
       output_config: { effort: "low", format: { type: "json_schema", schema } },
     });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ stop_reason: "end_turn", content: [{ type: "text", text: answer }] })));
-    await expect(anthropicProvider({ ...args, apiKey: "a", signal: new AbortController().signal })).resolves.toBe(answer);
+    await expect(anthropicProvider({ ...args, apiKey: "a", signal: new AbortController().signal })).resolves.toEqual({ ok: true, text: answer });
   });
 
   it("descarta respuestas cortadas o rechazadas y los errores HTTP", async () => {
@@ -119,6 +121,8 @@ describe("Anthropic", () => {
     expect(extractAnthropicText({ stop_reason: "max_tokens", content: [{ type: "text", text: answer }] })).toBeNull();
     expect(extractAnthropicText({ stop_reason: "refusal", content: [] })).toBeNull();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ type: "error" }, 401)));
-    await expect(anthropicProvider({ ...args, apiKey: "a", signal: new AbortController().signal })).resolves.toBeNull();
+    await expect(anthropicProvider({ ...args, apiKey: "a", signal: new AbortController().signal })).resolves.toEqual({ ok: false, retryable: false });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ type: "error" }, 529)));
+    await expect(anthropicProvider({ ...args, apiKey: "a", signal: new AbortController().signal })).resolves.toEqual({ ok: false, retryable: true });
   });
 });

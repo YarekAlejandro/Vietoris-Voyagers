@@ -1,4 +1,4 @@
-import type { LlmProvider, ProviderArgs } from "./types";
+import { failed, succeeded, type LlmProvider, type ProviderArgs } from "./types";
 
 // Google Gemini, Interactions API (la que la documentación recomienda en lugar de generateContent).
 // https://aistudio.google.com/docs/migrate-to-interactions
@@ -80,7 +80,10 @@ export const geminiProvider: LlmProvider = async ({ apiKey, signal, ...args }) =
       // El cuerpo del error no es JSON; basta con el status.
     }
     console.error(`[interpret] Gemini respondió ${response.status}${label ? ` (${label})` : ""}`);
-    return null;
+    // 503 (saturación) y 429 por minuto son pasajeros; la cuota diaria agotada no lo es.
+    const retryable = response.status === 500 || response.status === 503 ||
+      (response.status === 429 && !label.includes("quota_exceeded"));
+    return failed(retryable);
   }
-  return extractGeminiText(await response.json());
+  return succeeded(extractGeminiText(await response.json()));
 };

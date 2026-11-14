@@ -13,5 +13,13 @@ export interface ProviderArgs {
   signal: AbortSignal;
 }
 
-/** Devuelve el texto JSON del modelo, o `null` si la llamada falló. Nunca registra la API key. */
-export type LlmProvider = (args: ProviderArgs) => Promise<string | null>;
+/**
+ * Texto JSON del modelo, o un fallo. `retryable` marca fallos pasajeros (saturación, límite por
+ * minuto) que vale la pena reintentar una vez. Nunca se registra la API key.
+ */
+export type ProviderResult = { ok: true; text: string } | { ok: false; retryable: boolean };
+
+export type LlmProvider = (args: ProviderArgs) => Promise<ProviderResult>;
+
+export const failed = (retryable = false): ProviderResult => ({ ok: false, retryable });
+export const succeeded = (text: string | null): ProviderResult => (text ? { ok: true, text } : failed());

@@ -30,13 +30,16 @@ describe("buildDiffPayload", () => {
 
   it("marca como «missing» los valores sin dato", () => {
     expect(diffPayload.rows.find(({ id }) => id === "width_cm")).toMatchObject({ valueA: "missing", valueB: 40, status: "missing", delta: null });
+    // Los valores van redondeados como en la tabla: 10.399 psia → 10.40 (2 decimales).
+    expect(diffPayload.rows.find(({ id }) => id === "pressure_psia")).toMatchObject({ valueA: 10.4, valueB: 7.92, delta: -2.48 });
+    expect(diffPayload.rows.find(({ id }) => id === "cabin_heat_added_kj")?.relativeDelta_pct).toBe(113.3);
   });
 });
 
 describe("buildRankPayload", () => {
   it("expone puntaje, componentes, pesos y la atmósfera objetivo", () => {
     expect(rankPayload).toMatchObject({
-      score: topResult.score, atmosphereSimilarity: topResult.atmosphere,
+      score: Math.round(topResult.score * 10) / 10, atmosphereSimilarity_pct: Math.round(topResult.atmosphere * 1000) / 10,
       fuelMatch: topResult.fuelMatch, pillarMatch: topResult.pillarMatch,
       profile: { id: "iss", scoreWeights: iss.scoreWeights },
       target: { ...iss.atmosphere },
