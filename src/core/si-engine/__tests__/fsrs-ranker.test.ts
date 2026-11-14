@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { missionPresets } from "../../../data/mission_presets";
 import { investigationsById, psiDataset, runsById } from "../../../data/psi";
-import { oxygenPartialPressure_psia, rankRuns } from "../fsrs-ranker";
+import { computeFSRS, oxygenPartialPressure_psia, rankRuns } from "../fsrs-ranker";
 
 const iss = missionPresets[0];
 
@@ -22,10 +22,28 @@ describe("FSRS", () => {
     expect(oxygenPartialPressure_psia(iss.atmosphere)).toBeCloseTo(3.087);
   });
 
-  it("otorga 100 puntos a una corrida con coincidencia de atmósfera, material y pilar", () => {
-    const [result] = rankRuns([saffireV], investigationsById, iss, saffireV.atmosphere);
+  it("acota al máximo el FSRS de una corrida coincidente con bonificación de presión", () => {
+    const target = { ...iss.atmosphere, ...saffireV.atmosphere };
+    const [result] = rankRuns([saffireV], investigationsById, iss, target);
     expect(result.score).toBe(100);
+    expect(result.bonus_pts).toBe(10);
     expect(result.bounds).toEqual([]);
+  });
+
+  it("calcula cercanía al rango de un estudio y bonifica la evidencia pertinente", () => {
+    const study = investigationsById.get("SAFFIRE-VI");
+    const runs = [saffireVI, { ...saffireVI, atmosphere: { ...saffireVI.atmosphere, oxygen_pct: 34 } }];
+    const atmosphere = { ...iss.atmosphere, ...saffireVI.atmosphere, oxygen_pct: 32 };
+    expect(computeFSRS({ study, runs }, atmosphere)).toMatchObject({ atmosphere_pct: 100, bonus_pts: 25 });
+  });
+
+  it("aplica la bonificación de E-FIELD en gravedad parcial sin convertir el campo en gravedad experimental", () => {
+    const study = investigationsById.get("E-FIELD");
+    const run = runsById.get("E-FIELD-REF-PEAK")!;
+    const target = { ...iss.atmosphere, gravity_g: 0.165 };
+    expect(computeFSRS({ study, runs: [run] }, target)).toMatchObject({ atmosphere_pct: 0, bonus_pts: 22 });
+    expect(computeFSRS({ study, runs: [run] }, { ...target, gravity_g: 0.401 }).bonus_pts).toBe(0);
+    expect(rankRuns([run], investigationsById, iss, target)[0].bounds).toEqual([]);
   });
 
   it("marca los vecinos inferior y superior cuando el objetivo los separa", () => {

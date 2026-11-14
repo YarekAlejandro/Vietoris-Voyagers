@@ -4,11 +4,13 @@ import { supplementalFields } from "../../core/si-engine/git-diff";
 import { studyBridges } from "../../core/si-engine/knowledge-graph";
 import type { EvidenceSearchResults } from "../../core/si-engine/semantic-search";
 import { atmosphereControls } from "../../data/mission_presets";
+import { historicalLessons, studentDescriptions, terrestrialApplications } from "../../data/evidence_context";
 import { investigationsById, psiDataset, runsById } from "../../data/psi";
 import { evidenceTopics, facilities, pillarLabels, topicsForRun } from "../../data/psi_vocabulary";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { Citation, ExperimentalRun } from "../../types/psi";
 import { AtmosphereSliders } from "../simulator/AtmosphereSliders";
+import { SafetyTriadMatrix } from "../simulator/SafetyTriadMatrix";
 
 function SourceLink({ source }: { source: Citation }) {
   return <a className="source-link" href={source.url} target="_blank" rel="noreferrer">{source.label} <ExternalLink size={13} aria-hidden /></a>;
@@ -53,7 +55,7 @@ export function EvidenceInspector({ current, search, availableRuns, rankedRun }:
       {view === "atmosphere" ? <AtmosphereSliders /> : study ? (
         <div className="panel-content inspector-content" key={current?.id}>
           <div className="evidence-kind">
-            <span>{run ? "Corrida documentada" : studyHasRuns ? "Investigación con corridas" : "Ficha bibliográfica"}</span>
+            <span>{run?.reference ? "Perfil nominal PSI" : run ? "Corrida documentada" : studyHasRuns ? "Investigación con registros" : "Ficha bibliográfica"}</span>
             <span>{facilities[study.facility].label}</span>
           </div>
           <div>
@@ -71,10 +73,13 @@ export function EvidenceInspector({ current, search, availableRuns, rankedRun }:
             <>
               <p>{run.configuration}{run.outcome ? ` · ${run.outcome}` : ""}</p>
               <dl className="evidence-readouts">
-                {atmosphereControls.map(({ field, label, unit, decimals }) => <div key={field}>
-                  <dt>{label}</dt><dd>{run.atmosphere[field].toFixed(field === "pressure_psia" ? 2 : decimals)} <small>{unit}</small></dd>
-                  {run.nominal?.fields.includes(field) && <small>Nominal</small>}
-                </div>)}
+                {atmosphereControls.map(({ field, label, unit, decimals }) => {
+                  const value = run.atmosphere[field];
+                  return <div key={field}><dt>{label}</dt>
+                    <dd>{value === undefined ? <small>Sin dato</small> : <>{value.toFixed(field === "pressure_psia" ? 2 : decimals)} <small>{unit}</small></>}</dd>
+                    {run.nominal?.fields.includes(field) && <small>Nominal</small>}
+                  </div>;
+                })}
               </dl>
               {run.nominal && <p>{run.nominal.basis}</p>}
               {extraReadouts.length > 0 && <dl className="evidence-readouts">
@@ -85,7 +90,7 @@ export function EvidenceInspector({ current, search, availableRuns, rankedRun }:
               {run.cabin_heat_added_kj !== undefined && <p className="observation"><strong>{run.cabin_heat_added_kj} kJ</strong> de calor añadido a cabina (estimación publicada).</p>}
               {run.steady_flame_length_cm !== undefined && <p className="observation"><strong>{run.steady_flame_length_cm} cm</strong> de longitud de llama estable.</p>}
             </>
-          ) : <p>{study.summary}</p>}
+          ) : <p>{mode === "student" ? studentDescriptions[study.id] ?? study.summary : study.summary}</p>}
           <SourceLink source={run?.source ?? study.source} />
           {!run && matchingRunCount > 0 && (
             <button type="button" className="quiet-button open-runs" onClick={() => setStudyFilter(study.id)}>
@@ -97,6 +102,7 @@ export function EvidenceInspector({ current, search, availableRuns, rankedRun }:
             {evidenceTopicsForSelection.map((topic) => <span key={topic}>{evidenceTopics[topic].label}</span>)}
             {mode === "engineer" && study.safetyPillars.map((pillar) => <span key={pillar}>{pillarLabels[pillar]}</span>)}
           </div>
+          <SafetyTriadMatrix study={study} run={run} />
           {bridges.map((bridge) => <div className="evidence-bridge" key={bridge.title}>
             <strong>{bridge.title}</strong>
             <p>{bridge.description}</p>
@@ -104,13 +110,28 @@ export function EvidenceInspector({ current, search, availableRuns, rankedRun }:
           </div>)}
           {rankedRun && mode === "engineer" && <div className="search-reason">
             <strong>FSRS · {rankedRun.score.toFixed(1)} / 100</strong>
-            <p>Estima la relevancia para la atmósfera, el material y la prioridad del perfil de misión.</p>
-            {run?.nominal && <p>La similitud atmosférica se pondera según los datos reportados.</p>}
+            <p>Combina cercanía al escenario, instrumentación y vínculos experimentales. Bonificación del escenario: {rankedRun.bonus_pts} pts.</p>
           </div>}
+          {mode === "student" && <>
+            <section className="student-card">
+              <h4>¿Por qué cambia de forma una llama?</h4>
+              <p>En la Tierra, el gas caliente asciende y estira la llama. En microgravedad, sin ventilación fuerte, el combustible y el oxígeno se mezclan por difusión y algunas llamas se redondean. El color depende del combustible y del hollín.</p>
+            </section>
+            <ReadingCard title="Lecciones históricas" entries={historicalLessons} />
+            <ReadingCard title="Transferencia a la Tierra" entries={terrestrialApplications} />
+          </>}
         </div>
       ) : (
         <div className="panel-content empty-evidence"><FileText size={26} aria-hidden /><p>Selecciona un resultado para ver sus datos y su fuente original.</p></div>
       )}
     </section>
   );
+}
+
+function ReadingCard({ title, entries }: { title: string; entries: readonly { label: string; note: string; url: string }[] }) {
+  return <section className="student-card"><h4>{title}</h4><ul>
+    {entries.map(({ label, note, url }) => <li key={label}>
+      <a href={url} target="_blank" rel="noreferrer">{label}</a><p>{note}</p>
+    </li>)}
+  </ul></section>;
 }

@@ -1,5 +1,5 @@
 export type SafetyPillar = "PREVENTION" | "DETECTION" | "SUPPRESSION";
-export type FuelCategory = "SOLID_POLYMER" | "SOLID_FABRIC" | "AEROSOL_SMOKE_DUST" | "LIQUID_DROPLET";
+export type FuelCategory = "SOLID_POLYMER" | "SOLID_FABRIC" | "AEROSOL_SMOKE_DUST" | "LIQUID_DROPLET" | "GAS";
 export type Facility = "MSG" | "CYGNUS" | "CIR" | "ISS";
 export type EvidenceTopicId =
   | "solids" | "flame-spread" | "low-flow" | "extinction" | "reduced-pressure"
@@ -16,10 +16,7 @@ export interface EnvironmentPreset {
   id: string;
   name: string;
   atmosphere: Atmosphere;
-  targetFuel: FuelCategory;
   priority: SafetyPillar;
-  distanceWeights: { gravity: number; oxygen: number; partialPressure: number; flow: number };
-  scoreWeights: { atmosphere: number; fuel: number; pillar: number };
 }
 
 export interface Citation {
@@ -41,7 +38,8 @@ export interface ExperimentalRun {
   id: string;
   investigationId: string;
   label: string;
-  atmosphere: Atmosphere;
+  atmosphere: Partial<Atmosphere>;
+  reference?: true;
   fuel: string;
   fuelCategory: FuelCategory;
   configuration: string;
@@ -61,6 +59,8 @@ export interface ExperimentalRun {
   extinction_droplet_diameter_mm?: number;
   burning_rate_mm2_s?: number;
   burn_time_s?: number;
+  electric_field_kv_cm?: number;
+  jet_velocity_cm_s?: number;
   nominal?: { fields: readonly (keyof Atmosphere)[]; basis: string };
   source: Citation;
 }

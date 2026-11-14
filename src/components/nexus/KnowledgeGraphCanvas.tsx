@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Background, Controls, Handle, MarkerType, Position, ReactFlow, type Edge, type Node, type NodeProps, type NodeTypes } from "@xyflow/react";
+import { useMemo, useState } from "react";
+import { Background, BaseEdge, Controls, Handle, MarkerType, Position, ReactFlow, type Edge, type EdgeProps, type Node, type NodeProps, type NodeTypes, type XYPosition } from "@xyflow/react";
 import { AudioLines, Boxes, FlaskConical, Network, Tag } from "lucide-react";
 import { buildKnowledgeGraph, type GraphEdge, type GraphNode } from "../../core/si-engine/knowledge-graph";
 import { runsById } from "../../data/psi";
@@ -18,7 +18,22 @@ const relationLabels = {
   "recorded-in": "Incluye corrida",
   precursor: "Estudio precursor",
   "shared-apparatus": "Equipo compartido",
+  analogy: "Analogía experimental",
 } satisfies Record<GraphEdge["relation"], string>;
+const bridgeFilters = [
+  { label: "Gas ↔ Sólido", title: "BRE · BASS-II · Saffire", studies: ["BRE", "BASS-II", "SAFFIRE-I", "SAFFIRE-IV-V", "SAFFIRE-VI"] },
+  { label: "Humo ↔ Polvo", title: "SAME · SAME-R · DAFT", studies: ["SAME", "SAME-R", "DAFT"] },
+  { label: "Gravedad parcial y alto O₂", title: "E-FIELD · CFI-G · FLEX", studies: ["E-FIELD", "CFI-G", "FLEX"] },
+];
+const isBridge = (relation: GraphEdge["relation"]) => relation === "precursor" || relation === "shared-apparatus" || relation === "analogy";
+
+function BridgeEdge({ sourceX, sourceY, targetX, targetY, markerEnd, label }: EdgeProps) {
+  const laneX = Math.max(sourceX, targetX) + 34;
+  const path = `M ${sourceX} ${sourceY} C ${laneX} ${sourceY}, ${laneX} ${targetY}, ${targetX} ${targetY}`;
+  return <BaseEdge path={path} markerEnd={markerEnd} label={label} labelX={laneX - 7} labelY={(sourceY + targetY) / 2}
+    labelBgStyle={{ fill: "#0b0f19", fillOpacity: 0.92 }} />;
+}
+const edgeTypes = { bridge: BridgeEdge };
 const fitOptions = { padding: 0.17, maxZoom: 1.15 };
 const ariaLabels = {
   "controls.ariaLabel": "Controles del grafo",
@@ -32,11 +47,11 @@ function GraphCard({ data }: NodeProps<FlowEvidenceNode>) {
   return (
     <div className="graph-card">
       {data.kind !== "facility" && <Handle type="target" position={Position.Left} isConnectable={false} />}
-      {data.kind === "study" && <Handle id="bridge-in" type="target" position={Position.Top} isConnectable={false} />}
+      {data.kind === "study" && <Handle id="bridge-in" className="bridge-in" type="target" position={Position.Right} isConnectable={false} />}
       <span className="graph-node-icon"><Icon size={15} aria-hidden /></span>
       <span className="graph-card-text"><strong>{data.label}</strong><small>{data.context}</small></span>
       {(data.kind === "facility" || data.kind === "study") && <Handle type="source" position={Position.Right} isConnectable={false} />}
-      {data.kind === "study" && <Handle id="bridge-out" type="source" position={Position.Bottom} isConnectable={false} />}
+      {data.kind === "study" && <Handle id="bridge-out" className="bridge-out" type="source" position={Position.Right} isConnectable={false} />}
     </div>
   );
 }
@@ -57,6 +72,12 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
   const setFacility = useAetherStore((state) => state.setFacility);
   const setTopic = useAetherStore((state) => state.setTopic);
   const inspect = useAetherStore((state) => state.inspect);
+  const clearFilters = useAetherStore((state) => state.clearFilters);
+  const setQuery = useAetherStore((state) => state.setQuery);
+  const [bridge, setBridge] = useState<string | null>(null);
+  const [dragged, setDragged] = useState<Record<string, XYPosition>>({});
+  const bridgeFilter = graphView === "relationships" && !searchActive && !topic && facility === "all"
+    ? bridgeFilters.find(({ label }) => label === bridge) : undefined;
   const currentStudyId = current?.kind === "run" ? runsById.get(current.id)?.investigationId : current?.id;
   const currentRunCount = runs.filter(({ investigationId }) => investigationId === currentStudyId).length;
   const showConditions = graphView === "conditions";
@@ -65,11 +86,12 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
 
   const graph = useMemo(() => {
     const study = studies.find(({ id }) => id === currentStudyId);
-    const related = graphView === "relationships" && study && !topic && !searchActive
+    const related = bridgeFilter ? studies.filter(({ id }) => bridgeFilter.studies.includes(id))
+      : graphView === "relationships" && study && !topic && !searchActive
       ? studies.filter((candidate) => candidate.topics.some((id) => study.topics.includes(id)))
       : studies;
     return buildKnowledgeGraph(related, runs, { topic: topic ?? undefined, runStudy });
-  }, [studies, runs, currentStudyId, topic, runStudy, graphView, searchActive]);
+  }, [studies, runs, currentStudyId, topic, runStudy, graphView, searchActive, bridgeFilter]);
 
   const { nodes, edges } = useMemo(() => {
     const layouts = ["facility", "study", runStudy ? "run" : "topic"] as const;
@@ -80,7 +102,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
         const context = node.kind === "run" ? runsById.get(node.entityId)?.fuel ?? "Corrida" : kindLabels[node.kind];
         return {
           id: node.id, type: "evidence",
-          position: { x: column * 219, y: (row - (items.length - 1) / 2) * 67 },
+          position: dragged[node.id] ?? { x: column * 236, y: (row - (items.length - 1) / 2) * 67 },
           initialWidth: 167, initialHeight: 56,
           data: { ...node, context },
           className: `graph-node graph-node-${node.kind}${highlighted ? " graph-node-active" : ""}`,
@@ -91,11 +113,11 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
       });
     });
     const edges: Edge[] = graph.edges.map(({ relation, ...edge }) => {
-      const bridge = relation === "precursor" || relation === "shared-apparatus";
+      const bridge = isBridge(relation);
       const highlighted = [edge.source, edge.target].includes(highlightedId);
       return {
         ...edge,
-        type: bridge ? "smoothstep" : "bezier",
+        type: bridge ? "bridge" : "bezier",
         sourceHandle: bridge ? "bridge-out" : undefined,
         targetHandle: bridge ? "bridge-in" : undefined,
         markerEnd: relation === "precursor" ? { type: MarkerType.ArrowClosed, color: "#d7abf0" } : undefined,
@@ -108,7 +130,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
       };
     });
     return { nodes, edges };
-  }, [graph, runStudy, highlightedId, facility, topic]);
+  }, [graph, runStudy, highlightedId, facility, topic, dragged]);
 
   function selectNode({ data }: FlowEvidenceNode) {
     if (data.kind === "facility") setFacility(facility === data.entityId ? "all" : data.entityId);
@@ -121,20 +143,33 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
       <div className="panel-heading graph-heading">
         <h2 id="nexus-title"><Network size={17} aria-hidden /> PSI-Nexus</h2>
         <div className="segments" role="group" aria-label="Vista del grafo">
-          <button type="button" aria-pressed={graphView === "relationships"} onClick={() => setGraphView("relationships")}>Relaciones</button>
+          <button type="button" aria-pressed={graphView === "relationships"} onClick={() => { setBridge(null); setGraphView("relationships"); }}>Relaciones</button>
           <button type="button" aria-pressed={graphView === "overview"} onClick={() => setGraphView("overview")}>General</button>
           <button type="button" aria-pressed={Boolean(runStudy)} disabled={currentRunCount === 0} onClick={() => setGraphView("runs")}>Corridas</button>
           <button type="button" aria-pressed={showConditions} disabled={runs.length === 0} onClick={() => setGraphView("conditions")}>Condiciones</button>
         </div>
       </div>
+      {graphView === "relationships" && <div className="bridge-filters" role="group" aria-label="Puentes científicos">
+        {bridgeFilters.map(({ label, title }) => <button type="button" key={label} title={title}
+          aria-pressed={bridgeFilter?.label === label} onClick={() => {
+            clearFilters();
+            setQuery("");
+            setDragged({});
+            setBridge(bridgeFilter?.label === label ? null : label);
+          }}>{label}</button>)}
+      </div>}
       <div className="graph">
         {showConditions ? <ExperimentalCoveragePlot runs={runs} current={current} /> : nodes.length > 0 ? (
           <ReactFlow
             key={nodes.map(({ id }) => id).join("|")}
-            nodes={nodes} edges={edges} nodeTypes={nodeTypes}
+            nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             fitView fitViewOptions={fitOptions}
             colorMode="dark" minZoom={0.25} maxZoom={1.8}
-            nodesDraggable={false} nodesConnectable={false} edgesFocusable={false}
+            nodesDraggable nodesConnectable={false} edgesFocusable={false}
+            onNodesChange={(changes) => {
+              const moved = changes.flatMap((change) => change.type === "position" && change.position ? [[change.id, change.position] as const] : []);
+              if (moved.length) setDragged((positions) => ({ ...positions, ...Object.fromEntries(moved) }));
+            }}
             elementsSelectable={false} zoomOnScroll={false} panOnDrag
             defaultMarkerColor="#8097b5"
             onNodeClick={(_event, node) => selectNode(node)}
@@ -164,8 +199,9 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
         <span><i className="facility-dot" /> Instalación</span>
         <span><i className="study-dot" /> Estudio</span>
         {runStudy ? <span><i className="run-dot" /> Corrida</span> : <span><i className="topic-dot" /> Tema</span>}
-        {graph.edges.some(({ relation }) => relation === "precursor" || relation === "shared-apparatus") &&
+        {graph.edges.some(({ relation }) => isBridge(relation)) &&
           <span><i className="bridge-line" /> Vínculo documentado</span>}
+        {bridgeFilter?.label === "Humo ↔ Polvo" && <a href="https://www.youtube.com/watch?v=_43Ei9eQVww" target="_blank" rel="noreferrer">Alarma de Artemis II · NASA</a>}
         {topic && <span className="graph-context">{evidenceTopics[topic].label}</span>}
       </div>}
     </section>

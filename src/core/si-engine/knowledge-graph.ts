@@ -3,6 +3,30 @@ import type { EvidenceTopicId, ExperimentalRun, Facility, Investigation } from "
 
 export const studyBridges = [
   {
+    source: "BRE", target: "BASS-II", relation: "analogy",
+    title: "BRE ↔ BASS-II",
+    description: "BRE emula la combustión de materiales con un quemador de gas. BASS-II observa sólidos reales dentro de un ducto de flujo.",
+    citation: { label: "NASA · Studying Combustion and Fire Safety", url: "https://www.nasa.gov/missions/station/studying-combustion-and-fire-safety/" },
+  },
+  {
+    source: "SPICE", target: "SLICE", relation: "shared-apparatus",
+    title: "SPICE ↔ SLICE",
+    description: "SLICE utilizó hardware de SPICE para estudiar la estabilidad y la estructura de llamas con flujo coaxial.",
+    citation: { label: "NASA NTRS · Gaseous Diffusion Flames (MSG)", url: "https://ntrs.nasa.gov/citations/20130000582" },
+  },
+  {
+    source: "SPICE", target: "BASS-II", relation: "precursor",
+    title: "SPICE → programa BASS",
+    description: "BASS adaptó el hardware de flujo de SPICE. BASS-II continuó con ensayos en un ducto con ventilador dentro del MSG.",
+    citation: { label: "NASA · Burning and Suppression of Solids", url: "https://www.nasa.gov/wp-content/uploads/2025/07/burning-and-suppression-of-solids-bass.pdf" },
+  },
+  {
+    source: "FLEX", target: "CFI-G", relation: "analogy",
+    title: "FLEX ↔ CFI-G",
+    description: "Las llamas frías observadas en gotas en el CIR motivaron la investigación con combustibles gaseosos.",
+    citation: { label: "NASA NTRS · ACME 2021, § 3.6", url: "https://ntrs.nasa.gov/citations/20210021781" },
+  },
+  {
     source: "DAFT", target: "SAME", relation: "precursor",
     title: "DAFT → SAME",
     description: "DAFT verificó un contador de partículas para los estudios de humo de SAME.",

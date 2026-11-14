@@ -1,7 +1,7 @@
 import type { EvidenceTopicId, ExperimentalRun, Facility, SafetyPillar } from "../types/psi";
 
 export const facilities = {
-  MSG: { label: "MSG", name: "Microgravity Science Glovebox", aliases: ["guantejera de microgravedad", "glovebox"] },
+  MSG: { label: "MSG", name: "Microgravity Science Glovebox", aliases: ["guantejera de microgravedad", "glovebox", "ducto SPICE"] },
   CYGNUS: { label: "Cygnus", name: "Vehículo Cygnus", aliases: ["cygnus spacecraft", "cargo spacecraft"] },
   CIR: { label: "CIR", name: "Combustion Integrated Rack", aliases: ["rack de combustión"] },
   ISS: { label: "Cabina ISS", name: "Estación Espacial Internacional", aliases: ["international space station"] },

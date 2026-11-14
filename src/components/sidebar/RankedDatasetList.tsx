@@ -1,5 +1,5 @@
-import { ArrowUpRight, FlaskConical, ListFilter, SearchX, X } from "lucide-react";
-import type { rankRuns } from "../../core/si-engine/fsrs-ranker";
+import { FlaskConical, ListFilter, SearchX, X } from "lucide-react";
+import type { FSRS, rankRuns } from "../../core/si-engine/fsrs-ranker";
 import type { EvidenceSearchResults } from "../../core/si-engine/semantic-search";
 import { psiDataset } from "../../data/psi";
 import { evidenceTopics, facilities } from "../../data/psi_vocabulary";
@@ -14,12 +14,28 @@ for (const run of psiDataset.runs) {
 interface DatasetListProps {
   studies: Investigation[];
   rankedRuns: ReturnType<typeof rankRuns>;
+  studyScores: ReadonlyMap<string, FSRS>;
   search: EvidenceSearchResults;
   current: EvidenceSelection | null;
   view: "study" | "run";
 }
 
-export function RankedDatasetList({ studies, rankedRuns, search, current, view }: DatasetListProps) {
+function ScoreBadge({ result }: { result: FSRS }) {
+  const level = result.score >= 80 ? "high" : result.score >= 60 ? "mid" : "low";
+  return <span className="fsrs-badge mono" data-level={level}>FSRS {result.score.toFixed(1)}</span>;
+}
+
+function ScoreDetails({ result, label }: { result: FSRS; label: string }) {
+  return <div className="fsrs-details">
+    <meter aria-label={`FSRS de ${label}`} min={0} max={100} value={result.score}
+      data-level={result.score >= 80 ? "high" : result.score >= 60 ? "mid" : "low"} />
+    <span title={`Componentes del FSRS · bonificación por escenario: ${result.bonus_pts} pts`}>
+      Atm {Math.round(result.atmosphere_pct)}% · Flujo {Math.round(result.flow_pct)}% · Grav/Puente {Math.round(result.gravityBridge_pct)}%
+    </span>
+  </div>;
+}
+
+export function RankedDatasetList({ studies, rankedRuns, studyScores, search, current, view }: DatasetListProps) {
   const facility = useAetherStore((state) => state.facility);
   const topic = useAetherStore((state) => state.topic);
   const studyFilter = useAetherStore((state) => state.studyFilter);
@@ -34,6 +50,8 @@ export function RankedDatasetList({ studies, rankedRuns, search, current, view }
   const selectRun = useAetherStore((state) => state.selectRun);
   const hasFilters = facility !== "all" || topic !== null || studyFilter !== null;
   const count = view === "study" ? studies.length : rankedRuns.length;
+  const rankedStudies = [...studies].sort((a, b) =>
+    (studyScores.get(b.id)?.score ?? 0) - (studyScores.get(a.id)?.score ?? 0) || a.id.localeCompare(b.id));
 
   return (
     <section className="panel ranking" aria-labelledby="ranking-title">
@@ -75,26 +93,39 @@ export function RankedDatasetList({ studies, rankedRuns, search, current, view }
         </div>
       ) : view === "study" ? (
         <ul className="panel-content ranked-list">
-          {studies.map((study) => {
+          {rankedStudies.map((study) => {
             const count = catalogRunCounts.get(study.id) ?? 0;
             const active = current?.kind === "study" && current.id === study.id;
+            const result = studyScores.get(study.id);
+            const bestRun = rankedRuns.find(({ run }) => run.investigationId === study.id)?.run;
             return (
-              <li key={study.id}>
-                <button className="study-card" type="button" aria-pressed={active} onClick={() => inspect({ kind: "study", id: study.id })}>
-                  <span className="study-card-heading"><strong>{study.id}</strong><ArrowUpRight size={15} aria-hidden /></span>
+              <li className="study-card" data-active={active} key={study.id}>
+                <button className="study-open" type="button" aria-pressed={active} onClick={() => inspect({ kind: "study", id: study.id })}>
+                  <span className="study-card-heading"><strong>{study.id}</strong>{result && <ScoreBadge result={result} />}</span>
                   <span className="study-name">{study.name}</span>
-                  <span className="study-card-meta">
-                    <span>{facilities[study.facility].label}</span>
-                    <span className={count > 0 ? "data-available" : ""}>{count > 0 ? `${count} ${count === 1 ? "corrida" : "corridas"}` : "Ficha bibliográfica"}</span>
-                  </span>
                 </button>
+                {result && <ScoreDetails result={result} label={study.id} />}
+                <div className="study-card-meta">
+                  <span className="study-count">
+                    <span>{facilities[study.facility].label}</span>
+                    <span>{count ? `${count} ${count === 1 ? "registro" : "registros"}` : "Ficha bibliográfica"}</span>
+                  </span>
+                  <div className="run-actions">
+                    {(["a", "b"] as const).map((side) => <button type="button" key={side}
+                      title={bestRun?.label ?? "Sin registros comparables en esta vista"}
+                      aria-pressed={bestRun !== undefined && comparison[side] === bestRun.id}
+                      aria-label={`Comparar estudio ${study.id} en ${side.toUpperCase()}`}
+                      disabled={!bestRun} onClick={() => { if (bestRun) selectRun(side, bestRun.id); }}>+{side.toUpperCase()}</button>)}
+                  </div>
+                </div>
               </li>
             );
           })}
         </ul>
       ) : (
         <ol className="panel-content ranked-list">
-          {rankedRuns.map(({ run, score, bounds }) => {
+          {rankedRuns.map((result) => {
+            const { run, bounds } = result;
             const active = current?.kind === "run" && current.id === run.id;
             return (
               <li className="run-card" key={run.id} data-active={active}>
@@ -103,13 +134,14 @@ export function RankedDatasetList({ studies, rankedRuns, search, current, view }
                     <span className="run-study">{run.investigationId}</span>
                     <strong>{run.label}</strong>
                   </span>
-                  <span className="run-fsrs"><strong className="score mono">{score.toFixed(1)}</strong><small>FSRS</small></span>
+                  <ScoreBadge result={result} />
                 </button>
-                <meter aria-label={`FSRS de ${run.label}`} min={0} max={100} value={score} />
+                <ScoreDetails result={result} label={run.label} />
                 <div className="run-bottom">
                   <span><FlaskConical size={11} aria-hidden /> {run.fuel}
-                    {!run.nominal?.fields.includes("oxygen_pct") && ` · ${run.atmosphere.oxygen_pct.toFixed(1)}% O₂`}
+                    {run.atmosphere.oxygen_pct !== undefined && !run.nominal?.fields.includes("oxygen_pct") && ` · ${run.atmosphere.oxygen_pct.toFixed(1)}% O₂`}
                   </span>
+                  {run.reference && <span className="reference-label">Perfil nominal PSI</span>}
                   {bounds.length > 0 && <span className="bound-tag" title="Cota experimental por variable">Cota</span>}
                   <div className="run-actions">
                     <button type="button" aria-label={`Comparar ${run.label} en A`} aria-pressed={comparison.a === run.id} onClick={() => selectRun("a", run.id)}>+ A</button>

@@ -25,9 +25,9 @@ npm run typecheck
 npm run build
 ```
 
-La compilación genera el sitio estático en `out/` para Vercel. El catálogo incluye 13 estudios y 23 corridas normalizadas de BASS-II, Saffire, SAME, SAME-R y FLEX. FLEX-2 se incluye como ficha bibliográfica. Prueba `PTFE humo` o `heptano CO₂` para encontrar corridas de detección y supresión.
+La compilación genera el sitio estático en `out/`. El catálogo incluye 15 estudios, 23 corridas normalizadas y 5 perfiles nominales PSI con observaciones documentadas y cobertura parcial. Prueba `PTFE humo` o `heptano CO₂` para encontrar corridas de detección y supresión. Los atajos de búsqueda también recuperan los registros de cada estudio coincidente.
 
-La búsqueda local usa un vocabulario de conceptos y sinónimos en español e inglés. Combina los conceptos de la consulta y muestra por qué aparece cada resultado. El FSRS estima la pertinencia para el escenario elegido y pondera la similitud atmosférica según los campos reportados. Las fichas y el comparador identifican el O₂ y la presión nominales de SAME y SAME-R y el flujo nominal de FLEX. La vista **Condiciones** requiere O₂ y flujo reportados para dibujar una corrida. La gravedad orbital se representa como 0 g en el catálogo inicial.
+La búsqueda local usa un vocabulario de conceptos y sinónimos en español e inglés. Combina los conceptos de la consulta y muestra por qué aparece cada resultado. El FSRS ordena estudios y corridas con el escenario activo. Pondera oxígeno (35 %), presión (25 %), gravedad y flujo (25 %) e instrumentación, puente y pilar de misión (15 %), con bonificaciones por escenario y un máximo de 100 puntos. Los campos ausentes o nominales aportan cero a la similitud. La vista **Condiciones** dibuja corridas con O₂ y flujo reportados. La gravedad orbital se representa como 0 g.
 
 ## Próximos entregables
 

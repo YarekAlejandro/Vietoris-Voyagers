@@ -86,7 +86,7 @@ export function buildEvidenceIndex({ investigations, runs }: PsiDataset) {
       : [study.id, study.name, study.summary, study.source.label];
     const keys = new Set([`study:${study.id}`, `facility:${study.facility}`]);
     if (study.facility !== "CYGNUS") keys.add("platform:iss");
-    if (!run || run.atmosphere.gravity_g < 1e-4) keys.add("gravity:micro");
+    if (!run || (run.atmosphere.gravity_g !== undefined && run.atmosphere.gravity_g < 1e-4)) keys.add("gravity:micro");
     const topics = run ? topicsForRun(run) : study.topics;
     for (const topic of topics) keys.add(`topic:${topic}`);
     for (const material of searchMaterials) {

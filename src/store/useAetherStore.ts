@@ -13,6 +13,7 @@ interface AetherState {
   facility: Facility | "all";
   topic: EvidenceTopicId | null;
   query: string;
+  includeStudyRuns: boolean;
   selection: EvidenceSelection | null;
   studyFilter: string | null;
   resultsView: "study" | "run" | null;
@@ -24,7 +25,7 @@ interface AetherState {
   setMode: (mode: AetherState["mode"]) => void;
   setFacility: (facility: AetherState["facility"]) => void;
   setTopic: (topic: EvidenceTopicId | null) => void;
-  setQuery: (query: string) => void;
+  setQuery: (query: string, includeStudyRuns?: boolean) => void;
   clearFilters: () => void;
   inspect: (selection: EvidenceSelection) => void;
   setStudyFilter: (studyFilter: string | null) => void;
@@ -41,6 +42,7 @@ export const useAetherStore = create<AetherState>((set) => ({
   facility: "all",
   topic: null,
   query: "",
+  includeStudyRuns: false,
   selection: { kind: "study", id: "SAFFIRE-VI" },
   studyFilter: null,
   resultsView: null,
@@ -52,8 +54,8 @@ export const useAetherStore = create<AetherState>((set) => ({
   setMode: (mode) => set({ mode }),
   setFacility: (facility) => set({ facility, studyFilter: null, graphView: "relationships" }),
   setTopic: (topic) => set({ topic, studyFilter: null, graphView: "relationships" }),
-  setQuery: (query) => set({
-    query, selection: null, studyFilter: null, resultsView: null, graphView: "relationships", inspectorView: "evidence",
+  setQuery: (query, includeStudyRuns = false) => set({
+    query, includeStudyRuns, selection: null, studyFilter: null, resultsView: null, graphView: "relationships", inspectorView: "evidence",
   }),
   clearFilters: () => set({ facility: "all", topic: null, studyFilter: null }),
   inspect: (selection) => set(({ studyFilter, graphView }) => {

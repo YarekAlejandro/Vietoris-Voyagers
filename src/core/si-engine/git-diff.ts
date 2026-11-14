@@ -10,6 +10,8 @@ export const supplementalFields = [
   { id: "extinction_droplet_diameter_mm", label: "Diámetro al extinguirse la llama visible", unit: "mm", decimals: 2 },
   { id: "burning_rate_mm2_s", label: "Tasa de quemado K", unit: "mm²/s", decimals: 2 },
   { id: "burn_time_s", label: "Tiempo de quemado", unit: "s", decimals: 1 },
+  { id: "electric_field_kv_cm", label: "Campo eléctrico", unit: "kV/cm", decimals: 2 },
+  { id: "jet_velocity_cm_s", label: "Velocidad del chorro", unit: "cm/s", decimals: 1 },
 ] as const;
 
 export const diffFields = [
@@ -28,6 +30,11 @@ export const diffFields = [
   { id: "cabin_heat_added_kj", label: "Calor añadido a cabina (estim.)", unit: "kJ", decimals: 0 },
   ...supplementalFields,
 ] as const;
+
+const outcomeFields = new Set<(typeof diffFields)[number]["id"]>([
+  "outcome", "steady_flame_length_cm", "cabin_heat_added_kj",
+  "extinction_droplet_diameter_mm", "burning_rate_mm2_s", "burn_time_s",
+]);
 
 export function compareRuns(
   a: ExperimentalRun,
@@ -53,6 +60,8 @@ export function compareRuns(
       relativeDelta_pct = valueA === 0 ? undefined : 100 * delta / Math.abs(valueA);
     }
 
-    return { field, valueA, valueB, nominalA, nominalB, status, delta, relativeDelta_pct };
-  });
+    const outcome = outcomeFields.has(field.id);
+    const order = outcome ? 0 : status === "changed" ? 1 : status === "equal" ? 3 : 2;
+    return { field, valueA, valueB, nominalA, nominalB, status, delta, relativeDelta_pct, outcome, order };
+  }).sort((a, b) => a.order - b.order);
 }

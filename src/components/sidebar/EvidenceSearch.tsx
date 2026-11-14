@@ -20,7 +20,6 @@ export function EvidenceSearch({ search }: { search: EvidenceSearchResults }) {
       <div className="explore-intro">
         <p className="explore-source"><span aria-hidden /> NASA PSI / NTRS</p>
         <h2 id="explore-title">Incendios en microgravedad</h2>
-        <p>Encuentra investigaciones, sigue sus conexiones y compara lo que se midió.</p>
       </div>
       <form role="search" className="evidence-search" onSubmit={(event) => event.preventDefault()}>
         <label className="sr-only" htmlFor="evidence-query">Búsqueda semántica</label>
@@ -42,12 +41,10 @@ export function EvidenceSearch({ search }: { search: EvidenceSearchResults }) {
             input.current?.focus();
           }}><X size={17} aria-hidden /></button>}
         </div>
-        <div className="search-examples" id="search-help">
-          <span>{search.active && search.concepts.length > 0 ? "Conceptos" : "Prueba"}</span>
-          {search.active && search.concepts.length > 0 ? (
-            search.concepts.map((concept) => <span className="recognized-concept" key={concept}>{concept}</span>)
-          ) : examples.map(({ label, query }) => (
-            <button type="button" key={label} onClick={() => { clearFilters(); setQuery(query); }}>
+        <span className="sr-only" id="search-help">{search.concepts.join(", ") || "Busca en español o inglés."}</span>
+        <div className="search-examples">
+          {examples.map(({ label, query: example }) => (
+            <button type="button" key={label} aria-pressed={query === example} onClick={() => { clearFilters(); setQuery(example, true); }}>
               {label} <ArrowUpRight size={11} aria-hidden />
             </button>
           ))}

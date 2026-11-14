@@ -6,6 +6,9 @@ const xPx = { start: 56, end: 556 };
 const yPx = { top: 16, bottom: 229 };
 const flowTicks_cm_s = [0, 10, 20, 30, 40, 50];
 const oxygenTicks_pct = [15, 20, 25, 30, 35, 40, 50, 75, 100];
+type PlottableRun = ExperimentalRun & {
+  atmosphere: Pick<Atmosphere, "oxygen_pct" | "flow_velocity_cm_s"> & Partial<Atmosphere>;
+};
 
 export function ExperimentalCoveragePlot({ runs, current }: {
   runs: readonly ExperimentalRun[];
@@ -15,8 +18,9 @@ export function ExperimentalCoveragePlot({ runs, current }: {
   const comparison = useAetherStore((state) => state.comparison);
   const inspect = useAetherStore((state) => state.inspect);
   const [hovered, setHovered] = useState<string | null>(null);
-  const plottedRuns = runs.filter(({ nominal }) => !nominal?.fields.some((field) =>
-    field === "oxygen_pct" || field === "flow_velocity_cm_s"));
+  const plottedRuns = runs.filter((run): run is PlottableRun => !run.reference &&
+    run.atmosphere.oxygen_pct !== undefined && run.atmosphere.flow_velocity_cm_s !== undefined &&
+    !run.nominal?.fields.some((field) => field === "oxygen_pct" || field === "flow_velocity_cm_s"));
   const omittedCount = runs.length - plottedRuns.length;
   const oxygenMax_pct = Math.min(100, Math.ceil(Math.max(31, atmosphere.oxygen_pct, ...plottedRuns.map((run) => run.atmosphere.oxygen_pct)) / 5) * 5);
   const flowMax_cm_s = Math.ceil(Math.max(50, ...plottedRuns.map((run) => run.atmosphere.flow_velocity_cm_s)) / 10) * 10;
@@ -28,7 +32,7 @@ export function ExperimentalCoveragePlot({ runs, current }: {
   const focused = plottedRuns.find(({ id }) => id === (hovered ?? (current?.kind === "run" ? current.id : undefined)));
   const visibleOxygenTicks = oxygenTicks_pct.filter((tick) => tick <= oxygenMax_pct && (oxygenMax_pct <= 50 || tick === 15 || tick >= 25 && tick % 25 === 0));
 
-  const points = new Map<string, ExperimentalRun[]>();
+  const points = new Map<string, PlottableRun[]>();
   for (const run of plottedRuns) {
     const key = `${run.atmosphere.flow_velocity_cm_s}:${run.atmosphere.oxygen_pct}`;
     const group = points.get(key) ?? [];
@@ -36,14 +40,15 @@ export function ExperimentalCoveragePlot({ runs, current }: {
     points.set(key, group);
   }
 
-  function showValues(point: Atmosphere, nominalPressure = false) {
-    return `${point.flow_velocity_cm_s.toFixed(1)} cm/s · ${point.oxygen_pct.toFixed(1)}% O₂ · ${point.pressure_psia.toFixed(2)} psia${nominalPressure ? " (nominal)" : ""}`;
+  function showValues(point: PlottableRun["atmosphere"], nominalPressure = false) {
+    const axes = `${point.flow_velocity_cm_s.toFixed(1)} cm/s · ${point.oxygen_pct.toFixed(1)}% O₂`;
+    return point.pressure_psia === undefined ? axes : `${axes} · ${point.pressure_psia.toFixed(2)} psia${nominalPressure ? " (nominal)" : ""}`;
   }
 
   return (
     <div className="coverage-plot">
       <svg viewBox="0 0 578 265" role="group" aria-label="Oxígeno frente a flujo para las corridas visibles y el escenario de misión">
-        <text x={12} y={15}>% O₂</text>
+        <text x={19} y={(yPx.top + yPx.bottom) / 2} textAnchor="middle" transform={`rotate(-90 19 ${(yPx.top + yPx.bottom) / 2})`}>Oxígeno (% O₂)</text>
         {visibleOxygenTicks.map((tick) => (
           <g key={tick}>
             <path className="coverage-grid" d={`M${xPx.start} ${toY(tick)}H${xPx.end}`} />
@@ -96,7 +101,7 @@ export function ExperimentalCoveragePlot({ runs, current }: {
           <><strong>Escenario de misión</strong> <span>{showValues(atmosphere)}</span></>}
       </div>
       {omittedCount > 0 && <p className="coverage-caption">
-        {`${omittedCount} ${omittedCount === 1 ? "corrida fuera del gráfico por usar" : "corridas fuera del gráfico por usar"} O₂ o flujo nominal.`}
+        {`${omittedCount} ${omittedCount === 1 ? "registro fuera" : "registros fuera"} del gráfico por cobertura insuficiente de O₂ o flujo.`}
       </p>}
     </div>
   );

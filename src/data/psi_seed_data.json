@@ -9,7 +9,7 @@
         "PREVENTION",
         "SUPPRESSION"
       ],
-      "summary": "Ensayos de propagación y extinción en sólidos bajo flujo forzado en la ISS.",
+      "summary": "Ensayos de propagación y extinción en sólidos bajo flujo forzado en la ISS. El programa BASS adaptó el ducto con ventilador de SPICE en el MSG. SLICE también utilizó hardware SPICE.",
       "source": {
         "label": "NASA PSI-25 · DOI 10.60555/4qc4-de67",
         "url": "https://doi.org/10.60555/4qc4-de67"
@@ -174,6 +174,39 @@
       "topics": [
         "liquid-droplets"
       ]
+    },
+    {
+      "id": "SPICE",
+      "name": "Smoke Point In Co-flow Experiment",
+      "facility": "MSG",
+      "topics": [
+        "flame-spread"
+      ],
+      "safetyPillars": [
+        "PREVENTION"
+      ],
+      "summary": "Estudió el punto de humo de llamas de gas con flujo coaxial. Su plataforma en MSG sirvió de base a SLICE y a la adaptación para BASS.",
+      "source": {
+        "label": "NASA PSI-107 · SPICE",
+        "url": "https://psi.nasa.gov/physci/repo/data/investigations/PSI-107"
+      }
+    },
+    {
+      "id": "SLICE",
+      "name": "Structure and Liftoff In Combustion Experiment",
+      "facility": "MSG",
+      "topics": [
+        "flame-spread",
+        "extinction"
+      ],
+      "safetyPillars": [
+        "PREVENTION"
+      ],
+      "summary": "Caracterizó la estructura y la estabilidad de llamas de difusión con flujo coaxial. Reutilizó hardware SPICE en el MSG.",
+      "source": {
+        "label": "NASA NTRS · Gaseous Diffusion Flames (MSG)",
+        "url": "https://ntrs.nasa.gov/citations/20130000582"
+      }
     }
   ],
   "runs": [
@@ -789,6 +822,110 @@
         "liquid-droplets",
         "reduced-pressure"
       ]
+    },
+    {
+      "id": "BRE-REF-QUIET",
+      "investigationId": "BRE",
+      "label": "BRE · Atmósfera quieta",
+      "reference": true,
+      "atmosphere": {
+        "gravity_g": 0,
+        "flow_velocity_cm_s": 0
+      },
+      "fuel": "Etileno",
+      "fuelCategory": "GAS",
+      "configuration": "Quemador poroso",
+      "outcome": "NASA observó llamas de etileno que persistieron varios minutos en ensayos con oxígeno elevado.",
+      "topics": [
+        "solids"
+      ],
+      "source": {
+        "label": "NASA NTRS · Resultados de BRE, p. 3",
+        "url": "https://ntrs.nasa.gov/citations/20210022542"
+      }
+    },
+    {
+      "id": "DAFT-REF-CABIN",
+      "investigationId": "DAFT",
+      "label": "DAFT · Aerosol de cabina",
+      "reference": true,
+      "atmosphere": {
+        "gravity_g": 0
+      },
+      "fuel": "Aerosol ambiental",
+      "fuelCategory": "AEROSOL_SMOKE_DUST",
+      "configuration": "Conteo de partículas con P-Trak",
+      "outcome": "Midió el fondo de partículas en la ISS para preparar SAME.",
+      "topics": [
+        "smoke-detection"
+      ],
+      "source": {
+        "label": "NASA NTRS · Particle and Smoke Detection on ISS",
+        "url": "https://ntrs.nasa.gov/citations/20070031686"
+      }
+    },
+    {
+      "id": "CFI-REF-DODECANE",
+      "investigationId": "CFI",
+      "label": "CFI · Gota de dodecano",
+      "reference": true,
+      "atmosphere": {
+        "gravity_g": 0
+      },
+      "fuel": "Dodecano",
+      "fuelCategory": "LIQUID_DROPLET",
+      "configuration": "Gotas de 4–4.5 mm · MDCA",
+      "outcome": "La combustión a baja temperatura continuó tras apagarse la llama visible.",
+      "topics": [
+        "cold-flames",
+        "liquid-droplets"
+      ],
+      "source": {
+        "label": "NASA NTRS · Droplet combustion and flame radiation",
+        "url": "https://ntrs.nasa.gov/citations/20240003229"
+      }
+    },
+    {
+      "id": "CFI-G-REF-BUTANE",
+      "investigationId": "CFI-G",
+      "label": "CFI-G · Llama fría de n-butano",
+      "reference": true,
+      "atmosphere": {
+        "gravity_g": 0
+      },
+      "fuel": "n-Butano diluido",
+      "fuelCategory": "GAS",
+      "configuration": "Quemador esférico poroso · llama normal",
+      "outcome": "Tras un intervalo oscuro apareció una llama fría más pequeña que la llama caliente.",
+      "topics": [
+        "cold-flames"
+      ],
+      "source": {
+        "label": "NASA NTRS · ACME 2021, § 3.6, fig. 10",
+        "url": "https://ntrs.nasa.gov/citations/20210021781"
+      }
+    },
+    {
+      "id": "E-FIELD-REF-PEAK",
+      "investigationId": "E-FIELD",
+      "label": "E-FIELD · Pico de corriente iónica",
+      "reference": true,
+      "atmosphere": {
+        "gravity_g": 0
+      },
+      "fuel": "Gas de difusión",
+      "fuelCategory": "GAS",
+      "configuration": "Barrido de campo eléctrico sin flujo coaxial",
+      "outcome": "En microgravedad, el pico de corriente iónica coincidió con la llama más compacta.",
+      "topics": [
+        "electric-field"
+      ],
+      "electric_field_kv_cm": 1.51,
+      "jet_velocity_cm_s": 19,
+      "source": {
+        "label": "NASA NTRS · ACME 2022, lámina de E-FIELD",
+        "url": "https://ntrs.nasa.gov/citations/20220007191"
+      }
     }
   ]
 }

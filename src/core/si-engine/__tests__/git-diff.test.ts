@@ -22,6 +22,10 @@ it("compara energía y registra diferencias de configuración", () => {
   expect(oxygen?.delta).toBeCloseTo(3.8);
   expect(rows.find(({ field }) => field.id === "configuration")?.status).toBe("changed");
   expect(rows.find(({ field }) => field.id === "facility")?.status).toBe("equal");
+  const rowIndex = (id: string) => rows.findIndex(({ field }) => field.id === id);
+  expect(rowIndex("outcome")).toBe(0);
+  expect(rowIndex("cabin_heat_added_kj")).toBeLessThan(rowIndex("oxygen_pct"));
+  expect(rowIndex("oxygen_pct")).toBeLessThan(rowIndex("facility"));
 });
 
 it("conserva los valores ausentes y evita porcentajes relativos con base cero", () => {

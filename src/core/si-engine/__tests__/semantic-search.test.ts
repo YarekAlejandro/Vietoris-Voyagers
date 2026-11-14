@@ -9,7 +9,7 @@ it("recupera las mismas fichas con sinónimos en español e inglés", () => {
   const english = index.search("cool flames");
   expect([...spanish.studies.keys()].sort()).toEqual(["CFI", "CFI-G", "FLEX"]);
   expect([...english.studies.keys()].sort()).toEqual([...spanish.studies.keys()].sort());
-  expect(spanish.runs.size).toBe(0);
+  expect([...spanish.runs.keys()].sort()).toEqual(["CFI-G-REF-BUTANE", "CFI-REF-DODECANE"]);
   expect(spanish.studies.get("FLEX")?.reasons).toContain("Llamas frías");
 });
 

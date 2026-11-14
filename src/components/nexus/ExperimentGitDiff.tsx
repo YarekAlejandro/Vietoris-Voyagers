@@ -31,7 +31,7 @@ export function ExperimentGitDiff() {
               <span className={`side side-${side}`} aria-hidden>{side.toUpperCase()}</span>
               <span className="sr-only">Corrida {side.toUpperCase()}</span>
               <select value={comparison[side]} onChange={(event) => selectRun(side, event.target.value)}>
-                {psiDataset.runs.map((run) => <option value={run.id} key={run.id}>{run.label}</option>)}
+                {psiDataset.runs.map((run) => <option value={run.id} key={run.id}>{run.label}{run.reference ? " (perfil nominal)" : ""}</option>)}
               </select>
             </label>
           ))}
@@ -40,17 +40,19 @@ export function ExperimentGitDiff() {
           <table>
             <thead><tr><th scope="col">Variable</th><th scope="col">Corrida A</th><th scope="col">Corrida B</th><th scope="col">{mode === "engineer" ? "Δ B − A" : "Diferencia"}</th></tr></thead>
             <tbody>
-              {rows.map(({ field, valueA, valueB, nominalA, nominalB, status, delta, relativeDelta_pct }) => {
+              {rows.map(({ field, valueA, valueB, nominalA, nominalB, status, delta, relativeDelta_pct, outcome }) => {
                 const { decimals, unit } = "unit" in field ? field : { decimals: undefined, unit: undefined };
                 const deltaUnit = "deltaUnit" in field ? field.deltaUnit : unit;
-                return <tr key={field.id} data-status={status}>
+                return <tr key={field.id} data-status={status} data-outcome={outcome}>
                   <th scope="row">{field.label}</th>
                   <td>{formatValue(valueA, decimals, unit)}{nominalA && <small>Nominal</small>}</td>
                   <td>{formatValue(valueB, decimals, unit)}{nominalB && <small>Nominal</small>}</td>
                   <td>
-                    {delta === undefined ? { equal: "Igual", missing: "Sin dato", changed: "Cambió", nominal: "Valor nominal" }[status] : (
-                      <>{delta > 0 ? "+" : ""}{formatValue(delta, decimals, deltaUnit)}
-                        {mode === "engineer" && relativeDelta_pct !== undefined && <small>{relativeDelta_pct > 0 ? "+" : ""}{relativeDelta_pct.toFixed(1)}% relativo</small>}
+                    {delta === undefined ? <span className="diff-status">{{
+                      equal: "Igual", missing: "Sin dato", changed: "Cambió", nominal: "Valor nominal",
+                    }[status]}</span> : (
+                      <><span className="diff-delta">{delta > 0 ? "+" : ""}{formatValue(delta, decimals, deltaUnit)}</span>
+                        {relativeDelta_pct !== undefined && <small className="diff-relative" title="Cambio relativo a A">/ {relativeDelta_pct > 0 ? "+" : ""}{relativeDelta_pct.toFixed(1)}%</small>}
                       </>
                     )}
                   </td>

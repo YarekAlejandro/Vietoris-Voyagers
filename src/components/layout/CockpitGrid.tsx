@@ -8,17 +8,25 @@ import { KnowledgeGraphCanvas } from "../nexus/KnowledgeGraphCanvas";
 import { EvidenceInspector } from "../nexus/EvidenceInspector";
 import { ExperimentGitDiff } from "../nexus/ExperimentGitDiff";
 import { buildEvidenceIndex } from "../../core/si-engine/semantic-search";
-import { rankRuns } from "../../core/si-engine/fsrs-ranker";
+import { computeFSRS, rankRuns } from "../../core/si-engine/fsrs-ranker";
 import { investigationsById, psiDataset } from "../../data/psi";
 import { topicsForRun } from "../../data/psi_vocabulary";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
+import type { ExperimentalRun } from "../../types/psi";
 
 const evidenceIndex = buildEvidenceIndex(psiDataset);
+const runsByStudy = new Map<string, ExperimentalRun[]>();
+for (const run of psiDataset.runs) {
+  const entries = runsByStudy.get(run.investigationId) ?? [];
+  entries.push(run);
+  runsByStudy.set(run.investigationId, entries);
+}
 
 export function CockpitGrid() {
   const profile = useAetherStore((state) => state.profile);
   const atmosphere = useAetherStore((state) => state.atmosphere);
   const query = useAetherStore((state) => state.query);
+  const includeStudyRuns = useAetherStore((state) => state.includeStudyRuns);
   const facility = useAetherStore((state) => state.facility);
   const topic = useAetherStore((state) => state.topic);
   const studyFilter = useAetherStore((state) => state.studyFilter);
@@ -27,23 +35,25 @@ export function CockpitGrid() {
 
   const search = useMemo(() => evidenceIndex.search(query), [query]);
   const rank = useMemo(() => rankRuns(psiDataset.runs, investigationsById, profile, atmosphere), [profile, atmosphere]);
+  const studyScores = useMemo(() => new Map(psiDataset.investigations.map((study) => [
+    study.id, computeFSRS({ study, runs: runsByStudy.get(study.id) ?? [] }, atmosphere, profile.priority),
+  ])), [profile.priority, atmosphere]);
   const studies = useMemo(() => psiDataset.investigations.filter((study) => (
     (facility === "all" || study.facility === facility) &&
     (!topic || study.topics.includes(topic)) &&
     (!search.active || search.studies.has(study.id))
-  )).sort((a, b) => (search.studies.get(b.id)?.score ?? 0) - (search.studies.get(a.id)?.score ?? 0)),
+  )),
   [facility, topic, search]);
 
   const visibleStudyIds = useMemo(() => new Set(studies.map(({ id }) => id)), [studies]);
   const availableRuns = useMemo(() => psiDataset.runs.filter((run) => (
     visibleStudyIds.has(run.investigationId) &&
     (!topic || topicsForRun(run).includes(topic)) &&
-    (!search.active || search.runs.has(run.id))
-  )), [visibleStudyIds, topic, search]);
+    (!search.active || includeStudyRuns || search.runs.has(run.id))
+  )), [visibleStudyIds, topic, search, includeStudyRuns]);
   const scopedRuns = availableRuns.filter(({ investigationId }) => !studyFilter || investigationId === studyFilter);
   const availableRunIds = new Set(scopedRuns.map(({ id }) => id));
-  const rankedRuns = rank.filter(({ run }) => availableRunIds.has(run.id))
-    .sort((a, b) => (search.runs.get(b.run.id)?.score ?? 0) - (search.runs.get(a.run.id)?.score ?? 0));
+  const rankedRuns = rank.filter(({ run }) => availableRunIds.has(run.id));
   const matchingRunStudies = new Set(availableRuns.map(({ investigationId }) => investigationId));
   const view = preferredView ?? (search.active && rankedRuns.length > 0 && studies.every(({ id }) =>
     matchingRunStudies.has(id)) ? "run" : "study");
@@ -59,7 +69,7 @@ export function CockpitGrid() {
       <TopNavbar />
       <EvidenceSearch search={search} />
       <main className="cockpit-grid">
-        <RankedDatasetList studies={studies} rankedRuns={rankedRuns} search={search} current={current} view={view} />
+        <RankedDatasetList studies={studies} rankedRuns={rankedRuns} studyScores={studyScores} search={search} current={current} view={view} />
         <KnowledgeGraphCanvas studies={studies} runs={scopedRuns} current={current} searchActive={search.active} />
         <EvidenceInspector current={current} search={search} availableRuns={availableRuns}
           rankedRun={rank.find(({ run }) => current?.kind === "run" && run.id === current.id)} />

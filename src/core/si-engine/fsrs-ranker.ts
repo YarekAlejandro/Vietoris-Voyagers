@@ -1,41 +1,72 @@
 import type { Atmosphere, EnvironmentPreset, ExperimentalRun, Investigation } from "../../types/psi";
 
-const gravityOffset_g = 1e-4;
-const oxygenScale_pct = 12;
-const partialPressureScale_psia = 2;
-const gravityLogScale = 1.5;
-const flowLogScale = 1;
-const flowOffset_cm_s = 1;
+const dimensions = ["oxygen_pct", "pressure_psia", "gravity_g", "flow_velocity_cm_s"] as const;
+type Dimension = (typeof dimensions)[number];
+type Bound = { axis: Dimension; side: "inferior" | "superior"; outside: boolean };
+type Range = [number, number];
+type Coverage = Partial<Record<Dimension, Range>>;
+
+const scales: Atmosphere = { oxygen_pct: 12, pressure_psia: 4, gravity_g: 0.25, flow_velocity_cm_s: 10 };
+const highOxygenStudies = new Set(["CFI-G", "SAFFIRE-IV-V", "SAFFIRE-VI", "BASS-II"]);
+const reducedPressureStudies = new Set(["SAFFIRE-IV-V", "SAFFIRE-VI"]);
+const forcedFlowStudies = new Set(["BASS-II", "SLICE"]);
+const documentedBridges = new Set(["BRE", "BASS-II", "SPICE", "SLICE", "SAME", "SAME-R", "DAFT", "FLEX", "FLEX-2", "CFI", "CFI-G", "E-FIELD"]);
 
 export function oxygenPartialPressure_psia(atmosphere: Atmosphere) {
   return atmosphere.pressure_psia * atmosphere.oxygen_pct / 100;
 }
 
-function atmosphereSimilarity(record: ExperimentalRun, target: Atmosphere, weights: EnvironmentPreset["distanceWeights"]) {
-  const run = record.atmosphere;
-  const nominal = record.nominal?.fields ?? [];
-  const gravityWeight = nominal.includes("gravity_g") ? 0 : weights.gravity;
-  const oxygenWeight = nominal.includes("oxygen_pct") ? 0 : weights.oxygen;
-  const partialPressureWeight = nominal.includes("oxygen_pct") || nominal.includes("pressure_psia") ? 0 : weights.partialPressure;
-  const flowWeight = nominal.includes("flow_velocity_cm_s") ? 0 : weights.flow;
-  const gravityLogDelta = Math.log10((run.gravity_g + gravityOffset_g) / (target.gravity_g + gravityOffset_g));
-  const oxygenDelta_pct = run.oxygen_pct - target.oxygen_pct;
-  const partialPressureDelta_psia = oxygenPartialPressure_psia(run) - oxygenPartialPressure_psia(target);
-  const flowLogDelta = Math.log((run.flow_velocity_cm_s + flowOffset_cm_s) / (target.flow_velocity_cm_s + flowOffset_cm_s));
-
-  const distanceSquared =
-    gravityWeight * (gravityLogDelta / gravityLogScale) ** 2 +
-    oxygenWeight * (oxygenDelta_pct / oxygenScale_pct) ** 2 +
-    partialPressureWeight * (partialPressureDelta_psia / partialPressureScale_psia) ** 2 +
-    flowWeight * (flowLogDelta / flowLogScale) ** 2;
-
-  const coverage = nominal.length ? gravityWeight + oxygenWeight + partialPressureWeight + flowWeight : 1;
-  return coverage * Math.exp(-distanceSquared / 2);
+function reportedRunValue(run: ExperimentalRun, axis: Dimension) {
+  return run.nominal?.fields.includes(axis) ? undefined : run.atmosphere[axis];
 }
 
-const dimensions = ["gravity_g", "oxygen_pct", "pressure_psia", "flow_velocity_cm_s"] as const;
-type Dimension = (typeof dimensions)[number];
-type Bound = { axis: Dimension; side: "inferior" | "superior"; outside: boolean };
+export function computeFSRS(
+  item: { study?: Investigation; runs: readonly ExperimentalRun[] },
+  atmosphere: Atmosphere,
+  priority?: EnvironmentPreset["priority"],
+) {
+  const coverage: Coverage = {};
+  for (const run of item.runs) {
+    for (const axis of dimensions) {
+      const value = reportedRunValue(run, axis);
+      if (value === undefined) continue;
+      const range = coverage[axis];
+      coverage[axis] = range ? [Math.min(value, range[0]), Math.max(value, range[1])] : [value, value];
+    }
+  }
+  function similarity(axis: Dimension) {
+    const range = coverage[axis];
+    if (!range) return 0;
+    const value = atmosphere[axis];
+    const distance = Math.max(0, range[0] - value, value - range[1]);
+    return Math.exp(-0.5 * (distance / scales[axis]) ** 2);
+  }
+
+  const id = item.study?.id ?? item.runs[0]?.investigationId ?? "";
+  const oxygen = similarity("oxygen_pct");
+  const pressure = similarity("pressure_psia");
+  const gravity = similarity("gravity_g");
+  const flow = similarity("flow_velocity_cm_s");
+  const instrument = item.study ? 0.4 : 0;
+  const bridge = documentedBridges.has(id) ? 0.35 : 0;
+  const pillar = priority && item.study?.safetyPillars.includes(priority) ? 0.25 : 0;
+  const hardware = instrument + bridge + pillar;
+  const oxygenBonus_pts = atmosphere.oxygen_pct >= 30 && highOxygenStudies.has(id) ? 15 : 0;
+  const pressureBonus_pts = atmosphere.pressure_psia <= 10.5 && reducedPressureStudies.has(id) ? 10 : 0;
+  const partialGravity = atmosphere.gravity_g >= 0.05 && atmosphere.gravity_g <= 0.40;
+  const proxyBonus_pts = partialGravity && id === "E-FIELD" ? 22 : 0;
+  const flowBonus_pts = partialGravity && forcedFlowStudies.has(id) ? 10 : 0;
+  const bonus_pts = oxygenBonus_pts + pressureBonus_pts + proxyBonus_pts + flowBonus_pts;
+  const score = Math.min(100, 35 * oxygen + 25 * pressure + 12.5 * (gravity + flow) + 15 * hardware + bonus_pts);
+  return {
+    score, bonus_pts,
+    atmosphere_pct: (35 * oxygen + 25 * pressure) * 100 / 60,
+    flow_pct: flow * 100,
+    gravityBridge_pct: (12.5 * gravity + 15 * hardware) * 100 / 27.5,
+  };
+}
+
+export type FSRS = ReturnType<typeof computeFSRS>;
 
 export function rankRuns(
   runs: readonly ExperimentalRun[],
@@ -44,7 +75,10 @@ export function rankRuns(
   target: Atmosphere,
 ) {
   const bounds = dimensions.map((axis) => {
-    const values = runs.filter((run) => !run.nominal?.fields.includes(axis)).map((run) => run.atmosphere[axis]);
+    const values = runs.flatMap((run) => {
+      const value = run.reference ? undefined : reportedRunValue(run, axis);
+      return value === undefined ? [] : [value];
+    });
     const value = target[axis];
     return {
       axis,
@@ -57,20 +91,12 @@ export function rankRuns(
   return runs.map((run) => {
     const runBounds: Bound[] = [];
     for (const { axis, low, high, exact } of bounds) {
-      if (exact || run.nominal?.fields.includes(axis)) continue;
-      if (run.atmosphere[axis] === low) runBounds.push({ axis, side: "inferior", outside: high === Infinity });
-      if (run.atmosphere[axis] === high) runBounds.push({ axis, side: "superior", outside: low === -Infinity });
+      if (exact || run.reference) continue;
+      const value = reportedRunValue(run, axis);
+      if (value === low) runBounds.push({ axis, side: "inferior", outside: high === Infinity });
+      if (value === high) runBounds.push({ axis, side: "superior", outside: low === -Infinity });
     }
-
-    const atmosphere = atmosphereSimilarity(run, target, profile.distanceWeights);
-    const fuelMatch = run.fuelCategory === profile.targetFuel;
-    const pillarMatch = investigations.get(run.investigationId)?.safetyPillars.includes(profile.priority) ?? false;
-    const { scoreWeights } = profile;
-    const proximity = atmosphere * scoreWeights.atmosphere +
-      Number(fuelMatch) * scoreWeights.fuel +
-      Number(pillarMatch) * scoreWeights.pillar;
-    const boundingBonus = Math.max(0, ...runBounds.map((bound) => bound.outside ? 0.18 : 0.15));
-    const score = 100 * Math.min(1, proximity + boundingBonus);
-    return { run, score, bounds: runBounds, fuelMatch, pillarMatch, atmosphere };
-  }).sort((a, b) => b.score - a.score || (a.run.id < b.run.id ? -1 : Number(a.run.id > b.run.id)));
+    const fsrs = computeFSRS({ study: investigations.get(run.investigationId), runs: [run] }, target, profile.priority);
+    return { run, ...fsrs, bounds: runBounds };
+  }).sort((a, b) => b.score - a.score || a.run.id.localeCompare(b.run.id));
 }
