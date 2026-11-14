@@ -1,0 +1,311 @@
+{
+  "investigations": [
+    {
+      "id": "BASS-II",
+      "name": "Burning and Suppression of Solids II",
+      "facility": "MSG",
+      "safetyPillars": [
+        "PREVENTION",
+        "SUPPRESSION"
+      ],
+      "summary": "Ensayos de propagación y extinción en sólidos bajo flujo forzado en la ISS.",
+      "source": {
+        "label": "NASA PSI-25 · DOI 10.60555/4qc4-de67",
+        "url": "https://doi.org/10.60555/4qc4-de67"
+      }
+    },
+    {
+      "id": "SAFFIRE-I",
+      "name": "Spacecraft Fire Safety Experiment I",
+      "facility": "CYGNUS",
+      "safetyPillars": [
+        "PREVENTION"
+      ],
+      "summary": "Crecimiento de llama sobre una muestra de tejido SIBAL a escala mayor a bordo de Cygnus.",
+      "source": {
+        "label": "NASA PSI-98 · DOI 10.60555/0t15-1z43",
+        "url": "https://doi.org/10.60555/0t15-1z43"
+      }
+    },
+    {
+      "id": "SAFFIRE-IV-V",
+      "name": "Spacecraft Fire Safety Experiments IV–V",
+      "facility": "CYGNUS",
+      "safetyPillars": [
+        "PREVENTION",
+        "DETECTION"
+      ],
+      "summary": "Ensayos en Cygnus que caracterizan cómo se propagan el calor y los productos de combustión.",
+      "source": {
+        "label": "NASA ICES-2021-266 · tablas 1 y 2",
+        "url": "https://ntrs.nasa.gov/citations/20210011521"
+      }
+    },
+    {
+      "id": "SAFFIRE-VI",
+      "name": "Spacecraft Fire Safety Experiment VI",
+      "facility": "CYGNUS",
+      "safetyPillars": [
+        "PREVENTION",
+        "DETECTION"
+      ],
+      "summary": "Última campaña Saffire, con ensayos de tejido SIBAL y placas de PMMA en atmósfera de presión reducida.",
+      "source": {
+        "label": "NASA ICES-2025-156 · tabla 1 y resultados",
+        "url": "https://ntrs.nasa.gov/citations/20250002675"
+      }
+    }
+  ],
+  "runs": [
+    {
+      "id": "BASS-II-GMT45-T4",
+      "investigationId": "BASS-II",
+      "label": "GMT45-T4",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 18.7,
+        "pressure_psia": 14.696,
+        "flow_velocity_cm_s": 2.2
+      },
+      "fuel": "SIBAL",
+      "fuelCategory": "SOLID_FABRIC",
+      "configuration": "Flujo concurrente",
+      "width_cm": 2.2,
+      "thickness_mm": 0.32,
+      "initial_flow_velocity_cm_s": 10,
+      "outcome": "Extinción a bajo flujo",
+      "source": {
+        "label": "NASA/TM-20210011385 · tabla 7.1",
+        "url": "https://ntrs.nasa.gov/citations/20210011385"
+      }
+    },
+    {
+      "id": "BASS-II-GMT100-T13",
+      "investigationId": "BASS-II",
+      "label": "GMT100-T13",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 17.5,
+        "pressure_psia": 14.696,
+        "flow_velocity_cm_s": 2.2
+      },
+      "fuel": "SIBAL",
+      "fuelCategory": "SOLID_FABRIC",
+      "configuration": "Flujo concurrente",
+      "width_cm": 2.2,
+      "thickness_mm": 0.32,
+      "initial_flow_velocity_cm_s": 4,
+      "outcome": "Extinción a bajo flujo",
+      "source": {
+        "label": "NASA/TM-20210011385 · tabla 7.1",
+        "url": "https://ntrs.nasa.gov/citations/20210011385"
+      }
+    },
+    {
+      "id": "BASS-II-GMT175-T9",
+      "investigationId": "BASS-II",
+      "label": "GMT175-T9",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 16.4,
+        "pressure_psia": 14.696,
+        "flow_velocity_cm_s": 10
+      },
+      "fuel": "SIBAL",
+      "fuelCategory": "SOLID_FABRIC",
+      "configuration": "Flujo concurrente",
+      "width_cm": 2.2,
+      "thickness_mm": 0.32,
+      "outcome": "Sin ignición",
+      "source": {
+        "label": "NASA/TM-20210011385 · tabla 7.1",
+        "url": "https://ntrs.nasa.gov/citations/20210011385"
+      }
+    },
+    {
+      "id": "BASS-II-GMT175-T10",
+      "investigationId": "BASS-II",
+      "label": "GMT175-T10",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 16.4,
+        "pressure_psia": 14.696,
+        "flow_velocity_cm_s": 5
+      },
+      "fuel": "SIBAL",
+      "fuelCategory": "SOLID_FABRIC",
+      "configuration": "Flujo concurrente",
+      "width_cm": 2.2,
+      "thickness_mm": 0.32,
+      "outcome": "Sin ignición",
+      "source": {
+        "label": "NASA/TM-20210011385 · tabla 7.1",
+        "url": "https://ntrs.nasa.gov/citations/20210011385"
+      }
+    },
+    {
+      "id": "BASS-II-GMT178-T14",
+      "investigationId": "BASS-II",
+      "label": "GMT178-T14",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 16.9,
+        "pressure_psia": 14.696,
+        "flow_velocity_cm_s": 2.8
+      },
+      "fuel": "SIBAL",
+      "fuelCategory": "SOLID_FABRIC",
+      "configuration": "Flujo concurrente",
+      "width_cm": 2.2,
+      "thickness_mm": 0.32,
+      "initial_flow_velocity_cm_s": 4,
+      "outcome": "Extinción a bajo flujo",
+      "source": {
+        "label": "NASA/TM-20210011385 · tabla 7.1",
+        "url": "https://ntrs.nasa.gov/citations/20210011385"
+      }
+    },
+    {
+      "id": "BASS-II-GMT190-T21",
+      "investigationId": "BASS-II",
+      "label": "GMT190-T21",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 17.2,
+        "pressure_psia": 14.696,
+        "flow_velocity_cm_s": 47
+      },
+      "fuel": "SIBAL",
+      "fuelCategory": "SOLID_FABRIC",
+      "configuration": "Flujo concurrente",
+      "width_cm": 1.2,
+      "thickness_mm": 0.32,
+      "initial_flow_velocity_cm_s": 11,
+      "outcome": "Extinción por soplado",
+      "source": {
+        "label": "NASA/TM-20210011385 · tabla 7.1",
+        "url": "https://ntrs.nasa.gov/citations/20210011385"
+      }
+    },
+    {
+      "id": "SAFFIRE-I-1",
+      "investigationId": "SAFFIRE-I",
+      "label": "Saffire I · muestra 1",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21,
+        "pressure_psia": 14.504,
+        "flow_velocity_cm_s": 20
+      },
+      "fuel": "SIBAL",
+      "fuelCategory": "SOLID_FABRIC",
+      "configuration": "Flujo concurrente",
+      "width_cm": 41,
+      "steady_flame_length_cm": 4,
+      "source": {
+        "label": "NASA ICES-2021-266 · tablas 1 y 2",
+        "url": "https://ntrs.nasa.gov/citations/20210011521"
+      }
+    },
+    {
+      "id": "SAFFIRE-IV-1",
+      "investigationId": "SAFFIRE-IV-V",
+      "label": "Saffire IV · muestra 1",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 22,
+        "pressure_psia": 14.504,
+        "flow_velocity_cm_s": 20
+      },
+      "fuel": "SIBAL",
+      "fuelCategory": "SOLID_FABRIC",
+      "configuration": "Flujo concurrente",
+      "width_cm": 41,
+      "steady_flame_length_cm": 8.5,
+      "source": {
+        "label": "NASA ICES-2021-266 · tablas 1 y 2",
+        "url": "https://ntrs.nasa.gov/citations/20210011521"
+      }
+    },
+    {
+      "id": "SAFFIRE-V-E6",
+      "investigationId": "SAFFIRE-IV-V",
+      "label": "Saffire V · evento 6",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 26.5,
+        "pressure_psia": 10.399,
+        "flow_velocity_cm_s": 20
+      },
+      "fuel": "PMMA",
+      "fuelCategory": "SOLID_POLYMER",
+      "configuration": "Flujo concurrente · llama en una cara",
+      "thickness_mm": 5,
+      "cabin_heat_added_kj": 233,
+      "source": {
+        "label": "NASA ICES-2024-310 · tablas 1 y 3, resultados",
+        "url": "https://ntrs.nasa.gov/citations/20240008602"
+      }
+    },
+    {
+      "id": "SAFFIRE-VI-E5",
+      "investigationId": "SAFFIRE-VI",
+      "label": "Saffire VI · evento 5",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 31,
+        "pressure_psia": 7.847,
+        "flow_velocity_cm_s": 20
+      },
+      "fuel": "SIBAL",
+      "fuelCategory": "SOLID_FABRIC",
+      "configuration": "Flujo concurrente",
+      "width_cm": 40,
+      "source": {
+        "label": "NASA ICES-2025-156 · tabla 1 y resultados",
+        "url": "https://ntrs.nasa.gov/citations/20250002675"
+      }
+    },
+    {
+      "id": "SAFFIRE-VI-E6",
+      "investigationId": "SAFFIRE-VI",
+      "label": "Saffire VI · evento 6",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 30.3,
+        "pressure_psia": 7.919,
+        "flow_velocity_cm_s": 20
+      },
+      "fuel": "PMMA",
+      "fuelCategory": "SOLID_POLYMER",
+      "configuration": "Flujo concurrente · llama en dos caras",
+      "width_cm": 40,
+      "thickness_mm": 10,
+      "cabin_heat_added_kj": 497,
+      "source": {
+        "label": "NASA ICES-2025-156 · tabla 1 y resultados",
+        "url": "https://ntrs.nasa.gov/citations/20250002675"
+      }
+    },
+    {
+      "id": "SAFFIRE-VI-E8",
+      "investigationId": "SAFFIRE-VI",
+      "label": "Saffire VI · evento 8",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 28.8,
+        "pressure_psia": 8.006,
+        "flow_velocity_cm_s": 20
+      },
+      "fuel": "PMMA",
+      "fuelCategory": "SOLID_POLYMER",
+      "configuration": "Flujo concurrente · llama en una cara",
+      "width_cm": 40,
+      "thickness_mm": 5,
+      "source": {
+        "label": "NASA ICES-2025-156 · tabla 1 y resultados",
+        "url": "https://ntrs.nasa.gov/citations/20250002675"
+      }
+    }
+  ]
+}
