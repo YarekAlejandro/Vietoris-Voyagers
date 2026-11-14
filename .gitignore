@@ -4,3 +4,5 @@
 /next-env.d.ts
 *.tsbuildinfo
 *.log
+/.env
+/.env*.local

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { missionPresets } from "../data/mission_presets";
 import { runsById } from "../data/psi";
+import type { InterpretationResult } from "../core/si-engine/interpret";
 import type { Atmosphere, EnvironmentPreset, EvidenceTopicId, Facility } from "../types/psi";
 
 type Side = "a" | "b";
@@ -20,6 +21,9 @@ interface AetherState {
   inspectorView: "evidence" | "atmosphere";
   graphView: "relationships" | "overview" | "runs" | "conditions";
   comparison: Record<Side, string>;
+  /** Caché de interpretaciones por clave `kind|ids|mode|lang` (ver `interpretationKey`). */
+  interpretations: Record<string, InterpretationResult>;
+  setInterpretation: (key: string, result: InterpretationResult) => void;
   selectMission: (profile: EnvironmentPreset) => void;
   updateAtmosphere: (field: keyof Atmosphere, value: number) => void;
   setMode: (mode: AetherState["mode"]) => void;
@@ -49,6 +53,8 @@ export const useAetherStore = create<AetherState>((set) => ({
   inspectorView: "evidence",
   graphView: "relationships",
   comparison: { a: "SAFFIRE-V-E6", b: "SAFFIRE-VI-E6" },
+  interpretations: {},
+  setInterpretation: (key, result) => set(({ interpretations }) => ({ interpretations: { ...interpretations, [key]: result } })),
   selectMission: (profile) => set({ profile, atmosphere: profile.atmosphere }),
   updateAtmosphere: (field, value) => set(({ atmosphere }) => ({ atmosphere: { ...atmosphere, [field]: value } })),
   setMode: (mode) => set({ mode }),

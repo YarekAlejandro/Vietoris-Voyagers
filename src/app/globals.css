@@ -422,6 +422,60 @@ meter::-moz-meter-bar { border-radius: 3px; background: var(--score-color); }
 .comparison-sources { display: flex; flex-wrap: wrap; gap: 3px 10px; font-size: 10px; }
 .comparison-sources svg { display: inline-block; vertical-align: -2px; }
 
+/* Interpretación con IA (comparador y ranking) */
+.panel-heading-actions { display: flex; align-items: center; gap: 8px; }
+.interpret-toggle {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px;
+  border: 1px solid #37605f; border-radius: 5px; color: var(--accent); font-size: 11px; white-space: nowrap;
+}
+.interpret-toggle:hover, .interpret-toggle[aria-expanded="true"] { background: #1c3a41; }
+.interpretation {
+  display: grid; gap: 6px; padding: 8px 9px;
+  border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px;
+  background: var(--panel-deep); font-size: 12px; line-height: 1.45;
+}
+.run-card .interpretation { margin-top: 7px; }
+
+/* Reparto ajustable entre la tabla del diff y la interpretación */
+/* .panel-content no estira por sí solo: con la interpretación abierta, el contenedor debe llenar el
+   panel para que la tabla y la tarjeta tengan un alto que repartir. Si el panel es más bajo que los
+   mínimos, el contenido hace scroll en lugar de recortarse. */
+.comparison-content.with-interpretation { flex: 1 1 auto; overflow: auto; }
+.comparison-content.with-interpretation > * { flex-shrink: 0; }
+.comparison-content.with-interpretation > .comparison-scroll { flex: 1 1 0; min-height: 72px; }
+.comparison-content.with-interpretation > .comparison-interpretation { flex: 1 1 0; min-height: 96px; }
+.comparison-interpretation { overflow: auto; border-radius: 6px; scrollbar-color: #435671 transparent; scrollbar-width: thin; }
+.split-handle {
+  position: relative; display: grid; place-items: center; height: 10px; margin-block: -4px;
+  cursor: row-resize; touch-action: none; border-radius: 4px;
+}
+.split-handle::before { content: ""; position: absolute; inset: 4px 0; border-radius: 1px; background: var(--line); }
+.split-handle-grip { position: relative; width: 34px; height: 4px; border-radius: 2px; background: #435671; }
+.split-handle:hover::before, .split-handle:focus-visible::before, .split-handle[data-dragging]::before { background: var(--accent); }
+.split-handle:hover .split-handle-grip, .split-handle:focus-visible .split-handle-grip, .split-handle[data-dragging] .split-handle-grip { background: var(--accent); }
+.split-handle:focus-visible { outline-offset: 1px; }
+body[data-resizing="row"], body[data-resizing="row"] * { cursor: row-resize !important; user-select: none; }
+.interpretation-heading { display: flex; align-items: center; gap: 7px; }
+.interpretation-heading h3 { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; }
+.interpretation-heading h3 svg { color: var(--accent); }
+.interpretation-badge { padding: 1px 6px; border-radius: 9px; border: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+.interpretation-badge.ai { border-color: #37605f; color: var(--accent); }
+.interpretation-actions { display: flex; gap: 2px; margin-left: auto; }
+.interpretation-body { display: grid; gap: 5px; }
+.interpretation-caveats { display: grid; gap: 3px; padding: 6px 7px; border-radius: 5px; background: #2b2a2a55; color: var(--amber); font-size: 11px; list-style: none; }
+.interpretation-caveats svg { display: inline-block; vertical-align: -2px; }
+.interpretation-stale, .interpretation-note, .interpretation-loading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+.interpretation-stale { color: var(--amber); }
+.interpretation-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.interpretation-chips .chip {
+  display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px;
+  border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: 10px;
+}
+.interpretation-chips a.chip:hover { border-color: var(--accent); color: var(--text); }
+.spinning { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }
+
 @media (max-width: 900px) {
   .cockpit { height: auto; min-height: 100dvh; }
   .cockpit-grid { grid-template-columns: minmax(220px, .85fr) minmax(0, 1.3fr); grid-template-areas: "results graph" "detail detail" "compare compare"; grid-template-rows: auto; }
@@ -430,6 +484,12 @@ meter::-moz-meter-bar { border-radius: 3px; background: var(--score-color); }
   .inspector { grid-area: detail; }
   .comparison { grid-area: compare; }
   .comparison-scroll { max-height: 280px; }
+  /* En pantallas angostas el panel crece con su contenido: sin divisor ni alturas fijas. */
+  .comparison-content.with-interpretation { flex: none; overflow: visible; }
+  .comparison-content.with-interpretation > .comparison-scroll,
+  .comparison-content.with-interpretation > .comparison-interpretation { flex: none !important; min-height: 0; }
+  .comparison-interpretation { overflow: visible; }
+  .split-handle { display: none; }
   .topbar { flex-wrap: wrap; gap: 8px 18px; }
   .evidence-search { justify-content: flex-start; }
   .sliders { grid-template-columns: 1fr 1fr; }
