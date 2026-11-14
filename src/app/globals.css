@@ -422,6 +422,40 @@ meter::-moz-meter-bar { border-radius: 3px; background: var(--score-color); }
 .comparison-sources { display: flex; flex-wrap: wrap; gap: 3px 10px; font-size: 10px; }
 .comparison-sources svg { display: inline-block; vertical-align: -2px; }
 
+/* Interpretación con IA (comparador y ranking) */
+.panel-heading-actions { display: flex; align-items: center; gap: 8px; }
+.interpret-toggle {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px;
+  border: 1px solid #37605f; border-radius: 5px; color: var(--accent); font-size: 11px; white-space: nowrap;
+}
+.interpret-toggle:hover, .interpret-toggle[aria-expanded="true"] { background: #1c3a41; }
+.interpretation {
+  display: grid; gap: 6px; padding: 8px 9px;
+  border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px;
+  background: var(--panel-deep); font-size: 12px; line-height: 1.45;
+}
+.run-card .interpretation { margin-top: 7px; }
+.interpretation-heading { display: flex; align-items: center; gap: 7px; }
+.interpretation-heading h3 { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; }
+.interpretation-heading h3 svg { color: var(--accent); }
+.interpretation-badge { padding: 1px 6px; border-radius: 9px; border: 1px solid var(--line); color: var(--muted); font-size: 10px; }
+.interpretation-badge.ai { border-color: #37605f; color: var(--accent); }
+.interpretation-actions { display: flex; gap: 2px; margin-left: auto; }
+.interpretation-body { display: grid; gap: 5px; }
+.interpretation-caveats { display: grid; gap: 3px; padding: 6px 7px; border-radius: 5px; background: #2b2a2a55; color: var(--amber); font-size: 11px; list-style: none; }
+.interpretation-caveats svg { display: inline-block; vertical-align: -2px; }
+.interpretation-stale, .interpretation-note, .interpretation-loading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+.interpretation-stale { color: var(--amber); }
+.interpretation-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.interpretation-chips .chip {
+  display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px;
+  border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: 10px;
+}
+.interpretation-chips a.chip:hover { border-color: var(--accent); color: var(--text); }
+.spinning { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }
+
 @media (max-width: 900px) {
   .cockpit { height: auto; min-height: 100dvh; }
   .cockpit-grid { grid-template-columns: minmax(220px, .85fr) minmax(0, 1.3fr); grid-template-areas: "results graph" "detail detail" "compare compare"; grid-template-rows: auto; }

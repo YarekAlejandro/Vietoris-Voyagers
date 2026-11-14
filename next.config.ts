@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
+// Sin `output: "export"`: la ruta /api/interpret necesita servidor (Vercel o `next start`).
 const config: NextConfig = {
-  output: "export",
   turbopack: { root: __dirname },
 };
 

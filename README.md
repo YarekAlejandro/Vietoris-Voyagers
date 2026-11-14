@@ -25,9 +25,22 @@ npm run typecheck
 npm run build
 ```
 
-La compilación genera el sitio estático en `out/`. El catálogo incluye 15 estudios, 23 corridas normalizadas y 5 perfiles nominales PSI con observaciones documentadas y cobertura parcial. Prueba `PTFE humo` o `heptano CO₂` para encontrar corridas de detección y supresión. Los atajos de búsqueda también recuperan los registros de cada estudio coincidente.
+La aplicación se ejecuta como servidor de Next.js (`npm run build` y `npm start`, o Vercel), porque el botón **Interpretar** usa la ruta `/api/interpret`. Ya no se genera `out/`. El catálogo incluye 15 estudios, 23 corridas normalizadas y 5 perfiles nominales PSI con observaciones documentadas y cobertura parcial. Prueba `PTFE humo` o `heptano CO₂` para encontrar corridas de detección y supresión. Los atajos de búsqueda también recuperan los registros de cada estudio coincidente.
 
 La búsqueda local usa un vocabulario de conceptos y sinónimos en español e inglés. Combina los conceptos de la consulta y muestra por qué aparece cada resultado. El FSRS ordena estudios y corridas con el escenario activo. Pondera oxígeno (35 %), presión (25 %), gravedad y flujo (25 %) e instrumentación, puente y pilar de misión (15 %), con bonificaciones por escenario y un máximo de 100 puntos. Los campos ausentes o nominales aportan cero a la similitud. La vista **Condiciones** dibuja corridas con O₂ y flujo reportados. La gravedad orbital se representa como 0 g.
+
+### Interpretación con IA
+
+El comparador y cada corrida del ranking tienen un botón **Interpretar** que redacta un párrafo sobre la comparación A/B o sobre el puntaje FSRS. El modelo solo redacta: el motor local arma los datos y cada número del texto se comprueba contra ellos. Si falta la clave, la llamada falla, tarda más de 10 s o aparece un número que no está en los datos, se muestra un **Resumen automático** generado con plantillas.
+
+Copia `.env.example` a `.env.local` y define:
+
+| Variable | Uso |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | Clave de la API de Anthropic. Sin ella, la app funciona con el resumen automático. |
+| `AI_MODEL` | Modelo opcional. Por defecto, `claude-haiku-5-5`. |
+
+En Vercel, define las mismas variables en *Settings → Environment Variables*.
 
 ## Próximos entregables
 

@@ -1,5 +1,8 @@
-import { FlaskConical, ListFilter, SearchX, X } from "lucide-react";
+import { ExternalLink, FlaskConical, ListFilter, SearchX, Sparkles, X } from "lucide-react";
+import { useState } from "react";
 import type { FSRS, rankRuns } from "../../core/si-engine/fsrs-ranker";
+import { buildRankPayload, interpretationKey, type InterpretRequest } from "../../core/si-engine/interpret";
+import { InterpretationCard } from "../nexus/InterpretationCard";
 import type { EvidenceSearchResults } from "../../core/si-engine/semantic-search";
 import { psiDataset } from "../../data/psi";
 import { evidenceTopics, facilities } from "../../data/psi_vocabulary";
@@ -48,6 +51,11 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, search, cu
   const setQuery = useAetherStore((state) => state.setQuery);
   const inspect = useAetherStore((state) => state.inspect);
   const selectRun = useAetherStore((state) => state.selectRun);
+  const profile = useAetherStore((state) => state.profile);
+  const atmosphere = useAetherStore((state) => state.atmosphere);
+  const mode = useAetherStore((state) => state.mode);
+  // Interpretación abierta en una sola fila; se marca desactualizada si cambian el perfil, la atmósfera o el modo.
+  const [opened, setOpened] = useState<Extract<InterpretRequest, { kind: "rank" }> | null>(null);
   const hasFilters = facility !== "all" || topic !== null || studyFilter !== null;
   const count = view === "study" ? studies.length : rankedRuns.length;
   const rankedStudies = [...studies].sort((a, b) =>
@@ -127,6 +135,9 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, search, cu
           {rankedRuns.map((result) => {
             const { run, bounds } = result;
             const active = current?.kind === "run" && current.id === run.id;
+            const interpreting = opened?.payload.run.id === run.id;
+            const request = (): Extract<InterpretRequest, { kind: "rank" }> =>
+              ({ kind: "rank", payload: buildRankPayload(result, profile, atmosphere), mode, lang: "es" });
             return (
               <li className="run-card" key={run.id} data-active={active}>
                 <button type="button" className="run-top" aria-pressed={active} onClick={() => inspect({ kind: "run", id: run.id })}>
@@ -146,8 +157,19 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, search, cu
                   <div className="run-actions">
                     <button type="button" aria-label={`Comparar ${run.label} en A`} aria-pressed={comparison.a === run.id} onClick={() => selectRun("a", run.id)}>+ A</button>
                     <button type="button" aria-label={`Comparar ${run.label} en B`} aria-pressed={comparison.b === run.id} onClick={() => selectRun("b", run.id)}>+ B</button>
+                    <button type="button" aria-label="Interpretar puntaje" title="Interpretar puntaje" aria-expanded={interpreting}
+                      onClick={() => setOpened(interpreting ? null : request())}><Sparkles size={11} aria-hidden /></button>
                   </div>
                 </div>
+                {interpreting && opened && <InterpretationCard
+                  request={opened}
+                  stale={interpretationKey(opened) !== interpretationKey(request())}
+                  onRefresh={() => setOpened(request())}
+                  chips={<>
+                    <a className="chip" href={opened.payload.run.source.url} target="_blank" rel="noreferrer">{opened.payload.run.source.label} <ExternalLink size={10} aria-hidden /></a>
+                    <span className="chip">Motor local · FSRS · {opened.payload.profile.name}</span>
+                  </>}
+                />}
               </li>
             );
           })}
