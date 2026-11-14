@@ -14,6 +14,15 @@ export const diffFields = [
   { id: "outcome", label: "Resultado observado" },
   { id: "steady_flame_length_cm", label: "Longitud de llama estable", unit: "cm", decimals: 1 },
   { id: "cabin_heat_added_kj", label: "Calor añadido a cabina (estim.)", unit: "kJ", decimals: 0 },
+  { id: "weight_loss_rate_mg_min", label: "Pérdida de masa", unit: "mg/min", decimals: 1 },
+  { id: "heater_resistance_ratio", label: "Calentador Rt/R₀", unit: "", decimals: 3 },
+  { id: "heating_duration_s", label: "Duración del calentamiento", unit: "s", decimals: 0 },
+  { id: "aging_time_s", label: "Envejecimiento del humo", unit: "s", decimals: 0 },
+  { id: "co2_pct", label: "CO₂ (supresor)", unit: "% CO₂", deltaUnit: "pp", decimals: 1 },
+  { id: "initial_droplet_diameter_mm", label: "Diámetro inicial de gota", unit: "mm", decimals: 2 },
+  { id: "extinction_droplet_diameter_mm", label: "Diámetro a la extinción", unit: "mm", decimals: 2 },
+  { id: "burning_rate_mm2_s", label: "Tasa de quemado K", unit: "mm²/s", decimals: 2 },
+  { id: "burn_time_s", label: "Tiempo de quemado", unit: "s", decimals: 1 },
 ] as const;
 
 export function compareRuns(

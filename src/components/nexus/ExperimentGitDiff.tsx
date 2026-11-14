@@ -44,8 +44,13 @@ export function ExperimentGitDiff() {
                 const deltaUnit = "deltaUnit" in field ? field.deltaUnit : unit;
                 return <tr key={field.id} data-status={status}>
                   <th scope="row">{field.label}</th>
-                  <td>{formatValue(valueA, decimals, unit)}</td>
-                  <td>{formatValue(valueB, decimals, unit)}</td>
+                  {[a, b].map((run, index) => {
+                    const nominal = run.nominal?.fields.some((axis) => axis === field.id);
+                    return <td key={index}>
+                      {formatValue(index === 0 ? valueA : valueB, decimals, unit)}
+                      {nominal && <small className="nominal-tag" title={run.nominal?.basis}>nominal</small>}
+                    </td>;
+                  })}
                   <td>
                     {delta === undefined ? { equal: "Igual", missing: "Sin dato", changed: "Cambió" }[status] : (
                       <>{delta > 0 ? "+" : ""}{formatValue(delta, decimals, deltaUnit)}

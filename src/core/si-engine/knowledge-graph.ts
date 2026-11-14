@@ -3,6 +3,7 @@ import type { Investigation } from "../../types/psi";
 export const facilities = {
   MSG: "Microgravity Science Glovebox",
   CYGNUS: "Vehículo Cygnus",
+  CIR: "Combustion Integrated Rack",
 } as const;
 
 export function buildKnowledgeGraph(investigations: readonly Investigation[]) {

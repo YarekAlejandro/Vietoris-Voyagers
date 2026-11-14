@@ -54,6 +54,58 @@
         "label": "NASA ICES-2025-156 · tabla 1 y resultados",
         "url": "https://ntrs.nasa.gov/citations/20250002675"
       }
+    },
+    {
+      "id": "SAME",
+      "name": "Smoke and Aerosol Measurement Experiment",
+      "facility": "MSG",
+      "safetyPillars": [
+        "DETECTION"
+      ],
+      "summary": "Mide el tamaño de las partículas de humo de materiales de nave sobrecalentados, sin llama, para diseñar detectores de humo.",
+      "source": {
+        "label": "NASA PSI-102 · DOI 10.60555/gd4k-8h62",
+        "url": "https://doi.org/10.60555/gd4k-8h62"
+      }
+    },
+    {
+      "id": "SAME-R",
+      "name": "Smoke Aerosol Measurement Experiment-Reflight",
+      "facility": "MSG",
+      "safetyPillars": [
+        "DETECTION"
+      ],
+      "summary": "Repite SAME con más materiales (incluida espuma Pyrell), calentamiento más alto y ensayos sin flujo de aire.",
+      "source": {
+        "label": "NASA PSI-101 · DOI 10.60555/2np7-jv14",
+        "url": "https://doi.org/10.60555/2np7-jv14"
+      }
+    },
+    {
+      "id": "FLEX",
+      "name": "Flame Extinguishment Experiment",
+      "facility": "CIR",
+      "safetyPillars": [
+        "SUPPRESSION"
+      ],
+      "summary": "Gotas de metanol y heptano que se queman hasta extinguirse para medir el índice límite de oxígeno y el efecto del CO₂ como supresor.",
+      "source": {
+        "label": "NASA PSI-69 · DOI 10.60555/mbq8-0451",
+        "url": "https://doi.org/10.60555/mbq8-0451"
+      }
+    },
+    {
+      "id": "FLEX-2",
+      "name": "Flame Extinguishment Experiment - 2",
+      "facility": "CIR",
+      "safetyPillars": [
+        "SUPPRESSION"
+      ],
+      "summary": "Extiende FLEX a mezclas de combustibles y gotas con movimiento. La tabla de PSI solo da rangos (1.5–5 mm, 17–30 % O₂, 0.5–3 atm), así que aún no hay corridas por prueba.",
+      "source": {
+        "label": "NASA PSI-68 · DOI 10.60555/byp8-h018",
+        "url": "https://doi.org/10.60555/byp8-h018"
+      }
     }
   ],
   "runs": [
@@ -305,6 +357,318 @@
       "source": {
         "label": "NASA ICES-2025-156 · tabla 1 y resultados",
         "url": "https://ntrs.nasa.gov/citations/20250002675"
+      }
+    },
+    {
+      "id": "SAME-1",
+      "investigationId": "SAME",
+      "label": "SAME · muestra 1",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21,
+        "pressure_psia": 14.7,
+        "flow_velocity_cm_s": 5
+      },
+      "fuel": "Teflon",
+      "fuelCategory": "AEROSOL_SMOKE_DUST",
+      "configuration": "Pirólisis sin llama · alambre calefactor",
+      "weight_loss_rate_mg_min": 2,
+      "aging_time_s": 60,
+      "nominal": {
+        "fields": [
+          "oxygen_pct",
+          "pressure_psia"
+        ],
+        "basis": "Aire de cabina ISS, valor nominal: la tabla de PSI no reporta O₂ ni presión."
+      },
+      "source": {
+        "label": "NASA PSI-102 · tabla experimental, muestra 1",
+        "url": "https://doi.org/10.60555/gd4k-8h62"
+      }
+    },
+    {
+      "id": "SAME-3",
+      "investigationId": "SAME",
+      "label": "SAME · muestra 3",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21,
+        "pressure_psia": 14.7,
+        "flow_velocity_cm_s": 5
+      },
+      "fuel": "Teflon",
+      "fuelCategory": "AEROSOL_SMOKE_DUST",
+      "configuration": "Pirólisis sin llama · alambre calefactor",
+      "weight_loss_rate_mg_min": 2,
+      "aging_time_s": 1200,
+      "nominal": {
+        "fields": [
+          "oxygen_pct",
+          "pressure_psia"
+        ],
+        "basis": "Aire de cabina ISS, valor nominal: la tabla de PSI no reporta O₂ ni presión."
+      },
+      "source": {
+        "label": "NASA PSI-102 · tabla experimental, muestra 3",
+        "url": "https://doi.org/10.60555/gd4k-8h62"
+      }
+    },
+    {
+      "id": "SAME-4",
+      "investigationId": "SAME",
+      "label": "SAME · muestra 4",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21,
+        "pressure_psia": 14.7,
+        "flow_velocity_cm_s": 10
+      },
+      "fuel": "Teflon",
+      "fuelCategory": "AEROSOL_SMOKE_DUST",
+      "configuration": "Pirólisis sin llama · alambre calefactor",
+      "weight_loss_rate_mg_min": 2,
+      "aging_time_s": 60,
+      "nominal": {
+        "fields": [
+          "oxygen_pct",
+          "pressure_psia"
+        ],
+        "basis": "Aire de cabina ISS, valor nominal: la tabla de PSI no reporta O₂ ni presión."
+      },
+      "source": {
+        "label": "NASA PSI-102 · tabla experimental, muestra 4",
+        "url": "https://doi.org/10.60555/gd4k-8h62"
+      }
+    },
+    {
+      "id": "SAME-R-54",
+      "investigationId": "SAME-R",
+      "label": "SAME-R · prueba 54",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21,
+        "pressure_psia": 14.7,
+        "flow_velocity_cm_s": 8.1
+      },
+      "fuel": "Lampwick",
+      "fuelCategory": "AEROSOL_SMOKE_DUST",
+      "configuration": "Pirólisis sin llama · referencia",
+      "heater_resistance_ratio": 1.245,
+      "heating_duration_s": 60,
+      "aging_time_s": 57,
+      "nominal": {
+        "fields": [
+          "oxygen_pct",
+          "pressure_psia"
+        ],
+        "basis": "Aire de cabina ISS, valor nominal: la tabla de PSI no reporta O₂ ni presión."
+      },
+      "source": {
+        "label": "NASA PSI-101 · tabla experimental, prueba 54",
+        "url": "https://doi.org/10.60555/2np7-jv14"
+      }
+    },
+    {
+      "id": "SAME-R-77",
+      "investigationId": "SAME-R",
+      "label": "SAME-R · prueba 77",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21,
+        "pressure_psia": 14.7,
+        "flow_velocity_cm_s": 8.1
+      },
+      "fuel": "Kapton",
+      "fuelCategory": "AEROSOL_SMOKE_DUST",
+      "configuration": "Pirólisis sin llama · alta temperatura",
+      "heater_resistance_ratio": 1.48,
+      "heating_duration_s": 60,
+      "aging_time_s": 31,
+      "nominal": {
+        "fields": [
+          "oxygen_pct",
+          "pressure_psia"
+        ],
+        "basis": "Aire de cabina ISS, valor nominal: la tabla de PSI no reporta O₂ ni presión."
+      },
+      "source": {
+        "label": "NASA PSI-101 · tabla experimental, prueba 77",
+        "url": "https://doi.org/10.60555/2np7-jv14"
+      }
+    },
+    {
+      "id": "SAME-R-101",
+      "investigationId": "SAME-R",
+      "label": "SAME-R · prueba 101",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21,
+        "pressure_psia": 14.7,
+        "flow_velocity_cm_s": 0
+      },
+      "fuel": "Kapton",
+      "fuelCategory": "AEROSOL_SMOKE_DUST",
+      "configuration": "Pirólisis sin llama · sin flujo",
+      "heater_resistance_ratio": 1.48,
+      "heating_duration_s": 60,
+      "aging_time_s": 29,
+      "nominal": {
+        "fields": [
+          "oxygen_pct",
+          "pressure_psia"
+        ],
+        "basis": "Aire de cabina ISS, valor nominal: la tabla de PSI no reporta O₂ ni presión."
+      },
+      "source": {
+        "label": "NASA PSI-101 · tabla experimental, prueba 101",
+        "url": "https://doi.org/10.60555/2np7-jv14"
+      }
+    },
+    {
+      "id": "SAME-R-107",
+      "investigationId": "SAME-R",
+      "label": "SAME-R · prueba 107",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21,
+        "pressure_psia": 14.7,
+        "flow_velocity_cm_s": 1
+      },
+      "fuel": "Pyrell",
+      "fuelCategory": "AEROSOL_SMOKE_DUST",
+      "configuration": "Pirólisis sin llama · flujo bajo",
+      "heater_resistance_ratio": 1.23,
+      "heating_duration_s": 60,
+      "aging_time_s": 32,
+      "nominal": {
+        "fields": [
+          "oxygen_pct",
+          "pressure_psia"
+        ],
+        "basis": "Aire de cabina ISS, valor nominal: la tabla de PSI no reporta O₂ ni presión."
+      },
+      "source": {
+        "label": "NASA PSI-101 · tabla experimental, prueba 107",
+        "url": "https://doi.org/10.60555/2np7-jv14"
+      }
+    },
+    {
+      "id": "FLEX-40CAL01",
+      "investigationId": "FLEX",
+      "label": "FLEX · 40CAL01",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21.0,
+        "pressure_psia": 14.696,
+        "flow_velocity_cm_s": 0
+      },
+      "fuel": "Metanol",
+      "fuelCategory": "LIQUID_DROPLET",
+      "configuration": "Gota aislada en el MDCA",
+      "co2_pct": 0,
+      "initial_droplet_diameter_mm": 2.54,
+      "extinction_droplet_diameter_mm": 1.53,
+      "burning_rate_mm2_s": 0.51,
+      "burn_time_s": 9.6,
+      "outcome": "Extinción de la llama",
+      "nominal": {
+        "fields": [
+          "flow_velocity_cm_s"
+        ],
+        "basis": "Gota en atmósfera quieta, valor nominal (Dietrich et al. 2014, doi:10.1007/s12217-014-9372-2): la tabla de PSI no reporta flujo."
+      },
+      "source": {
+        "label": "NASA PSI-69 · tabla experimental, prueba 6 (40CAL01)",
+        "url": "https://doi.org/10.60555/mbq8-0451"
+      }
+    },
+    {
+      "id": "FLEX-189F001",
+      "investigationId": "FLEX",
+      "label": "FLEX · 189F001",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 15.0,
+        "pressure_psia": 14.827,
+        "flow_velocity_cm_s": 0
+      },
+      "fuel": "Metanol",
+      "fuelCategory": "LIQUID_DROPLET",
+      "configuration": "Gota aislada en el MDCA",
+      "co2_pct": 0,
+      "initial_droplet_diameter_mm": 2.52,
+      "extinction_droplet_diameter_mm": 1.32,
+      "burning_rate_mm2_s": 0.38,
+      "burn_time_s": 12.9,
+      "outcome": "Extinción de la llama",
+      "nominal": {
+        "fields": [
+          "flow_velocity_cm_s"
+        ],
+        "basis": "Gota en atmósfera quieta, valor nominal (Dietrich et al. 2014, doi:10.1007/s12217-014-9372-2): la tabla de PSI no reporta flujo."
+      },
+      "source": {
+        "label": "NASA PSI-69 · tabla experimental, prueba 66 (189F001)",
+        "url": "https://doi.org/10.60555/mbq8-0451"
+      }
+    },
+    {
+      "id": "FLEX-C10H101",
+      "investigationId": "FLEX",
+      "label": "FLEX · C10H101",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 21.0,
+        "pressure_psia": 10.33,
+        "flow_velocity_cm_s": 0
+      },
+      "fuel": "Heptano",
+      "fuelCategory": "LIQUID_DROPLET",
+      "configuration": "Gota aislada en el MDCA",
+      "co2_pct": 30.0,
+      "initial_droplet_diameter_mm": 3.57,
+      "extinction_droplet_diameter_mm": 3.43,
+      "burning_rate_mm2_s": 0.33,
+      "burn_time_s": 4.2,
+      "outcome": "Extinción de la llama",
+      "nominal": {
+        "fields": [
+          "flow_velocity_cm_s"
+        ],
+        "basis": "Gota en atmósfera quieta, valor nominal (Dietrich et al. 2014, doi:10.1007/s12217-014-9372-2): la tabla de PSI no reporta flujo."
+      },
+      "source": {
+        "label": "NASA PSI-69 · tabla experimental, prueba 102 (C10H101)",
+        "url": "https://doi.org/10.60555/mbq8-0451"
+      }
+    },
+    {
+      "id": "FLEX-196F001",
+      "investigationId": "FLEX",
+      "label": "FLEX · 196F001",
+      "atmosphere": {
+        "gravity_g": 0,
+        "oxygen_pct": 34.0,
+        "pressure_psia": 10.424,
+        "flow_velocity_cm_s": 0
+      },
+      "fuel": "Heptano",
+      "fuelCategory": "LIQUID_DROPLET",
+      "configuration": "Gota aislada en el MDCA",
+      "co2_pct": 0,
+      "initial_droplet_diameter_mm": 3.39,
+      "burning_rate_mm2_s": 0.9,
+      "burn_time_s": 4.2,
+      "outcome": "Disrupción de la gota",
+      "nominal": {
+        "fields": [
+          "flow_velocity_cm_s"
+        ],
+        "basis": "Gota en atmósfera quieta, valor nominal (Dietrich et al. 2014, doi:10.1007/s12217-014-9372-2): la tabla de PSI no reporta flujo."
+      },
+      "source": {
+        "label": "NASA PSI-69 · tabla experimental, prueba 19 (196F001)",
+        "url": "https://doi.org/10.60555/mbq8-0451"
       }
     }
   ]

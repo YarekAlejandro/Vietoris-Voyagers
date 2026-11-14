@@ -6,17 +6,23 @@ import { useAetherStore } from "../../store/useAetherStore";
 import type { Facility } from "../../types/psi";
 
 const graph = buildKnowledgeGraph(psiDataset.investigations);
-const facilityRows = { MSG: 0, CYGNUS: 1 } as const;
+const columnWidth = 150;
+// Agrupa las investigaciones bajo su instalación y centra cada instalación sobre sus investigaciones.
+const studies = graph.facilities.flatMap(({ id }) => graph.investigations.filter((study) => study.facility === id));
+const studyX = new Map(studies.map((study, index) => [study.id, index * columnWidth]));
 const nodes: Node<{ label: string; facility: Facility }>[] = [
-  ...graph.facilities.map(({ id }) => ({
-    id, data: { label: id === "CYGNUS" ? "Cygnus" : id, facility: id },
-    type: "input", sourcePosition: Position.Bottom, className: "facility-node",
-    position: { x: facilityRows[id] * 255, y: 0 },
-  })),
-  ...graph.investigations.map((study, index) => ({
+  ...graph.facilities.map(({ id }) => {
+    const columns = studies.filter((study) => study.facility === id).map((study) => studyX.get(study.id)!);
+    return {
+      id, data: { label: id === "CYGNUS" ? "Cygnus" : id, facility: id },
+      type: "input", sourcePosition: Position.Bottom, className: "facility-node",
+      position: { x: columns.reduce((sum, x) => sum + x, 0) / columns.length, y: 0 },
+    };
+  }),
+  ...studies.map((study) => ({
     id: study.id, data: { label: study.id, facility: study.facility },
     type: "output", targetPosition: Position.Top, className: "study-node",
-    position: { x: index * 170, y: 120 },
+    position: { x: studyX.get(study.id)!, y: 120 },
   })),
 ];
 const edges: Edge[] = graph.edges.map((edge) => ({ ...edge, type: "smoothstep", focusable: false }));

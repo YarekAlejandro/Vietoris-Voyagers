@@ -27,7 +27,12 @@ npm run typecheck
 npm run build
 ```
 
-La compilación genera un sitio estático en `out/`. El ranking, el grafo y la comparación funcionan en el navegador con el catálogo incluido. La muestra inicial contiene 12 corridas de BASS-II y SAIC, con fichas normalizadas y trazabilidad a referencias.
+La compilación genera un sitio estático en `out/`. El ranking, el grafo y la comparación funcionan en el navegador con el catálogo incluido. El catálogo cubre 8 investigaciones y 23 corridas, cada una con su cita a la tabla o sección del informe de NASA:
+- **Prevención:** 12 corridas de BASS-II y Saffire.
+- **Detección:** 7 corridas de humo de SAME y SAME-R (PSI-102 y PSI-101).
+- **Supresión:** 4 corridas de gotas de FLEX (PSI-69).
+
+FLEX-2 (PSI-68) aparece en el grafo sin corridas, porque su tabla en PSI solo reporta rangos. La gravedad orbital se normaliza a 0 g. Cuando una tabla no mide un eje de la atmósfera, la corrida usa un valor nominal documentado y la interfaz lo marca como «Nominal». Es el caso del O₂ y la presión de cabina en SAME, y del flujo en FLEX.
 
 ### Estado actual
 

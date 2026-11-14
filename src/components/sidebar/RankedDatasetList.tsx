@@ -3,7 +3,7 @@ import { rankRuns } from "../../core/si-engine/fsrs-ranker";
 import { investigationsById, psiDataset } from "../../data/psi";
 import { useAetherStore } from "../../store/useAetherStore";
 
-const filters = [{ id: "all", label: "Todas" }, { id: "MSG", label: "MSG" }, { id: "CYGNUS", label: "Cygnus" }] as const;
+const filters = [{ id: "all", label: "Todas" }, { id: "MSG", label: "MSG" }, { id: "CYGNUS", label: "Cygnus" }, { id: "CIR", label: "CIR" }] as const;
 
 export function RankedDatasetList() {
   const profile = useAetherStore((state) => state.profile);
@@ -32,6 +32,7 @@ export function RankedDatasetList() {
         <span title="Fire Safety Relevance Score">{investigationId ?? "0–100 pts"}</span>
       </div>
       <ol className="panel-content ranked-list">
+        {visible.length === 0 && <li className="empty-state">Esta selección no tiene corridas por prueba en el catálogo.</li>}
         {visible.map(({ run, score, bounds }) => (
           <li className="run-card" key={run.id}>
             <div className="run-top">
@@ -44,6 +45,7 @@ export function RankedDatasetList() {
             <meter aria-label={`Puntuación de ${run.label}`} min={0} max={100} value={score} />
             <div className="run-bottom">
               <span>{run.fuel} · {run.atmosphere.oxygen_pct.toFixed(1)}% O₂</span>
+              {run.nominal && <span className="nominal-tag" title={run.nominal.basis}>Nominal</span>}
               {bounds.length > 0 && <span className="bound-tag" title={bounds.some(({ outside }) => outside) ? "Cota del catálogo con objetivo fuera de rango" : "Cota cercana al objetivo"}>Cota</span>}
               <div className="run-actions">
                 <button type="button" aria-label={`Comparar ${run.label} en A`} aria-pressed={comparison.a === run.id} onClick={() => selectRun("a", run.id)}><Plus size={11} aria-hidden /> A</button>

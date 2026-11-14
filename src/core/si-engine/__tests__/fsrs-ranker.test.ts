@@ -39,6 +39,13 @@ describe("FSRS", () => {
     }
   });
 
+  it("prioriza corridas de detección de humo para el perfil de minería", () => {
+    const mining = missionPresets.find(({ id }) => id === "mining")!;
+    const [best] = rankRuns(psiDataset.runs, investigationsById, mining, mining.atmosphere);
+    expect(["SAME", "SAME-R"]).toContain(best.run.investigationId);
+    expect(best).toMatchObject({ fuelMatch: true, pillarMatch: true });
+  });
+
   it("maneja un catálogo vacío", () => {
     expect(rankRuns([], investigationsById, iss, iss.atmosphere)).toEqual([]);
   });

@@ -1,6 +1,6 @@
 export type SafetyPillar = "PREVENTION" | "DETECTION" | "SUPPRESSION";
-export type FuelCategory = "SOLID_POLYMER" | "SOLID_FABRIC" | "AEROSOL_SMOKE_DUST";
-export type Facility = "MSG" | "CYGNUS";
+export type FuelCategory = "SOLID_POLYMER" | "SOLID_FABRIC" | "AEROSOL_SMOKE_DUST" | "LIQUID_DROPLET";
+export type Facility = "MSG" | "CYGNUS" | "CIR";
 
 export interface Atmosphere {
   gravity_g: number;
@@ -47,6 +47,19 @@ export interface ExperimentalRun {
   outcome?: string;
   cabin_heat_added_kj?: number;
   steady_flame_length_cm?: number;
+  // Detección (SAME, SAME-R): pirólisis sin llama
+  weight_loss_rate_mg_min?: number;
+  heater_resistance_ratio?: number; // Rt/R₀ del alambre calefactor, adimensional (sin calibración pública a °C)
+  heating_duration_s?: number;
+  aging_time_s?: number;
+  // Supresión (FLEX): gotas aisladas
+  co2_pct?: number;
+  initial_droplet_diameter_mm?: number;
+  extinction_droplet_diameter_mm?: number;
+  burning_rate_mm2_s?: number;
+  burn_time_s?: number;
+  /** Ejes de la atmósfera que no se midieron y usan un valor nominal documentado. */
+  nominal?: { fields: readonly (keyof Atmosphere)[]; basis: string };
   source: Citation;
 }
 

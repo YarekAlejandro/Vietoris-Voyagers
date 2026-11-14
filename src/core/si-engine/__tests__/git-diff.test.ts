@@ -16,6 +16,14 @@ it("compara energía y registra diferencias de configuración", () => {
   expect(rows.find(({ field }) => field.id === "facility")?.status).toBe("equal");
 });
 
+it("compara supresión con CO₂ entre corridas de FLEX", () => {
+  const rows = compareRuns(runsById.get("FLEX-40CAL01")!, runsById.get("FLEX-C10H101")!, investigationsById);
+  expect(rows.find(({ field }) => field.id === "co2_pct")).toMatchObject({ status: "changed", delta: 30 });
+  expect(rows.find(({ field }) => field.id === "initial_droplet_diameter_mm")?.delta).toBeCloseTo(1.03);
+  expect(rows.find(({ field }) => field.id === "fuel")?.status).toBe("changed");
+  expect(rows.find(({ field }) => field.id === "facility")?.status).toBe("equal");
+});
+
 it("conserva los valores ausentes y evita porcentajes relativos con base cero", () => {
   const rows = compareRuns(saffireV, { ...saffireVI, atmosphere: { ...saffireVI.atmosphere, gravity_g: 0.165 } }, investigationsById);
   expect(rows.find(({ field }) => field.id === "width_cm")).toMatchObject({ status: "missing", valueA: undefined, valueB: 40 });
