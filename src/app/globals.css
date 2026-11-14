@@ -437,10 +437,13 @@ meter::-moz-meter-bar { border-radius: 3px; background: var(--score-color); }
 .run-card .interpretation { margin-top: 7px; }
 
 /* Reparto ajustable entre la tabla del diff y la interpretación */
-.comparison-content.with-interpretation { overflow: hidden; }
+/* .panel-content no estira por sí solo: con la interpretación abierta, el contenedor debe llenar el
+   panel para que la tabla y la tarjeta tengan un alto que repartir. Si el panel es más bajo que los
+   mínimos, el contenido hace scroll en lugar de recortarse. */
+.comparison-content.with-interpretation { flex: 1 1 auto; overflow: auto; }
 .comparison-content.with-interpretation > * { flex-shrink: 0; }
-.comparison-content.with-interpretation > .comparison-scroll,
-.comparison-content.with-interpretation > .comparison-interpretation { flex: 1 1 0; min-height: 0; }
+.comparison-content.with-interpretation > .comparison-scroll { flex: 1 1 0; min-height: 72px; }
+.comparison-content.with-interpretation > .comparison-interpretation { flex: 1 1 0; min-height: 96px; }
 .comparison-interpretation { overflow: auto; border-radius: 6px; scrollbar-color: #435671 transparent; scrollbar-width: thin; }
 .split-handle {
   position: relative; display: grid; place-items: center; height: 10px; margin-block: -4px;
@@ -482,9 +485,9 @@ body[data-resizing="row"], body[data-resizing="row"] * { cursor: row-resize !imp
   .comparison { grid-area: compare; }
   .comparison-scroll { max-height: 280px; }
   /* En pantallas angostas el panel crece con su contenido: sin divisor ni alturas fijas. */
-  .comparison-content.with-interpretation { overflow: visible; }
+  .comparison-content.with-interpretation { flex: none; overflow: visible; }
   .comparison-content.with-interpretation > .comparison-scroll,
-  .comparison-content.with-interpretation > .comparison-interpretation { flex: none !important; }
+  .comparison-content.with-interpretation > .comparison-interpretation { flex: none !important; min-height: 0; }
   .comparison-interpretation { overflow: visible; }
   .split-handle { display: none; }
   .topbar { flex-wrap: wrap; gap: 8px 18px; }
