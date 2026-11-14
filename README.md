@@ -4,9 +4,7 @@ Plataforma para explorar y comparar experimentos de NASA PSI mediante un grafo d
 
 ## Demo en producción
 
-La aplicación web ya está desplegada en:
-
-- https://vietoris-voyagers.vercel.app/
+[Abrir AETHER-SI en Vercel](https://vietoris-voyagers.vercel.app/)
 
 ## Desarrollo de AETHER-SI
 
@@ -17,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Abre la consola local en http://localhost:3000. Selecciona un perfil de misión y ajusta su atmósfera para recalcular FSRS. Selecciona una instalación o investigación del grafo para filtrar el ranking, comparar condiciones y revisar la evidencia documental asociada.
+Abre [la consola local](http://localhost:3000). Busca por concepto, material o identificador. Prueba `llamas frías`, `smoke detection` o `acrílico a baja presión`. Los resultados se conectan con PSI-Nexus y con la ficha de cada estudio o corrida. Usa **Condiciones** para ver el oxígeno y flujo de las corridas recuperadas junto al escenario de misión, y **Comparar en A/B** para contrastar corridas con sus fuentes.
 
 ### Validación
 
@@ -27,8 +25,15 @@ npm run typecheck
 npm run build
 ```
 
-La compilación genera un sitio estático en `out/`. El ranking, el grafo y la comparación funcionan en el navegador con el catálogo incluido. La muestra inicial contiene 12 corridas de BASS-II y SAIC, con fichas normalizadas y trazabilidad a referencias.
+La compilación genera el sitio estático en `out/` para Vercel. El catálogo incluye 11 estudios y 12 corridas normalizadas de BASS-II y Saffire. Las fichas bibliográficas amplían la exploración con fuentes de NASA y dejan visible qué estudios tienen datos listos para comparar.
 
-### Estado actual
+La búsqueda local usa un vocabulario de conceptos y sinónimos en español e inglés. Combina los conceptos de la consulta y muestra por qué aparece cada resultado. La relevancia de búsqueda se calcula por separado del FSRS, que estima pertinencia para el escenario elegido. La vista **Condiciones** muestra observaciones registradas. La gravedad orbital se representa como 0 g en el catálogo inicial.
 
-La plataforma incluye la base operativa de exploración y comparación. Quedan pendientes ampliaciones como GravityBridge, el mapa de fases, la matriz de seguridad y la expansión del catálogo.
+## Próximos entregables
+
+| Prioridad | Entregable | Criterio de aceptación |
+| --- | --- | --- |
+| 1 | Evidencia trazable y búsqueda evaluada | Normalizar corridas de CFI, FLEX, SAME, DAFT, BRE y E-FIELD según la disponibilidad de tablas citables. Registrar unidades, localizador de fuente y tipo de resultado por variable. Mantener un conjunto bilingüe de consultas con coincidencias esperadas y consultas fuera de cobertura. |
+| 2 | GravityBridge y mapa de fases | Incorporar controles de gravedad y referencias comparables. Publicar intervalos y procedencia de las estimaciones y marcar escenarios sin cobertura antes de mostrar transiciones de régimen. |
+| 3 | Matriz de seguridad y exportación | Enlazar prevención, detección y supresión con la evidencia que sustenta cada conclusión. Exportar corridas filtradas con unidades y referencias para que otra persona pueda reproducir la comparación. |
+| 4 | Publicación reproducible | Conectar el proyecto de Vercel al repositorio y ejecutar pruebas, tipado y compilación en cada actualización de la rama de producción. |

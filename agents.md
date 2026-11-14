@@ -47,7 +47,7 @@ src/
 │       └── __tests__/          # Pruebas unitarias en Vitest para validar fórmulas físicas
 ├── store/
 │   └── useAetherStore.ts       # Store global en Zustand que conecta Sliders, Grafo, Diff y Modo de Usuario
-├── components/
+├── components/ 
 │   ├── layout/
 │   │   ├── TopNavbar.tsx       # Selector de Misión, Conmutador Ingeniero/Estudiante y Estado del Sistema
 │   │   └── CockpitGrid.tsx     # Contenedor SPA 100vh sin scroll de página (4 paneles sincronizados)

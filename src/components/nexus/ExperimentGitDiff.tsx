@@ -21,13 +21,14 @@ export function ExperimentGitDiff() {
   return (
     <section className="panel comparison" aria-labelledby="comparison-title">
       <div className="panel-heading">
-        <h2 id="comparison-title"><ArrowLeftRight size={17} aria-hidden /> {mode === "engineer" ? "Git-Diff experimental" : "Comparar experimentos"}</h2>
+        <h2 id="comparison-title"><ArrowLeftRight size={17} aria-hidden /> Comparación experimental</h2>
+        {mode === "engineer" && <span className="panel-meta">Git-Diff · A/B</span>}
       </div>
       <div className="panel-content comparison-content">
         <div className="comparison-selects">
           {(["a", "b"] as const).map((side) => (
             <label key={side}>
-              <span className={`side side-${side}`}>{side.toUpperCase()}</span>
+              <span className={`side side-${side}`} aria-hidden>{side.toUpperCase()}</span>
               <span className="sr-only">Corrida {side.toUpperCase()}</span>
               <select value={comparison[side]} onChange={(event) => selectRun(side, event.target.value)}>
                 {psiDataset.runs.map((run) => <option value={run.id} key={run.id}>{run.label}</option>)}
@@ -60,7 +61,7 @@ export function ExperimentGitDiff() {
         </div>
         <div className="comparison-sources">
           {[a, b].map((run, index) => (
-            <a key={index} href={run.source.url} target="_blank" rel="noreferrer"><strong>Fuente {index === 0 ? "A" : "B"}</strong> {run.source.label} <ExternalLink size={11} aria-hidden /></a>
+            <a key={index} href={run.source.url} target="_blank" rel="noreferrer"><strong>{`Fuente ${index === 0 ? "A" : "B"}`}</strong>{` · ${run.source.label} `}<ExternalLink size={11} aria-hidden /></a>
           ))}
         </div>
       </div>

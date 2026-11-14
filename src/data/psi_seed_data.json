@@ -4,6 +4,7 @@
       "id": "BASS-II",
       "name": "Burning and Suppression of Solids II",
       "facility": "MSG",
+      "topics": ["solids", "flame-spread", "low-flow", "extinction"],
       "safetyPillars": [
         "PREVENTION",
         "SUPPRESSION"
@@ -18,6 +19,7 @@
       "id": "SAFFIRE-I",
       "name": "Spacecraft Fire Safety Experiment I",
       "facility": "CYGNUS",
+      "topics": ["solids", "flame-spread"],
       "safetyPillars": [
         "PREVENTION"
       ],
@@ -31,6 +33,7 @@
       "id": "SAFFIRE-IV-V",
       "name": "Spacecraft Fire Safety Experiments IV–V",
       "facility": "CYGNUS",
+      "topics": ["solids", "flame-spread", "cabin-heat", "reduced-pressure"],
       "safetyPillars": [
         "PREVENTION",
         "DETECTION"
@@ -45,6 +48,7 @@
       "id": "SAFFIRE-VI",
       "name": "Spacecraft Fire Safety Experiment VI",
       "facility": "CYGNUS",
+      "topics": ["solids", "flame-spread", "cabin-heat", "reduced-pressure"],
       "safetyPillars": [
         "PREVENTION",
         "DETECTION"
@@ -54,11 +58,96 @@
         "label": "NASA ICES-2025-156 · tabla 1 y resultados",
         "url": "https://ntrs.nasa.gov/citations/20250002675"
       }
+    },
+    {
+      "id": "BRE",
+      "name": "Burning Rate Emulator",
+      "facility": "CIR",
+      "topics": ["solids"],
+      "safetyPillars": ["PREVENTION"],
+      "summary": "El programa ACME empleó un quemador de gas para emular aspectos de la combustión de materiales sólidos y líquidos. Comparte la pregunta sobre inflamabilidad de sólidos con BASS-II, que estudió muestras físicas.",
+      "source": {
+        "label": "NASA Science · Burning Rate Emulator",
+        "url": "https://science.nasa.gov/biological-physical/investigations/bre/"
+      }
+    },
+    {
+      "id": "SAME",
+      "name": "Smoke Aerosol Measurement Experiment",
+      "facility": "MSG",
+      "topics": ["smoke-detection"],
+      "safetyPillars": ["DETECTION"],
+      "summary": "Midió la distribución de tamaños de partículas de humo en microgravedad y evaluó la respuesta de detectores. El sobrecalentamiento de materiales puede generar aerosoles antes de que se vea una llama.",
+      "source": {
+        "label": "NASA · Smoke Aerosol Measurement Experiment",
+        "url": "https://www.nasa.gov/wp-content/uploads/2025/07/smoke-aerosol-measurement-experiment-same.pdf"
+      }
+    },
+    {
+      "id": "DAFT",
+      "name": "Dust and Aerosol Measurement Feasibility Test",
+      "facility": "ISS",
+      "topics": ["smoke-detection"],
+      "safetyPillars": ["DETECTION"],
+      "summary": "Precedió a SAME. Evaluó un contador de partículas P-Trak modificado y midió aerosoles de fondo en la ISS para orientar los estudios de detección de humo.",
+      "source": {
+        "label": "NASA NTRS · Particle and Smoke Detection on ISS",
+        "url": "https://ntrs.nasa.gov/citations/20070031686"
+      }
+    },
+    {
+      "id": "FLEX",
+      "name": "Flame Extinguishment Experiment",
+      "facility": "CIR",
+      "topics": ["extinction", "cold-flames"],
+      "safetyPillars": ["SUPPRESSION"],
+      "summary": "Investigó la extinción de llamas de gotas líquidas y documentó combustión a baja temperatura después de que desapareciera la llama visible.",
+      "source": {
+        "label": "NASA PSI-69 · DOI 10.60555/mbq8-0451",
+        "url": "https://doi.org/10.60555/mbq8-0451"
+      }
+    },
+    {
+      "id": "CFI",
+      "name": "Cool Flames Investigation",
+      "facility": "CIR",
+      "topics": ["cold-flames"],
+      "safetyPillars": ["PREVENTION", "SUPPRESSION"],
+      "summary": "Estudia la combustión y la oxidación a baja temperatura de gotas de hidrocarburos en el Multi-user Droplet Combustion Apparatus.",
+      "source": {
+        "label": "NASA Glenn · Cool Flames Investigation",
+        "url": "https://gipoc.grc.nasa.gov/wp/fcf-cir/mdca/cfi/"
+      }
+    },
+    {
+      "id": "CFI-G",
+      "name": "Cool Flames Investigation with Gases",
+      "facility": "CIR",
+      "topics": ["cold-flames"],
+      "safetyPillars": ["PREVENTION"],
+      "summary": "Estudió llamas frías con combustibles gaseosos en la ISS. Permite explorar el mismo fenómeno que FLEX y CFI en otra fase del combustible.",
+      "source": {
+        "label": "NASA · Cool Flames Created During a First for ISS Research",
+        "url": "https://www.nasa.gov/missions/station/cool-flames-created-during-a-first-for-international-space-station-research/"
+      }
+    },
+    {
+      "id": "E-FIELD",
+      "name": "Electric-Field Effects on Laminar Diffusion Flames",
+      "facility": "CIR",
+      "topics": ["electric-field"],
+      "safetyPillars": ["PREVENTION"],
+      "summary": "El programa ACME estudió cómo los campos eléctricos alteran las llamas de difusión en microgravedad. Es una referencia para examinar el transporte inducido por campos eléctricos.",
+      "source": {
+        "label": "NASA Science · E-FIELD Flames",
+        "url": "https://science.nasa.gov/biological-physical/investigations/e-field-flames/"
+      }
     }
   ],
   "runs": [
     {
       "id": "BASS-II-GMT45-T4",
+      "topics": ["low-flow", "extinction"],
       "investigationId": "BASS-II",
       "label": "GMT45-T4",
       "atmosphere": {
@@ -81,6 +170,7 @@
     },
     {
       "id": "BASS-II-GMT100-T13",
+      "topics": ["low-flow", "extinction"],
       "investigationId": "BASS-II",
       "label": "GMT100-T13",
       "atmosphere": {
@@ -103,6 +193,7 @@
     },
     {
       "id": "BASS-II-GMT175-T9",
+      "topics": [],
       "investigationId": "BASS-II",
       "label": "GMT175-T9",
       "atmosphere": {
@@ -124,6 +215,7 @@
     },
     {
       "id": "BASS-II-GMT175-T10",
+      "topics": [],
       "investigationId": "BASS-II",
       "label": "GMT175-T10",
       "atmosphere": {
@@ -145,6 +237,7 @@
     },
     {
       "id": "BASS-II-GMT178-T14",
+      "topics": ["low-flow", "extinction"],
       "investigationId": "BASS-II",
       "label": "GMT178-T14",
       "atmosphere": {
@@ -167,6 +260,7 @@
     },
     {
       "id": "BASS-II-GMT190-T21",
+      "topics": ["extinction"],
       "investigationId": "BASS-II",
       "label": "GMT190-T21",
       "atmosphere": {
@@ -189,6 +283,7 @@
     },
     {
       "id": "SAFFIRE-I-1",
+      "topics": ["flame-spread"],
       "investigationId": "SAFFIRE-I",
       "label": "Saffire I · muestra 1",
       "atmosphere": {
@@ -209,6 +304,7 @@
     },
     {
       "id": "SAFFIRE-IV-1",
+      "topics": ["flame-spread"],
       "investigationId": "SAFFIRE-IV-V",
       "label": "Saffire IV · muestra 1",
       "atmosphere": {
@@ -229,6 +325,7 @@
     },
     {
       "id": "SAFFIRE-V-E6",
+      "topics": ["reduced-pressure", "cabin-heat", "flame-spread"],
       "investigationId": "SAFFIRE-IV-V",
       "label": "Saffire V · evento 6",
       "atmosphere": {
@@ -249,6 +346,7 @@
     },
     {
       "id": "SAFFIRE-VI-E5",
+      "topics": ["reduced-pressure", "flame-spread"],
       "investigationId": "SAFFIRE-VI",
       "label": "Saffire VI · evento 5",
       "atmosphere": {
@@ -268,6 +366,7 @@
     },
     {
       "id": "SAFFIRE-VI-E6",
+      "topics": ["reduced-pressure", "cabin-heat", "flame-spread"],
       "investigationId": "SAFFIRE-VI",
       "label": "Saffire VI · evento 6",
       "atmosphere": {
@@ -289,6 +388,7 @@
     },
     {
       "id": "SAFFIRE-VI-E8",
+      "topics": ["reduced-pressure", "flame-spread"],
       "investigationId": "SAFFIRE-VI",
       "label": "Saffire VI · evento 8",
       "atmosphere": {

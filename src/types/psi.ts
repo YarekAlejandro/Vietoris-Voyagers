@@ -1,6 +1,9 @@
 export type SafetyPillar = "PREVENTION" | "DETECTION" | "SUPPRESSION";
 export type FuelCategory = "SOLID_POLYMER" | "SOLID_FABRIC" | "AEROSOL_SMOKE_DUST";
-export type Facility = "MSG" | "CYGNUS";
+export type Facility = "MSG" | "CYGNUS" | "CIR" | "ISS";
+export type EvidenceTopicId =
+  | "solids" | "flame-spread" | "low-flow" | "extinction" | "reduced-pressure"
+  | "cabin-heat" | "smoke-detection" | "cold-flames" | "electric-field";
 
 export interface Atmosphere {
   gravity_g: number;
@@ -29,6 +32,7 @@ export interface Investigation {
   name: string;
   facility: Facility;
   safetyPillars: readonly SafetyPillar[];
+  topics: readonly EvidenceTopicId[];
   summary: string;
   source: Citation;
 }
@@ -41,6 +45,7 @@ export interface ExperimentalRun {
   fuel: string;
   fuelCategory: FuelCategory;
   configuration: string;
+  topics?: readonly EvidenceTopicId[];
   width_cm?: number;
   thickness_mm?: number;
   initial_flow_velocity_cm_s?: number;

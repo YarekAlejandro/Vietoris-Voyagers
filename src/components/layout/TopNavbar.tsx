@@ -14,7 +14,7 @@ export function TopNavbar() {
         <span className="brand-icon"><Orbit size={25} aria-hidden /></span>
         <div>
           <h1>AETHER<span>-SI</span></h1>
-          <p>Consola de misión</p>
+          <p>Explorador de evidencia</p>
         </div>
       </div>
       <label className="mission-select">
