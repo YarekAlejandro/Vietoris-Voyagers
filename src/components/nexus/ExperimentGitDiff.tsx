@@ -1,10 +1,15 @@
 import { ArrowLeftRight, ExternalLink, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { compareRuns } from "../../core/si-engine/git-diff";
 import { buildDiffPayload, interpretationKey, type InterpretRequest } from "../../core/si-engine/interpret";
 import { investigationsById, psiDataset, runsById } from "../../data/psi";
 import { useAetherStore } from "../../store/useAetherStore";
 import { InterpretationCard } from "./InterpretationCard";
+import { SplitHandle } from "./SplitHandle";
+
+// Mínimos del reparto entre la tabla y la interpretación: encabezado y una fila / título y algo de texto.
+const minTableHeight = 72;
+const minInterpretationHeight = 96;
 
 function formatValue(value: number | string | undefined, decimals = 0, unit = "") {
   if (value === undefined) return "—";
@@ -18,6 +23,10 @@ export function ExperimentGitDiff() {
   const selectRun = useAetherStore((state) => state.selectRun);
   // Petición con la que se abrió la interpretación; si A, B o el modo cambian, queda desactualizada.
   const [opened, setOpened] = useState<InterpretRequest | null>(null);
+  // Alto de la tabla fijado con el divisor; null reparte por mitades.
+  const [tableHeight, setTableHeight] = useState<number | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const interpretationRef = useRef<HTMLDivElement>(null);
   const a = runsById.get(comparison.a);
   const b = runsById.get(comparison.b);
   if (!a || !b) return null;
@@ -31,12 +40,15 @@ export function ExperimentGitDiff() {
         <h2 id="comparison-title"><ArrowLeftRight size={17} aria-hidden /> Comparación experimental</h2>
         <div className="panel-heading-actions">
           {mode === "engineer" && <span className="panel-meta">Git-Diff · A/B</span>}
-          <button type="button" className="interpret-toggle" aria-expanded={opened !== null} onClick={() => setOpened(opened ? null : current)}>
+          <button type="button" className="interpret-toggle" aria-expanded={opened !== null} onClick={() => {
+            setOpened(opened ? null : current);
+            setTableHeight(null);
+          }}>
             <Sparkles size={13} aria-hidden /> {opened ? "Ocultar interpretación" : "Interpretar"}
           </button>
         </div>
       </div>
-      <div className="panel-content comparison-content">
+      <div className={`panel-content comparison-content${opened ? " with-interpretation" : ""}`}>
         <div className="comparison-selects">
           {(["a", "b"] as const).map((side) => (
             <label key={side}>
@@ -48,7 +60,8 @@ export function ExperimentGitDiff() {
             </label>
           ))}
         </div>
-        <div className="comparison-scroll">
+        <div className="comparison-scroll" ref={tableRef}
+          style={opened && tableHeight !== null ? { flex: `0 0 ${tableHeight}px` } : undefined}>
           <table>
             <thead><tr><th scope="col">Variable</th><th scope="col">Corrida A</th><th scope="col">Corrida B</th><th scope="col">{mode === "engineer" ? "Δ B − A" : "Diferencia"}</th></tr></thead>
             <tbody>
@@ -73,7 +86,19 @@ export function ExperimentGitDiff() {
             </tbody>
           </table>
         </div>
-        {opened?.kind === "diff" && <InterpretationCard
+        {opened?.kind === "diff" && <SplitHandle
+          label="Ajustar alto de la tabla y la interpretación"
+          minTop={minTableHeight}
+          minBottom={minInterpretationHeight}
+          measure={() => {
+            const table = tableRef.current?.getBoundingClientRect().height;
+            const interpretation = interpretationRef.current?.getBoundingClientRect().height;
+            return table === undefined || interpretation === undefined ? null : { top: table, total: table + interpretation };
+          }}
+          onResize={setTableHeight}
+          onReset={() => setTableHeight(null)}
+        />}
+        {opened?.kind === "diff" && <div className="comparison-interpretation" ref={interpretationRef}><InterpretationCard
           request={opened}
           stale={stale}
           onRefresh={() => setOpened(current)}
@@ -83,7 +108,7 @@ export function ExperimentGitDiff() {
             ))}
             <span className="chip">Motor local · {opened.payload.rows.length} filas del diff</span>
           </>}
-        />}
+        /></div>}
         {(a.nominal || b.nominal) && <div className="comparison-sources">
           {a.nominal && <span>{a.nominal.basis === b.nominal?.basis ? "A/B" : "A"} · {a.nominal.basis}</span>}
           {b.nominal && b.nominal.basis !== a.nominal?.basis && <span>B · {b.nominal.basis}</span>}

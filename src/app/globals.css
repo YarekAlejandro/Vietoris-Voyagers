@@ -435,6 +435,23 @@ meter::-moz-meter-bar { border-radius: 3px; background: var(--score-color); }
   background: var(--panel-deep); font-size: 12px; line-height: 1.45;
 }
 .run-card .interpretation { margin-top: 7px; }
+
+/* Reparto ajustable entre la tabla del diff y la interpretación */
+.comparison-content.with-interpretation { overflow: hidden; }
+.comparison-content.with-interpretation > * { flex-shrink: 0; }
+.comparison-content.with-interpretation > .comparison-scroll,
+.comparison-content.with-interpretation > .comparison-interpretation { flex: 1 1 0; min-height: 0; }
+.comparison-interpretation { overflow: auto; border-radius: 6px; scrollbar-color: #435671 transparent; scrollbar-width: thin; }
+.split-handle {
+  position: relative; display: grid; place-items: center; height: 10px; margin-block: -4px;
+  cursor: row-resize; touch-action: none; border-radius: 4px;
+}
+.split-handle::before { content: ""; position: absolute; inset: 4px 0; border-radius: 1px; background: var(--line); }
+.split-handle-grip { position: relative; width: 34px; height: 4px; border-radius: 2px; background: #435671; }
+.split-handle:hover::before, .split-handle:focus-visible::before, .split-handle[data-dragging]::before { background: var(--accent); }
+.split-handle:hover .split-handle-grip, .split-handle:focus-visible .split-handle-grip, .split-handle[data-dragging] .split-handle-grip { background: var(--accent); }
+.split-handle:focus-visible { outline-offset: 1px; }
+body[data-resizing="row"], body[data-resizing="row"] * { cursor: row-resize !important; user-select: none; }
 .interpretation-heading { display: flex; align-items: center; gap: 7px; }
 .interpretation-heading h3 { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 650; }
 .interpretation-heading h3 svg { color: var(--accent); }
@@ -464,6 +481,12 @@ meter::-moz-meter-bar { border-radius: 3px; background: var(--score-color); }
   .inspector { grid-area: detail; }
   .comparison { grid-area: compare; }
   .comparison-scroll { max-height: 280px; }
+  /* En pantallas angostas el panel crece con su contenido: sin divisor ni alturas fijas. */
+  .comparison-content.with-interpretation { overflow: visible; }
+  .comparison-content.with-interpretation > .comparison-scroll,
+  .comparison-content.with-interpretation > .comparison-interpretation { flex: none !important; }
+  .comparison-interpretation { overflow: visible; }
+  .split-handle { display: none; }
   .topbar { flex-wrap: wrap; gap: 8px 18px; }
   .evidence-search { justify-content: flex-start; }
   .sliders { grid-template-columns: 1fr 1fr; }
