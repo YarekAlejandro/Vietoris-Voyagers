@@ -6,6 +6,8 @@ import {
 } from "../../core/si-engine/interpret";
 import { useAetherStore } from "../../store/useAetherStore";
 
+const providerNames = { anthropic: "Claude", gemini: "Gemini" } as const;
+
 // Evita llamadas duplicadas a la misma clave (por ejemplo, el doble efecto de React en desarrollo).
 const inflight = new Set<string>();
 
@@ -71,7 +73,7 @@ export function InterpretationCard({ request, chips, stale = false, onRefresh }:
     <div className="interpretation" aria-live="polite" aria-busy={loading}>
       <div className="interpretation-heading">
         <h3><Sparkles size={14} aria-hidden /> Interpretación</h3>
-        {result && <span className={`interpretation-badge ${result.source}`}>{result.source === "ai" ? "Generado por IA" : "Resumen automático"}</span>}
+        {result && <span className={`interpretation-badge ${result.source}`}>{result.source === "ai" ? `Generado por IA${result.provider ? ` · ${providerNames[result.provider]}` : ""}` : "Resumen automático"}</span>}
         <div className="interpretation-actions">
           <button type="button" className="icon-button" aria-label="Regenerar interpretación" title="Regenerar" disabled={loading}
             onClick={() => (stale && onRefresh ? onRefresh() : void load(true))}>

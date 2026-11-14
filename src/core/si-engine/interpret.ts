@@ -97,6 +97,8 @@ export interface Interpretation {
 
 export interface InterpretationResult extends Interpretation {
   source: "ai" | "template";
+  /** Proveedor que redactó el texto cuando `source` es "ai". */
+  provider?: "anthropic" | "gemini";
 }
 
 function payloadRun(run: ExperimentalRun, investigations: ReadonlyMap<string, Investigation>): PayloadRun {

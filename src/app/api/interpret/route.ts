@@ -3,9 +3,11 @@ import {
   isInterpretation, parseInterpretRequest, templateInterpretation, validateNumbers,
   type InterpretRequest, type InterpretationResult,
 } from "../../../core/si-engine/interpret";
+import { resolveProvider, type ResolvedProvider } from "../../../lib/llm";
 
 // El modelo solo redacta: todo número del texto debe venir del payload. Ante cualquier
 // fallo (sin API key, timeout, JSON inválido, número desconocido) se responde con la plantilla.
+// El proveedor (Anthropic o Gemini) se elige con AI_PROVIDER; ver src/lib/llm/.
 
 const maxBodyBytes = 20_000;
 const timeoutMs = 10_000;
@@ -45,61 +47,38 @@ function invalid() {
   return NextResponse.json({ error: "Solicitud inválida." }, { status: 400 });
 }
 
-async function generate(request: InterpretRequest, apiKey: string): Promise<InterpretationResult | null> {
+async function generate(request: InterpretRequest, provider: ResolvedProvider): Promise<InterpretationResult | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
+    const text = await provider.call({
+      system: systemPrompt,
+      userContent: `kind: ${request.kind}\nmode: ${request.mode}\nlang: ${request.lang}\n<payload>\n${JSON.stringify(request.payload)}\n</payload>`,
+      schema: outputSchema,
+      model: provider.model,
+      apiKey: provider.apiKey,
       signal: controller.signal,
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: process.env.AI_MODEL || "claude-haiku-5-5",
-        max_tokens: 400,
-        thinking: { type: "disabled" },
-        output_config: { effort: "low", format: { type: "json_schema", schema: outputSchema } },
-        system: systemPrompt,
-        messages: [{
-          role: "user",
-          content: `kind: ${request.kind}\nmode: ${request.mode}\nlang: ${request.lang}\n<payload>\n${JSON.stringify(request.payload)}\n</payload>`,
-        }],
-      }),
     });
-    if (!response.ok) {
-      console.error(`[interpret] La API respondió ${response.status}`);
-      return null;
-    }
-
-    const message: unknown = await response.json();
-    if (typeof message !== "object" || message === null) return null;
-    const { stop_reason, content } = message as { stop_reason?: string; content?: { type: string; text?: string }[] };
-    if (stop_reason !== "end_turn") {
-      console.error(`[interpret] stop_reason: ${stop_reason}`);
-      return null;
-    }
-    const text = content?.find((block) => block.type === "text")?.text;
     if (!text) return null;
 
+    // Validación común a todos los proveedores.
     const parsed: unknown = JSON.parse(text);
     if (!isInterpretation(parsed)) return null;
     const result: InterpretationResult = {
       source: "ai",
+      provider: provider.id,
       paragraphs: parsed.paragraphs.slice(0, 2),
       caveats: parsed.caveats,
       fieldsUsed: parsed.fieldsUsed,
     };
     const check = validateNumbers([...result.paragraphs, ...result.caveats].join("\n"), request.payload);
     if (!check.ok) {
-      console.error(`[interpret] Números fuera del payload: ${check.unknown.join(", ")}`);
+      console.error(`[interpret] Números fuera del payload (${provider.id}): ${check.unknown.join(", ")}`);
       return null;
     }
     return result;
   } catch (error) {
-    console.error(`[interpret] ${error instanceof Error ? error.name : "Error"} al generar la interpretación`);
+    console.error(`[interpret] ${error instanceof Error ? error.name : "Error"} al generar la interpretación (${provider.id})`);
     return null;
   } finally {
     clearTimeout(timer);
@@ -119,9 +98,9 @@ export async function POST(httpRequest: Request) {
   const request = parseInterpretRequest(body);
   if (!request) return invalid();
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return template(request);
+  const provider = resolveProvider(process.env);
+  if (!provider) return template(request);
 
-  const result = await generate(request, apiKey);
+  const result = await generate(request, provider);
   return result ? NextResponse.json(result) : template(request);
 }

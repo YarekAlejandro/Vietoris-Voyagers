@@ -33,14 +33,20 @@ La búsqueda local usa un vocabulario de conceptos y sinónimos en español e in
 
 El comparador y cada corrida del ranking tienen un botón **Interpretar** que redacta un párrafo sobre la comparación A/B o sobre el puntaje FSRS. El modelo solo redacta: el motor local arma los datos y cada número del texto se comprueba contra ellos. Si falta la clave, la llamada falla, tarda más de 10 s o aparece un número que no está en los datos, se muestra un **Resumen automático** generado con plantillas.
 
-Copia `.env.example` a `.env.local` y define:
+El texto puede venir de Anthropic (Claude) o de Google (Gemini). Copia `.env.example` a `.env.local` y define:
 
 | Variable | Uso |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | Clave de la API de Anthropic. Sin ella, la app funciona con el resumen automático. |
-| `AI_MODEL` | Modelo opcional. Por defecto, `claude-haiku-5-5`. |
+| `AI_PROVIDER` | `anthropic` o `gemini`. Si se deja vacío, se usa Anthropic cuando hay `ANTHROPIC_API_KEY`, y si no, Gemini cuando hay `GEMINI_API_KEY`. |
+| `ANTHROPIC_API_KEY` | Clave de la API de Anthropic, en [console.anthropic.com](https://console.anthropic.com). |
+| `GEMINI_API_KEY` | Clave de la API de Gemini, en [Google AI Studio](https://aistudio.google.com). Funciona con el tier gratuito. |
+| `AI_MODEL` | Modelo opcional del proveedor elegido. Por defecto, `claude-haiku-5-5` o `gemini-3.5-flash-lite`. |
 
-En Vercel, define las mismas variables en *Settings → Environment Variables*.
+Sin ninguna clave, la app funciona con el resumen automático. En Vercel, define las mismas variables en *Settings → Environment Variables*.
+
+Sobre el tier gratuito de Gemini:
+- **Uso de datos:** Google puede usar el contenido para mejorar sus productos. La app solo manda datos públicos de NASA PSI (CC0), sin datos de usuarios.
+- **Límites:** tiene límites por minuto y por día, que se reinician a medianoche, hora del Pacífico. Si se agotan, Gemini responde 429 y se muestra el resumen automático. La caché evita repetir llamadas para la misma comparación.
 
 ## Próximos entregables
 
