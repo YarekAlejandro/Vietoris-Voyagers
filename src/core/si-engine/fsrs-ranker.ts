@@ -11,19 +11,26 @@ export function oxygenPartialPressure_psia(atmosphere: Atmosphere) {
   return atmosphere.pressure_psia * atmosphere.oxygen_pct / 100;
 }
 
-function atmosphereSimilarity(run: Atmosphere, target: Atmosphere, weights: EnvironmentPreset["distanceWeights"]) {
+function atmosphereSimilarity(record: ExperimentalRun, target: Atmosphere, weights: EnvironmentPreset["distanceWeights"]) {
+  const run = record.atmosphere;
+  const nominal = record.nominal?.fields ?? [];
+  const gravityWeight = nominal.includes("gravity_g") ? 0 : weights.gravity;
+  const oxygenWeight = nominal.includes("oxygen_pct") ? 0 : weights.oxygen;
+  const partialPressureWeight = nominal.includes("oxygen_pct") || nominal.includes("pressure_psia") ? 0 : weights.partialPressure;
+  const flowWeight = nominal.includes("flow_velocity_cm_s") ? 0 : weights.flow;
   const gravityLogDelta = Math.log10((run.gravity_g + gravityOffset_g) / (target.gravity_g + gravityOffset_g));
   const oxygenDelta_pct = run.oxygen_pct - target.oxygen_pct;
   const partialPressureDelta_psia = oxygenPartialPressure_psia(run) - oxygenPartialPressure_psia(target);
   const flowLogDelta = Math.log((run.flow_velocity_cm_s + flowOffset_cm_s) / (target.flow_velocity_cm_s + flowOffset_cm_s));
 
   const distanceSquared =
-    weights.gravity * (gravityLogDelta / gravityLogScale) ** 2 +
-    weights.oxygen * (oxygenDelta_pct / oxygenScale_pct) ** 2 +
-    weights.partialPressure * (partialPressureDelta_psia / partialPressureScale_psia) ** 2 +
-    weights.flow * (flowLogDelta / flowLogScale) ** 2;
+    gravityWeight * (gravityLogDelta / gravityLogScale) ** 2 +
+    oxygenWeight * (oxygenDelta_pct / oxygenScale_pct) ** 2 +
+    partialPressureWeight * (partialPressureDelta_psia / partialPressureScale_psia) ** 2 +
+    flowWeight * (flowLogDelta / flowLogScale) ** 2;
 
-  return Math.exp(-distanceSquared / 2);
+  const coverage = nominal.length ? gravityWeight + oxygenWeight + partialPressureWeight + flowWeight : 1;
+  return coverage * Math.exp(-distanceSquared / 2);
 }
 
 const dimensions = ["gravity_g", "oxygen_pct", "pressure_psia", "flow_velocity_cm_s"] as const;
@@ -37,7 +44,7 @@ export function rankRuns(
   target: Atmosphere,
 ) {
   const bounds = dimensions.map((axis) => {
-    const values = runs.map((run) => run.atmosphere[axis]);
+    const values = runs.filter((run) => !run.nominal?.fields.includes(axis)).map((run) => run.atmosphere[axis]);
     const value = target[axis];
     return {
       axis,
@@ -50,12 +57,12 @@ export function rankRuns(
   return runs.map((run) => {
     const runBounds: Bound[] = [];
     for (const { axis, low, high, exact } of bounds) {
-      if (exact) continue;
+      if (exact || run.nominal?.fields.includes(axis)) continue;
       if (run.atmosphere[axis] === low) runBounds.push({ axis, side: "inferior", outside: high === Infinity });
       if (run.atmosphere[axis] === high) runBounds.push({ axis, side: "superior", outside: low === -Infinity });
     }
 
-    const atmosphere = atmosphereSimilarity(run.atmosphere, target, profile.distanceWeights);
+    const atmosphere = atmosphereSimilarity(run, target, profile.distanceWeights);
     const fuelMatch = run.fuelCategory === profile.targetFuel;
     const pillarMatch = investigations.get(run.investigationId)?.safetyPillars.includes(profile.priority) ?? false;
     const { scoreWeights } = profile;

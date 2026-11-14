@@ -1,5 +1,6 @@
 import { ArrowLeftRight, ArrowRight, ExternalLink, FileText } from "lucide-react";
 import type { rankRuns } from "../../core/si-engine/fsrs-ranker";
+import { supplementalFields } from "../../core/si-engine/git-diff";
 import { studyBridges } from "../../core/si-engine/knowledge-graph";
 import type { EvidenceSearchResults } from "../../core/si-engine/semantic-search";
 import { atmosphereControls } from "../../data/mission_presets";
@@ -35,6 +36,10 @@ export function EvidenceInspector({ current, search, availableRuns, rankedRun }:
   const matchingRunCount = availableRuns.filter(({ investigationId }) => investigationId === study?.id).length;
   const studyHasRuns = study && psiDataset.runs.some(({ investigationId }) => investigationId === study.id);
   const evidenceTopicsForSelection = run ? topicsForRun(run) : study?.topics ?? [];
+  const extraReadouts = run ? supplementalFields.flatMap((field) => {
+    const value = run[field.id];
+    return value === undefined ? [] : [{ ...field, value: value.toFixed(field.decimals) }];
+  }) : [];
 
   return (
     <section className="panel inspector" aria-labelledby="inspector-title">
@@ -68,8 +73,15 @@ export function EvidenceInspector({ current, search, availableRuns, rankedRun }:
               <dl className="evidence-readouts">
                 {atmosphereControls.map(({ field, label, unit, decimals }) => <div key={field}>
                   <dt>{label}</dt><dd>{run.atmosphere[field].toFixed(field === "pressure_psia" ? 2 : decimals)} <small>{unit}</small></dd>
+                  {run.nominal?.fields.includes(field) && <small>Nominal</small>}
                 </div>)}
               </dl>
+              {run.nominal && <p>{run.nominal.basis}</p>}
+              {extraReadouts.length > 0 && <dl className="evidence-readouts">
+                {extraReadouts.map(({ id, label, value, unit }) => <div key={id}>
+                  <dt>{label}</dt><dd>{value} <small>{unit}</small></dd>
+                </div>)}
+              </dl>}
               {run.cabin_heat_added_kj !== undefined && <p className="observation"><strong>{run.cabin_heat_added_kj} kJ</strong> de calor añadido a cabina (estimación publicada).</p>}
               {run.steady_flame_length_cm !== undefined && <p className="observation"><strong>{run.steady_flame_length_cm} cm</strong> de longitud de llama estable.</p>}
             </>
@@ -93,6 +105,7 @@ export function EvidenceInspector({ current, search, availableRuns, rankedRun }:
           {rankedRun && mode === "engineer" && <div className="search-reason">
             <strong>FSRS · {rankedRun.score.toFixed(1)} / 100</strong>
             <p>Estima la relevancia para la atmósfera, el material y la prioridad del perfil de misión.</p>
+            {run?.nominal && <p>La similitud atmosférica se pondera según los datos reportados.</p>}
           </div>}
         </div>
       ) : (

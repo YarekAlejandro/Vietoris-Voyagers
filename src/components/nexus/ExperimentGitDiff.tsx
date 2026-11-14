@@ -6,7 +6,7 @@ import { useAetherStore } from "../../store/useAetherStore";
 function formatValue(value: number | string | undefined, decimals = 0, unit = "") {
   if (value === undefined) return "—";
   if (typeof value === "string") return value;
-  return `${value.toFixed(decimals)} ${unit}`;
+  return unit ? `${value.toFixed(decimals)} ${unit}` : value.toFixed(decimals);
 }
 
 export function ExperimentGitDiff() {
@@ -40,15 +40,15 @@ export function ExperimentGitDiff() {
           <table>
             <thead><tr><th scope="col">Variable</th><th scope="col">Corrida A</th><th scope="col">Corrida B</th><th scope="col">{mode === "engineer" ? "Δ B − A" : "Diferencia"}</th></tr></thead>
             <tbody>
-              {rows.map(({ field, valueA, valueB, status, delta, relativeDelta_pct }) => {
+              {rows.map(({ field, valueA, valueB, nominalA, nominalB, status, delta, relativeDelta_pct }) => {
                 const { decimals, unit } = "unit" in field ? field : { decimals: undefined, unit: undefined };
                 const deltaUnit = "deltaUnit" in field ? field.deltaUnit : unit;
                 return <tr key={field.id} data-status={status}>
                   <th scope="row">{field.label}</th>
-                  <td>{formatValue(valueA, decimals, unit)}</td>
-                  <td>{formatValue(valueB, decimals, unit)}</td>
+                  <td>{formatValue(valueA, decimals, unit)}{nominalA && <small>Nominal</small>}</td>
+                  <td>{formatValue(valueB, decimals, unit)}{nominalB && <small>Nominal</small>}</td>
                   <td>
-                    {delta === undefined ? { equal: "Igual", missing: "Sin dato", changed: "Cambió" }[status] : (
+                    {delta === undefined ? { equal: "Igual", missing: "Sin dato", changed: "Cambió", nominal: "Valor nominal" }[status] : (
                       <>{delta > 0 ? "+" : ""}{formatValue(delta, decimals, deltaUnit)}
                         {mode === "engineer" && relativeDelta_pct !== undefined && <small>{relativeDelta_pct > 0 ? "+" : ""}{relativeDelta_pct.toFixed(1)}% relativo</small>}
                       </>
@@ -59,6 +59,10 @@ export function ExperimentGitDiff() {
             </tbody>
           </table>
         </div>
+        {(a.nominal || b.nominal) && <div className="comparison-sources">
+          {a.nominal && <span>{a.nominal.basis === b.nominal?.basis ? "A/B" : "A"} · {a.nominal.basis}</span>}
+          {b.nominal && b.nominal.basis !== a.nominal?.basis && <span>B · {b.nominal.basis}</span>}
+        </div>}
         <div className="comparison-sources">
           {[a, b].map((run, index) => (
             <a key={index} href={run.source.url} target="_blank" rel="noreferrer"><strong>{`Fuente ${index === 0 ? "A" : "B"}`}</strong>{` · ${run.source.label} `}<ExternalLink size={11} aria-hidden /></a>

@@ -4,6 +4,16 @@ import { investigationsById, psiDataset, runsById } from "../../../data/psi";
 import { oxygenPartialPressure_psia, rankRuns } from "../fsrs-ranker";
 
 const iss = missionPresets[0];
+
+it("excluye del FSRS y las cotas las diferencias debidas a valores nominales", () => {
+  const run = runsById.get("SAME-1")!;
+  const editedNominal = { ...run, atmosphere: { ...run.atmosphere, oxygen_pct: 50, pressure_psia: 4.3 } };
+  const [original] = rankRuns([run], investigationsById, iss, iss.atmosphere);
+  const [edited] = rankRuns([editedNominal], investigationsById, iss, iss.atmosphere);
+  expect(edited.score).toBe(original.score);
+  expect(edited.bounds).toEqual(original.bounds);
+  expect(edited.bounds.every(({ axis }) => axis !== "oxygen_pct" && axis !== "pressure_psia")).toBe(true);
+});
 const saffireV = runsById.get("SAFFIRE-V-E6")!;
 const saffireVI = runsById.get("SAFFIRE-VI-E6")!;
 

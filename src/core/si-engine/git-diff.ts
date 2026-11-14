@@ -1,5 +1,17 @@
 import type { ExperimentalRun, Investigation } from "../../types/psi";
 
+export const supplementalFields = [
+  { id: "weight_loss_rate_mg_min", label: "Tasa de pérdida de masa", unit: "mg/min", decimals: 1 },
+  { id: "heater_resistance_ratio", label: "Resistencia relativa del calentador", unit: "Rt/R₀", decimals: 3 },
+  { id: "heating_duration_s", label: "Tiempo de calentamiento", unit: "s", decimals: 0 },
+  { id: "aging_time_s", label: "Envejecimiento del humo", unit: "s", decimals: 0 },
+  { id: "co2_pct", label: "Dióxido de carbono", unit: "% CO₂", deltaUnit: "pp", decimals: 1 },
+  { id: "initial_droplet_diameter_mm", label: "Diámetro inicial de gota", unit: "mm", decimals: 2 },
+  { id: "extinction_droplet_diameter_mm", label: "Diámetro al extinguirse la llama visible", unit: "mm", decimals: 2 },
+  { id: "burning_rate_mm2_s", label: "Tasa de quemado K", unit: "mm²/s", decimals: 2 },
+  { id: "burn_time_s", label: "Tiempo de quemado", unit: "s", decimals: 1 },
+] as const;
+
 export const diffFields = [
   { id: "facility", label: "Instalación" },
   { id: "fuel", label: "Material" },
@@ -14,6 +26,7 @@ export const diffFields = [
   { id: "outcome", label: "Resultado observado" },
   { id: "steady_flame_length_cm", label: "Longitud de llama estable", unit: "cm", decimals: 1 },
   { id: "cabin_heat_added_kj", label: "Calor añadido a cabina (estim.)", unit: "kJ", decimals: 0 },
+  ...supplementalFields,
 ] as const;
 
 export function compareRuns(
@@ -27,7 +40,11 @@ export function compareRuns(
   return diffFields.map((field) => {
     const valueA = left[field.id];
     const valueB = right[field.id];
-    const status = valueA === undefined || valueB === undefined ? "missing" : valueA === valueB ? "equal" : "changed";
+    const nominalA = a.nominal?.fields.some((axis) => axis === field.id) ?? false;
+    const nominalB = b.nominal?.fields.some((axis) => axis === field.id) ?? false;
+    const status = valueA === undefined || valueB === undefined ? "missing"
+      : nominalA || nominalB ? "nominal"
+        : valueA === valueB ? "equal" : "changed";
 
     let delta: number | undefined;
     let relativeDelta_pct: number | undefined;
@@ -36,6 +53,6 @@ export function compareRuns(
       relativeDelta_pct = valueA === 0 ? undefined : 100 * delta / Math.abs(valueA);
     }
 
-    return { field, valueA, valueB, status, delta, relativeDelta_pct };
+    return { field, valueA, valueB, nominalA, nominalB, status, delta, relativeDelta_pct };
   });
 }

@@ -43,11 +43,21 @@ export const evidenceTopics = {
   "electric-field": { label: "Campos eléctricos", aliases: [
     "campo eléctrico", "viento iónico", "electric field", "electric fields", "ionic wind", "electrohydrodynamics",
   ] },
+  "liquid-droplets": { label: "Combustión de gotas", aliases: [
+    "gotas líquidas", "gota líquida", "gotas", "gota", "droplet combustion", "liquid droplets", "droplets", "droplet",
+  ] },
+  suppression: { label: "Supresión con CO₂", aliases: [
+    "supresión", "supresor", "supresores", "supresión con CO2", "dióxido de carbono", "CO2", "suppression", "carbon dioxide",
+  ] },
 } satisfies Record<EvidenceTopicId, { label: string; aliases: string[] }>;
 
 export const searchMaterials = [
   { id: "pmma", label: "PMMA", aliases: ["acrílico", "acrylic", "polimetilmetacrilato", "polymethyl methacrylate"] },
   { id: "sibal", label: "SIBAL", aliases: ["algodón y fibra de vidrio", "cotton and fiberglass", "cotton fiberglass"] },
+  { id: "teflon", label: "Teflon", aliases: ["teflón", "PTFE", "politetrafluoroetileno"] },
+  { id: "heptano", label: "Heptano", aliases: ["heptane", "n-heptane", "n-heptano"] },
+  { id: "metanol", label: "Metanol", aliases: ["methanol", "alcohol metílico"] },
+  { id: "lampwick", label: "Lampwick", aliases: ["mecha de lámpara", "lamp wick"] },
 ] as const;
 
 export function topicsForRun(run: ExperimentalRun): readonly EvidenceTopicId[] {

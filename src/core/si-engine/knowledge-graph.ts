@@ -9,6 +9,18 @@ export const studyBridges = [
     citation: { label: "NASA NTRS · Particle and Smoke Detection on ISS", url: "https://ntrs.nasa.gov/citations/20070031686" },
   },
   {
+    source: "SAME", target: "SAME-R", relation: "precursor",
+    title: "SAME → SAME-R",
+    description: "SAME-R repitió y amplió SAME con otros materiales y condiciones de flujo.",
+    citation: { label: "NASA PSI-101 · SAME-R", url: "https://doi.org/10.60555/2np7-jv14" },
+  },
+  {
+    source: "FLEX", target: "FLEX-2", relation: "shared-apparatus",
+    title: "FLEX ↔ FLEX-2",
+    description: "Ambos estudios utilizaron el equipo MDCA del CIR para estudiar combustibles líquidos.",
+    citation: { label: "NASA Glenn · Operaciones del CIR", url: "https://gipoc.grc.nasa.gov/wp/fcf-cir/mdca/cfi/" },
+  },
+  {
     source: "FLEX", target: "CFI", relation: "shared-apparatus",
     title: "FLEX ↔ CFI",
     description: "Ambos utilizaron el Multi-user Droplet Combustion Apparatus (MDCA) en el CIR.",

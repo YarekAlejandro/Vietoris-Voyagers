@@ -107,7 +107,9 @@ export function RankedDatasetList({ studies, rankedRuns, search, current, view }
                 </button>
                 <meter aria-label={`FSRS de ${run.label}`} min={0} max={100} value={score} />
                 <div className="run-bottom">
-                  <span><FlaskConical size={11} aria-hidden /> {run.fuel} · {run.atmosphere.oxygen_pct.toFixed(1)}% O₂</span>
+                  <span><FlaskConical size={11} aria-hidden /> {run.fuel}
+                    {!run.nominal?.fields.includes("oxygen_pct") && ` · ${run.atmosphere.oxygen_pct.toFixed(1)}% O₂`}
+                  </span>
                   {bounds.length > 0 && <span className="bound-tag" title="Cota experimental por variable">Cota</span>}
                   <div className="run-actions">
                     <button type="button" aria-label={`Comparar ${run.label} en A`} aria-pressed={comparison.a === run.id} onClick={() => selectRun("a", run.id)}>+ A</button>

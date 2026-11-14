@@ -39,3 +39,8 @@ it("conserva consultas por códigos y evita propagar una coincidencia a otras co
   expect([...result.runs.keys()]).toEqual(["BASS-II-GMT175-T10"]);
   expect(runsById.get("BASS-II-GMT175-T10")?.outcome).toBe("Sin ignición");
 });
+
+it("recupera FLEX con HEPTANE y CO₂ y deja fuera corridas sin supresor", () => {
+  expect([...index.search("heptane CO₂").runs.keys()]).toEqual(["FLEX-C10H101"]);
+  expect([...index.search("PTFE humo").runs.keys()]).toEqual(["SAME-1", "SAME-3", "SAME-4"]);
+});

@@ -25,15 +25,15 @@ npm run typecheck
 npm run build
 ```
 
-La compilación genera el sitio estático en `out/` para Vercel. El catálogo incluye 11 estudios y 12 corridas normalizadas de BASS-II y Saffire. Las fichas bibliográficas amplían la exploración con fuentes de NASA y dejan visible qué estudios tienen datos listos para comparar.
+La compilación genera el sitio estático en `out/` para Vercel. El catálogo incluye 13 estudios y 23 corridas normalizadas de BASS-II, Saffire, SAME, SAME-R y FLEX. FLEX-2 se incluye como ficha bibliográfica. Prueba `PTFE humo` o `heptano CO₂` para encontrar corridas de detección y supresión.
 
-La búsqueda local usa un vocabulario de conceptos y sinónimos en español e inglés. Combina los conceptos de la consulta y muestra por qué aparece cada resultado. La relevancia de búsqueda se calcula por separado del FSRS, que estima pertinencia para el escenario elegido. La vista **Condiciones** muestra observaciones registradas. La gravedad orbital se representa como 0 g en el catálogo inicial.
+La búsqueda local usa un vocabulario de conceptos y sinónimos en español e inglés. Combina los conceptos de la consulta y muestra por qué aparece cada resultado. El FSRS estima la pertinencia para el escenario elegido y pondera la similitud atmosférica según los campos reportados. Las fichas y el comparador identifican el O₂ y la presión nominales de SAME y SAME-R y el flujo nominal de FLEX. La vista **Condiciones** requiere O₂ y flujo reportados para dibujar una corrida. La gravedad orbital se representa como 0 g en el catálogo inicial.
 
 ## Próximos entregables
 
 | Prioridad | Entregable | Criterio de aceptación |
 | --- | --- | --- |
-| 1 | Evidencia trazable y búsqueda evaluada | Normalizar corridas de CFI, FLEX, SAME, DAFT, BRE y E-FIELD según la disponibilidad de tablas citables. Registrar unidades, localizador de fuente y tipo de resultado por variable. Mantener un conjunto bilingüe de consultas con coincidencias esperadas y consultas fuera de cobertura. |
+| 1 | Evidencia trazable y búsqueda evaluada | Normalizar corridas de CFI, FLEX-2, DAFT, BRE y E-FIELD según la disponibilidad de tablas citables. Registrar unidades, localizador de fuente y tipo de resultado por variable. Mantener un conjunto bilingüe de consultas con coincidencias esperadas y consultas fuera de cobertura. |
 | 2 | GravityBridge y mapa de fases | Incorporar controles de gravedad y referencias comparables. Publicar intervalos y procedencia de las estimaciones y marcar escenarios sin cobertura antes de mostrar transiciones de régimen. |
 | 3 | Matriz de seguridad y exportación | Enlazar prevención, detección y supresión con la evidencia que sustenta cada conclusión. Exportar corridas filtradas con unidades y referencias para que otra persona pueda reproducir la comparación. |
 | 4 | Publicación reproducible | Conectar el proyecto de Vercel al repositorio y ejecutar pruebas, tipado y compilación en cada actualización de la rama de producción. |

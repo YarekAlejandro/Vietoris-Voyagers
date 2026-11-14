@@ -21,9 +21,9 @@ it("vincula cada estudio con su instalación y mantiene el grafo cerrado", () =>
 it("filtra por tema y conserva el vínculo documentado entre estudios pertinentes", () => {
   const graph = buildKnowledgeGraph(investigations, runs, { topic: "smoke-detection" });
   const studies = graph.nodes.filter(({ kind }) => kind === "study").map(({ entityId }) => entityId);
-  expect(studies.sort()).toEqual(["DAFT", "SAME"]);
+  expect(studies.sort()).toEqual(["DAFT", "SAME", "SAME-R"]);
   expect(graph.nodes.filter(({ kind }) => kind === "topic").map(({ entityId }) => entityId)).toEqual(["smoke-detection"]);
-  expect(graph.edges.filter(({ relation }) => relation === "precursor")).toHaveLength(1);
+  expect(graph.edges).toContainEqual(expect.objectContaining({ source: "study:SAME", target: "study:SAME-R", relation: "precursor" }));
 });
 
 it("muestra únicamente corridas disponibles de la investigación seleccionada", () => {

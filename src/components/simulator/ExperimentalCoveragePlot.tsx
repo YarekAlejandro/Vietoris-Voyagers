@@ -15,26 +15,29 @@ export function ExperimentalCoveragePlot({ runs, current }: {
   const comparison = useAetherStore((state) => state.comparison);
   const inspect = useAetherStore((state) => state.inspect);
   const [hovered, setHovered] = useState<string | null>(null);
-  const oxygenMax_pct = Math.min(100, Math.ceil(Math.max(31, atmosphere.oxygen_pct, ...runs.map((run) => run.atmosphere.oxygen_pct)) / 5) * 5);
-  const flowMax_cm_s = Math.ceil(Math.max(50, ...runs.map((run) => run.atmosphere.flow_velocity_cm_s)) / 10) * 10;
-  const oxygenMin_pct = Math.min(15, ...runs.map((run) => run.atmosphere.oxygen_pct));
+  const plottedRuns = runs.filter(({ nominal }) => !nominal?.fields.some((field) =>
+    field === "oxygen_pct" || field === "flow_velocity_cm_s"));
+  const omittedCount = runs.length - plottedRuns.length;
+  const oxygenMax_pct = Math.min(100, Math.ceil(Math.max(31, atmosphere.oxygen_pct, ...plottedRuns.map((run) => run.atmosphere.oxygen_pct)) / 5) * 5);
+  const flowMax_cm_s = Math.ceil(Math.max(50, ...plottedRuns.map((run) => run.atmosphere.flow_velocity_cm_s)) / 10) * 10;
+  const oxygenMin_pct = Math.min(15, ...plottedRuns.map((run) => run.atmosphere.oxygen_pct));
   const toX = (flow_cm_s: number) => xPx.start + flow_cm_s / flowMax_cm_s * (xPx.end - xPx.start);
   const toY = (oxygen_pct: number) => yPx.bottom - (oxygen_pct - oxygenMin_pct) / (oxygenMax_pct - oxygenMin_pct) * (yPx.bottom - yPx.top);
   const targetX_px = toX(atmosphere.flow_velocity_cm_s);
   const targetY_px = toY(atmosphere.oxygen_pct);
-  const focused = runs.find(({ id }) => id === (hovered ?? (current?.kind === "run" ? current.id : undefined)));
+  const focused = plottedRuns.find(({ id }) => id === (hovered ?? (current?.kind === "run" ? current.id : undefined)));
   const visibleOxygenTicks = oxygenTicks_pct.filter((tick) => tick <= oxygenMax_pct && (oxygenMax_pct <= 50 || tick === 15 || tick >= 25 && tick % 25 === 0));
 
   const points = new Map<string, ExperimentalRun[]>();
-  for (const run of runs) {
+  for (const run of plottedRuns) {
     const key = `${run.atmosphere.flow_velocity_cm_s}:${run.atmosphere.oxygen_pct}`;
     const group = points.get(key) ?? [];
     group.push(run);
     points.set(key, group);
   }
 
-  function showValues(point: Atmosphere) {
-    return `${point.flow_velocity_cm_s.toFixed(1)} cm/s · ${point.oxygen_pct.toFixed(1)}% O₂ · ${point.pressure_psia.toFixed(2)} psia`;
+  function showValues(point: Atmosphere, nominalPressure = false) {
+    return `${point.flow_velocity_cm_s.toFixed(1)} cm/s · ${point.oxygen_pct.toFixed(1)}% O₂ · ${point.pressure_psia.toFixed(2)} psia${nominalPressure ? " (nominal)" : ""}`;
   }
 
   return (
@@ -70,7 +73,7 @@ export function ExperimentalCoveragePlot({ runs, current }: {
 
           return <g key={hit.atmosphere.flow_velocity_cm_s + ":" + hit.atmosphere.oxygen_pct}
             role="button" tabIndex={0} className={`coverage-point${isFocused ? " coverage-point-active" : ""}`}
-            aria-label={`${group.map(({ label }) => label).join(", ")}. ${showValues(hit.atmosphere)}`}
+            aria-label={`${group.map(({ label }) => label).join(", ")}. ${showValues(hit.atmosphere, hit.nominal?.fields.includes("pressure_psia"))}`}
             aria-pressed={group.some(({ id }) => current?.kind === "run" && current.id === id)}
             onMouseEnter={() => setHovered(hit.id)} onMouseLeave={() => setHovered(null)}
             onFocus={() => setHovered(hit.id)} onBlur={() => setHovered(null)}
@@ -89,9 +92,12 @@ export function ExperimentalCoveragePlot({ runs, current }: {
         </g>
       </svg>
       <div className="coverage-caption" aria-live="polite">
-        {focused ? <><strong>{focused.label}</strong> <span>{showValues(focused.atmosphere)}</span></> :
+        {focused ? <><strong>{focused.label}</strong> <span>{showValues(focused.atmosphere, focused.nominal?.fields.includes("pressure_psia"))}</span></> :
           <><strong>Escenario de misión</strong> <span>{showValues(atmosphere)}</span></>}
       </div>
+      {omittedCount > 0 && <p className="coverage-caption">
+        {`${omittedCount} ${omittedCount === 1 ? "corrida fuera del gráfico por usar" : "corridas fuera del gráfico por usar"} O₂ o flujo nominal.`}
+      </p>}
     </div>
   );
 }

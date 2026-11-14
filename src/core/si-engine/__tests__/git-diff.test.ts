@@ -2,6 +2,14 @@ import { expect, it } from "vitest";
 import { investigationsById, runsById } from "../../../data/psi";
 import { compareRuns } from "../git-diff";
 
+it("compara valores reportados de FLEX y no calcula deltas para el flujo nominal", () => {
+  const rows = compareRuns(runsById.get("FLEX-40CAL01")!, runsById.get("FLEX-C10H101")!, investigationsById);
+  expect(rows.find(({ field }) => field.id === "co2_pct")).toMatchObject({ status: "changed", delta: 30 });
+  expect(rows.find(({ field }) => field.id === "flow_velocity_cm_s")).toMatchObject({
+    status: "nominal", nominalA: true, nominalB: true, delta: undefined,
+  });
+});
+
 const saffireV = runsById.get("SAFFIRE-V-E6")!;
 const saffireVI = runsById.get("SAFFIRE-VI-E6")!;
 
