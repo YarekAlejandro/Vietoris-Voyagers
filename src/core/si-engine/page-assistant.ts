@@ -58,13 +58,19 @@ function findMentions<T>(question: string, records: readonly T[], aliases: (reco
     if (!alias) return [];
     const term = normalize(alias);
     if (!term) return [];
-    const start = sentence.indexOf(` ${term} `);
-    return start === -1 ? [] : [{ record, start, end: start + term.length }];
+    const matches = [];
+    for (let start = sentence.indexOf(` ${term} `); start !== -1; start = sentence.indexOf(` ${term} `, start + 1)) {
+      matches.push({ record, start, end: start + term.length });
+    }
+    return matches;
   })).sort((a, b) => a.start - b.start || b.end - a.end);
 
-  return candidates.filter((candidate, index) => !candidates.slice(0, index).some((earlier) =>
-    earlier.record === candidate.record || (earlier.start <= candidate.start && earlier.end >= candidate.end),
-  )).map(({ record }) => record);
+  const accepted: typeof candidates = [];
+  for (const candidate of candidates) {
+    if (!accepted.some((earlier) => earlier.record === candidate.record ||
+      (earlier.start <= candidate.start && earlier.end >= candidate.end))) accepted.push(candidate);
+  }
+  return accepted.map(({ record }) => record);
 }
 
 function studyAliases(study: Investigation) {
@@ -180,6 +186,67 @@ function answerComparison(runs: readonly ExperimentalRun[], context: PageAssista
   };
 }
 
+function compareExperiments(question: string, namedRuns: ExperimentalRun[], namedStudies: Investigation[], context: PageAssistantContext, interpret: boolean): PageAssistantAnswer {
+  const studyById = new Map(context.studies.map((study) => [study.id, study]));
+  const ranked = rankRuns(context.runs.filter((run) => !run.reference && !run.psiProfile), studyById, context.profile, context.atmosphere);
+  const representative = new Map<string, ExperimentalRun>();
+  for (const { run } of ranked) if (!representative.has(run.investigationId)) representative.set(run.investigationId, run);
+
+  const chosen: (ExperimentalRun | Investigation)[] = [...namedRuns];
+  const includedStudies = new Set(namedRuns.map(({ investigationId }) => investigationId));
+  function addStudy(study: Investigation) {
+    if (includedStudies.has(study.id)) return;
+    includedStudies.add(study.id);
+    chosen.push(representative.get(study.id) ?? study);
+  }
+  namedStudies.forEach(addStudy);
+
+  const quantity = question.match(/\b([2-9]|dos|tres|cuatro|cinco|seis|siete|ocho|nueve)\s+(?:experimentos?|estudios?|corridas?)\b/)?.[1];
+  const words = ["dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve"];
+  const requested = quantity ? (Number(quantity) || words.indexOf(quantity) + 2) : 2;
+  const count = Math.min(6, Math.max(requested, chosen.length));
+  const hits = context.search(question.replace(/\b(?:compara\w*|contrasta\w*|diferencias?|experimentos?|estudios?|corridas?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|[2-9])\b/g, " "));
+  const anchor = [...includedStudies].map((id) => studyById.get(id)).find(Boolean);
+  const related = [...studyById.values()].filter((study) => hits.studies.size
+    ? hits.studies.has(study.id) || Boolean(anchor?.topics.some((topic) => study.topics.includes(topic)))
+    : representative.has(study.id)).sort((a, b) => {
+    const score = (study: Investigation) => (hits.studies.get(study.id)?.score ?? 0) +
+      (anchor ? study.topics.filter((topic) => anchor.topics.includes(topic)).length : 0);
+    return score(b) - score(a);
+  });
+  for (const study of related) {
+    if (chosen.length >= count) break;
+    addStudy(study);
+  }
+
+  const compared = chosen.slice(0, count);
+  if (compared.length < 2) {
+    return { text: compared.length ? "Encontré un solo registro pertinente. Hace falta otro para comparar este tema."
+      : "No encontré registros pertinentes para comparar ese tema.",
+      pointers: compared.map((item) => evidencePointer(item)) };
+  }
+  const [baseline, ...others] = compared;
+  const shortage = compared.length < count ? ` Encontré ${compared.length} registros pertinentes para esta comparación.` : "";
+  if (others.length === 1 && "investigationId" in baseline && "investigationId" in others[0]) {
+    const pair = answerComparison([baseline, others[0]], context, interpret);
+    return { ...pair, text: pair.text + shortage };
+  }
+  const pairPointers: AssistantPointer[] = [];
+  const comparisons = others.map((item) => {
+    if ("investigationId" in baseline && "investigationId" in item) {
+      const pair = answerComparison([baseline, item], context, false);
+      pairPointers.push({ ...pair.pointers[0], label: `Comparar ${baseline.label} con ${item.label}` });
+      return pair.text;
+    }
+    const describe = (record: ExperimentalRun | Investigation) => "investigationId" in record
+      ? `${record.label}. ${record.outcome ?? record.configuration ?? "Corrida documentada."}` : `${record.id}. ${record.summary}`;
+    return `${describe(baseline)} frente a ${describe(item)}. La comparación disponible es descriptiva.`;
+  });
+  const lead = compared.length > 2 ? `Comparé ${compared.length} registros tomando ${"investigationId" in baseline ? baseline.label : baseline.id} como referencia.`
+    : "Comparé el objetivo y los datos disponibles de ambos estudios.";
+  return { text: [lead + shortage, ...comparisons].join("\n\n"), pointers: [...pairPointers, ...compared.map((item) => evidencePointer(item))] };
+}
+
 export function answerPageQuestion(question: string, context: PageAssistantContext): PageAssistantAnswer {
   const normalized = normalize(question);
   const runs = findMentions(normalized, context.runs, (run) => [run.id, run.label]);
@@ -201,7 +268,10 @@ export function answerPageQuestion(question: string, context: PageAssistantConte
     text: `No encontré ${unmatchedId} en el catálogo. Puedes comprobar el identificador con la búsqueda semántica.`, pointers: [searchPointer],
   };
 
-  if (isAssistantHistoryQuestion(question)) {
+  const comparisonAsked = /\b(?:interpretar|interpretacion|interpreta|comparar|comparame|compara|comparacion|contrasta|contrastar|git diff|entre a y b|a b)\b/.test(normalized) ||
+    Boolean(explicit && /\b(?:diferencias?|cambios? entre)\b/.test(normalized));
+
+  if (!comparisonAsked && isAssistantHistoryQuestion(question)) {
     const contextual = /^(?:y )?(?:cuando|en que fecha)(?: (?:fue|ocurrio|se hizo|se realizo|se publico))?$/.test(normalized) ||
       /\b(?:este estudio|esta mision|este experimento|su fecha|su lanzamiento|el reingreso)\b/.test(normalized);
     const study = explicitStudy ?? (contextual ? selectedStudy : undefined);
@@ -212,13 +282,10 @@ export function answerPageQuestion(question: string, context: PageAssistantConte
     }
   }
 
-  if (/\b(?:interpretar|interpretacion|interpreta|comparar|comparame|compara|comparacion|git diff|entre a y b|a b)\b/.test(normalized) ||
-    (explicit && /\b(?:diferencias?|cambios? entre)\b/.test(normalized))) {
+  if (comparisonAsked) {
     const interpret = /\binterpret\w*\b/.test(normalized);
-    if (runs.length > 2 || (explicit && runs.length !== 2)) return {
-      text: "Indica los nombres o identificadores de dos corridas para compararlas.", pointers: [comparisonPointer, catalogPointer],
-    };
-    return answerComparison(runs, context, interpret);
+    if (!explicit && (interpret || /\b(?:entre a y b|a b|git diff)\b/.test(normalized))) return answerComparison([], context, interpret);
+    return compareExperiments(normalized, runs, studies, context, interpret);
   }
 
   if (/\b(?:escena|3d|webgl|montaje 3d)\b/.test(normalized)) {

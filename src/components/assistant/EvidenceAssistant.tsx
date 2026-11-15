@@ -108,6 +108,7 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
   const [restored, setRestored] = useState(false);
   const [animatedTurn, setAnimatedTurn] = useState<number | null>(null);
   const [voiceOn, setVoiceOn] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("");
   const voiceActive = useRef(false);
   const audioContext = useRef<AudioContext | null>(null);
   const speechSource = useRef<AudioBufferSourceNode | null>(null);
@@ -131,16 +132,19 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
     const source = speechSource.current;
     speechSource.current = null;
     source?.stop();
+    setVoiceStatus("");
   }
 
   async function speak(answer: PageAssistantAnswer) {
-    const repeatedError = answer === unavailable && previousError.current;
-    previousError.current = answer === unavailable;
+    const failed = answer === unavailable || answer.unanswered === true;
+    const repeatedError = failed && previousError.current;
+    previousError.current = failed;
     const context = audioContext.current;
     if (!voiceActive.current || !context || repeatedError) return;
     stopVoice();
     const controller = new AbortController();
     speechRequest.current = controller;
+    setVoiceStatus("Preparando la voz");
     try {
       const response = await fetch("/api/assistant/speech", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -154,12 +158,16 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
       source.connect(context.destination);
       source.onended = () => {
         source.disconnect();
-        if (speechSource.current === source) speechSource.current = null;
+        if (speechSource.current === source) {
+          speechSource.current = null;
+          setVoiceStatus("");
+        }
       };
       source.start();
       speechSource.current = source;
+      setVoiceStatus("Leyendo respuesta");
     } catch {
-      // La lectura es opcional y la respuesta escrita ya está disponible.
+      if (!controller.signal.aborted) setVoiceStatus("Voz no disponible");
     }
   }
 
@@ -272,9 +280,11 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
           <span className={styles.emblem}><MessageCircleQuestion size={18} aria-hidden="true" /></span>
           <h2 id={titleId}>Asistente de AETHER-SI</h2>
           {speechEnabled && <button type="button" role="switch" aria-checked={voiceOn} aria-label="Voz automática"
-            className={styles.voiceSwitch} onClick={toggleVoice}>
+            className={styles.voiceSwitch} onClick={toggleVoice} data-speaking={voiceStatus === "Leyendo respuesta"}
+            title={voiceStatus || "Voz automática"}>
             <Volume2 size={14} aria-hidden="true" /> Voz <span aria-hidden="true" />
           </button>}
+          {speechEnabled && <span className="sr-only" role="status">{voiceStatus}</span>}
           {turns.length > 0 && <button
             type="button"
             className={styles.iconButton}

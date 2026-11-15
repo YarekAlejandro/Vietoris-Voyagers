@@ -2,6 +2,30 @@ import { describe, expect, it } from "vitest";
 import { assistantFactsForModel, buildAssistantGrounding, validateAssistantGroundedAnswer } from "../assistant-grounding";
 
 describe("respuestas del asistente con evidencia", () => {
+  it("elige estudios de humo, incluido uno con evidencia descriptiva", () => {
+    const facts = buildAssistantGrounding({ question: "Compara tres experimentos de detección de humo" });
+    expect(facts.some(({ id }) => id === "study:DAFT")).toBe(true);
+    expect(facts.some(({ id }) => id.startsWith("run:SAME-"))).toBe(true);
+    expect(facts.some(({ id }) => id.startsWith("run:SAME-R-"))).toBe(true);
+  });
+  it("prepara dos pares con la misma referencia para tres corridas", () => {
+    const facts = buildAssistantGrounding({ question: "Compara SAFFIRE-V-E6, SAFFIRE-VI-E6 y SAFFIRE-VI-E8" });
+    const pairs = facts.flatMap(({ pointer }) => pointer?.comparison ? [pointer.comparison] : []);
+    expect(pairs).toHaveLength(2);
+    expect(pairs[0].a).toBe(pairs[1].a);
+    expect(new Set(pairs.flatMap(({ a, b }) => [a, b])).size).toBe(3);
+  });
+  it("distingue un nombre corto cuando también aparece como prefijo de otro", () => {
+    const facts = buildAssistantGrounding({ question: "Compara SAME-R y SAME" });
+    const pair = facts.find(({ pointer }) => pointer?.comparison)?.pointer?.comparison;
+    expect(pair?.a).toMatch(/^SAME-R-/);
+    expect(pair?.b).toMatch(/^SAME-\d/);
+  });
+  it("elige un segundo experimento cuando la pregunta identifica solo uno", () => {
+    const facts = buildAssistantGrounding({ question: "Compara FLEX con otro experimento" });
+    expect(facts.some(({ id }) => id === "study:FLEX")).toBe(true);
+    expect(facts.some(({ id }) => id.startsWith("study:") && id !== "study:FLEX")).toBe(true);
+  });
   it("distingue las fechas de ensayo y cierre de Saffire VI y devuelve sus fuentes", () => {
     const facts = buildAssistantGrounding({ question: "Explica lo que fue SAFFIRE-VI. ¿En qué fecha ocurrió?" });
     const experiment = facts.find(({ milestone, dates }) => milestone === "experiment" && dates?.includes("2023-12-22"));

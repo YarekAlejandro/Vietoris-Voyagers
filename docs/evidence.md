@@ -44,4 +44,6 @@ Con `GEMINI_API_KEY` o `ANTHROPIC_API_KEY`, el asistente puede redactar respuest
 
 `AI_PROVIDER=gemini` elige Gemini y `AI_PROVIDER=anthropic` o `claude` elige Claude. Si solo hay una clave, se puede omitir `AI_PROVIDER`. Las claves se configuran en el servidor antes de compilar. El motor local también responde cuando falta una clave, el proveedor falla o la respuesta sale de la evidencia disponible.
 
-Con `ELEVENLABS_API_KEY` y `ELEVENLABS_VOICE_ID` configurados en el servidor, cada mensaje del asistente ofrece **Escuchar respuesta**. ElevenLabs recibe el texto de esa respuesta cuando se solicita el audio. El chat muestra el texto de forma progresiva y respeta la preferencia de movimiento reducido del navegador.
+Con `ELEVENLABS_API_KEY` y `ELEVENLABS_VOICE_ID` configurados en el servidor, el interruptor **Voz** activa la lectura de las respuestas nuevas. El chat escribe de forma progresiva y el puntero señala el destino después de una pausa. Las animaciones respetan la preferencia de movimiento reducido.
+
+El asistente puede elegir corridas para comparar a partir de un tema o de los experimentos que menciones. Para las comparaciones con más de dos corridas usa una referencia común y enlaza cada par a la tabla A/B.

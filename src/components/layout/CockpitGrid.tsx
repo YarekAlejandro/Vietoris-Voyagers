@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TopNavbar } from "./TopNavbar";
 import { RankedDatasetList } from "../sidebar/RankedDatasetList";
 import { EvidenceSearch } from "../sidebar/EvidenceSearch";
@@ -54,6 +54,8 @@ async function requestAssistantAnswer(input: AssistantGroundingInput): Promise<P
 export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAiEnabled: boolean; speechEnabled: boolean }) {
   const [expandedPanel, setExpandedPanel] = useState<"graph" | "comparison" | null>(null);
   const [spotlight, setSpotlight] = useState<SpotlightRequest | null>(null);
+  const pointingTimer = useRef<number>(0);
+  useEffect(() => () => window.clearTimeout(pointingTimer.current), []);
   const [assistantSide, setAssistantSide] = useState<"left" | "right">("right");
   const toggleGraph = useCallback(() => setExpandedPanel((panel) => panel === "graph" ? null : "graph"), []);
   const toggleComparison = useCallback(() => setExpandedPanel((panel) => panel === "comparison" ? null : "comparison"), []);
@@ -146,8 +148,7 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
     const visible = !requested || (requested.kind === "run" ? availableRunIds.has(requested.id) : visibleStudyIds.has(requested.id));
 
     if (!navigate && (!visible || (expandedPanel && expandedPanel !== panel) ||
-      (profileId && profileId !== state.profile.id) ||
-      (comparison && (comparison.a !== state.comparison.a || comparison.b !== state.comparison.b)))) {
+      (profileId && profileId !== state.profile.id))) {
       setSpotlight(null);
       return;
     }
@@ -182,7 +183,18 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
     });
   }
 
+  function schedulePoint(pointer: AssistantPointer, navigate: boolean, stillRelevant = () => true) {
+    window.clearTimeout(pointingTimer.current);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const delay = reduced ? 0 : navigate ? 420 : 950;
+    pointingTimer.current = window.setTimeout(() => {
+      if (stillRelevant()) pointTo(pointer, navigate);
+    }, delay);
+  }
+
   function askAssistant(question: string, { history, previousSelection }: AssistantConversationContext) {
+    window.clearTimeout(pointingTimer.current);
+    setSpotlight(null);
     const areaStudyIds = new Set(areaStudies.map(({ id }) => id));
     const stateAtQuestion = useAetherStore.getState();
     const context: PageAssistantContext = {
@@ -192,6 +204,7 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
     };
     const local = answerPageQuestion(question, context);
     const localPointer = local.pointers[0];
+    const pairs = local.pointers.filter(({ comparison }) => comparison);
     const directControl = localPointer?.target === "scene" || localPointer?.target === "atmosphere" ||
       (localPointer?.target === "graph" && Boolean(localPointer.selection));
     if (assistantAiEnabled && navigator.onLine && !directControl) {
@@ -206,12 +219,20 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
           answer.pointers[0]?.selection?.id === localPointer.selection?.id;
         const result: PageAssistantAnswer = !answer ? { ...local, origin: "local" }
           : exactReadout ? { ...answer, pointers: [localPointer, ...answer.pointers.slice(1)] } : answer;
-        if (isSameView && result.pointers[0] && !result.unanswered) pointTo(result.pointers[0], false);
+        if (answer && pairs.length) result.pointers = [...pairs, ...answer.pointers.filter(({ comparison }) => !comparison)];
+        if (isSameView && result.pointers[0] && !result.unanswered) schedulePoint(result.pointers[0], false, () => {
+          const currentState = useAetherStore.getState();
+          return currentState.selection === latest.selection && currentState.query === latest.query &&
+            currentState.comparison === latest.comparison && currentState.inspectorView === latest.inspectorView;
+        });
         return result;
       });
     }
-    if (localPointer && !local.unanswered) pointTo(localPointer, false);
-    else setSpotlight(null);
+    if (localPointer && !local.unanswered) schedulePoint(localPointer, false, () => {
+      const currentState = useAetherStore.getState();
+      return currentState.selection === stateAtQuestion.selection && currentState.query === stateAtQuestion.query &&
+        currentState.inspectorView === stateAtQuestion.inspectorView;
+    });
     return local;
   }
 
@@ -234,7 +255,7 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
         </main>
       </div>
       <AssistantSpotlight request={spotlight} />
-      <EvidenceAssistant onAsk={askAssistant} onNavigate={(pointer) => pointTo(pointer, true)} side={assistantSide} speechEnabled={speechEnabled} />
+      <EvidenceAssistant onAsk={askAssistant} onNavigate={(pointer) => schedulePoint(pointer, true)} side={assistantSide} speechEnabled={speechEnabled} />
     </>
   );
 }

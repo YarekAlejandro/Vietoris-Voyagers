@@ -125,7 +125,7 @@ function runFact(run: ExperimentalRun, pointer?: AssistantPointer): GroundingFac
   } };
 }
 
-function comparisonFact(comparison: NonNullable<AssistantPointer["comparison"]>): GroundingFact | null {
+function comparisonFact(comparison: NonNullable<AssistantPointer["comparison"]>, index: number): GroundingFact | null {
   const a = runsById.get(comparison.a);
   const b = runsById.get(comparison.b);
   if (!a || !b) return null;
@@ -134,7 +134,7 @@ function comparisonFact(comparison: NonNullable<AssistantPointer["comparison"]>)
   const deltas = rows.flatMap(({ field, delta }) => delta === undefined || !("unit" in field) ? [] :
     [`${field.label}: ${delta.toFixed(field.decimals)} ${"deltaUnit" in field ? field.deltaUnit : field.unit}`]);
   const conclusion = drivers.confounded ? "Cambiaron varias condiciones a la vez. La diferencia no puede atribuirse a una sola variable." : "";
-  return { id: "comparison:active", text: [`Comparación de A (${a.label}) y B (${b.label})`,
+  return { id: index === 0 ? "comparison:active" : `comparison:${index + 1}`, text: [`Comparación de A (${a.label}) y B (${b.label})`,
     `Condiciones distintas: ${drivers.changedVariables.join(", ") || "ninguna con diferencia reportada"}`,
     `Diferencias B menos A: ${deltas.join(" · ") || "sin diferencias cuantificadas"}`, conclusion].filter(Boolean).join(". "),
   citations: [a.source, b.source], confounded: drivers.confounded, pointer: { label: guide.comparison[0], target: "comparison", comparison } };
@@ -156,7 +156,8 @@ export function buildAssistantGrounding(input: AssistantGroundingInput) {
   const pointerForRun = new Map(local.pointers.flatMap((pointer) => pointer.selection?.kind === "run" ? [[pointer.selection.id, pointer] as const] : []));
   const candidates = [...exact, ...previous, ...local.pointers.flatMap(({ selection }) => selection ? [selection] : [])];
   if (!candidates.length && refersBack && input.selection) candidates.push(input.selection);
-  for (const selection of [...new Map(candidates.map((item) => [item.id, item])).values()].slice(0, 4)) {
+  const comparisons = local.pointers.flatMap(({ comparison }) => comparison ? [comparison] : []);
+  for (const selection of [...new Map(candidates.map((item) => [item.id, item])).values()].slice(0, comparisons.length ? 12 : 6)) {
     const run = selection.kind === "run" ? runsById.get(selection.id) : undefined;
     const study = studiesById.get(run?.investigationId ?? selection.id);
     if (run) add(runFact(run, pointerForRun.get(run.id)));
@@ -167,9 +168,18 @@ export function buildAssistantGrounding(input: AssistantGroundingInput) {
     }
   }
 
-  const comparison = local.pointers.find((pointer) => pointer.comparison)?.comparison;
-  const diff = comparison && comparisonFact(comparison);
-  if (diff) add(diff);
+  comparisons.forEach((comparison, index) => {
+    const diff = comparisonFact(comparison, index);
+    if (diff) add(diff);
+  });
+  if (comparisons.length) {
+    for (const pointer of local.pointers) {
+      if (pointer.selection?.kind !== "study") continue;
+      const study = studiesById.get(pointer.selection.id);
+      if (study) add({ id: `comparison:descriptive:${study.id}`,
+        text: `${study.id}. Comparación descriptiva: ${study.summary}`, source: study.source, pointer });
+    }
+  }
   const contextual = local.pointers.find(({ target }) => target === "coverage" || target === "catalog" || target === "atmosphere" || target === "scene");
   if (contextual && !local.unanswered) add({ id: `answer:${contextual.target}`, text: local.text, pointer: contextual });
   if (contextual?.target === "atmosphere") add({ id: "scenario:active", text: `${profile.name}. ${atmosphereControls.map(({ field, label, decimals, unit }) =>
@@ -278,6 +288,8 @@ export function validateAssistantGroundedAnswer(output: unknown, facts: readonly
   }
 
   const citedFacts = [...cited.values()];
+  const preparedPairs = facts.filter(({ id }) => id.startsWith("comparison:"));
+  if (preparedPairs.length > 1 && preparedPairs.some(({ id }) => !cited.has(id))) return null;
   const requested = citedFacts.map((fact) => pointedFact(fact, target)).filter((pointer): pointer is AssistantPointer => !!pointer);
   const pointers = requested.length ? requested : citedFacts.flatMap(({ pointer }) => pointer?.selection ? [pointer] : []);
   const sources = new Map(citedFacts.flatMap(({ source, citations }) =>

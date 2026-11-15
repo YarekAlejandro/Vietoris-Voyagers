@@ -627,13 +627,16 @@ body:has(.cockpit-grid > .panel[data-expanded="true"]) { overflow: hidden; }
 .assistant-spotlight {
   position: absolute;
   inset: 0 auto auto 0;
-  transition: transform 350ms cubic-bezier(.22, .8, .25, 1);
+  transition: transform 480ms cubic-bezier(.22, .8, .25, 1);
 }
 .assistant-target-frame {
   border: 1px solid #86ead6;
   border-radius: 8px;
   box-shadow: 0 0 0 3px #6cf8de18, inset 0 0 16px #6cf8de12;
   transition-property: transform, width, height;
+}
+.assistant-indication[data-visible="true"] .assistant-target-frame {
+  animation: assistant-indication-in 280ms ease-out 230ms both;
 }
 .assistant-spotlight {
   display: grid;
