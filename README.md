@@ -1,102 +1,49 @@
-# Vietoris-Voyagers
+# AETHER-SI · Vietoris-Voyagers
 
-Vietoris-Voyagers es una plataforma para explorar y comparar experimentos de NASA PSI mediante un grafo de conocimiento, fichas normalizadas y un comparador de condiciones y resultados.
+AETHER-SI es una consola para explorar experimentos de combustión y seguridad contra incendios en microgravedad. Reúne registros de NASA Physical Sciences Informatics (PSI) y literatura de NASA Technical Reports Server (NTRS) para comparar condiciones y resultados con sus fuentes.
 
-Conocida como **AETHER-SI**, la herramienta está orientada a apoyar la investigación y el análisis de resultados en condiciones experimentales complejas. Permite buscar por concepto, material o identificador, y consultar la evidencia que sustenta cada resultado.
+[Demo en Vercel](https://vietoris-voyagers-delta.vercel.app/)
 
-## Demo en producción
+## Explora la consola
 
-[Abrir AETHER-SI en Vercel](https://vietoris-voyagers-delta.vercel.app/)
+1. **Busca evidencia.** Prueba `llamas frías`, `smoke detection`, `acrílico a baja presión` o una accesión como `PSI-99`. El buscador admite términos en español e inglés.
+2. **Elige un escenario.** Selecciona un perfil de misión o ajusta gravedad, oxígeno, presión y flujo en **Atmósfera**. El índice FSRS reordena la evidencia cuantitativa según su pertinencia para el escenario.
+3. **Recorre PSI-Nexus.** Explora los vínculos entre instalaciones, estudios, temas y corridas. Abre **Condiciones** para ver la cobertura experimental frente al escenario activo.
+4. **Compara en A/B.** Usa `+A` y `+B` para cargar evidencias en **Comparación experimental**. La tabla muestra los resultados, los cambios de condiciones y los campos sin dato con sus fuentes.
+5. **Amplía el panel.** El botón del encabezado de **PSI-Nexus** y **Comparación experimental** amplía cada panel a casi toda la pantalla. Usa el mismo control o `Esc` para restaurarlo. La comparación conserva las selecciones A/B.
 
-## Funcionalidades
+La ficha reúne la evidencia seleccionada y su contexto de prevención, detección y supresión cuando está disponible. El modo **Estudiante** añade explicaciones, casos históricos y aplicaciones terrestres.
 
-- Búsqueda por concepto, material e identificador.
-- Grafo de conocimiento que relaciona estudios, corridas y resultados.
-- Fichas normalizadas con contexto y evidencia.
-- Comparación de condiciones y resultados.
-- Trazabilidad hacia las fuentes documentadas.
-- Vocabulario de conceptos y sinónimos en español e inglés.
-- Sincronización del catálogo con NASA PSI y Radar de publicaciones NTRS, con respaldo local.
+## Fuentes y respaldo
 
-## Cómo funciona
+La base curada contiene **15 estudios, 23 corridas normalizadas y 5 perfiles de referencia**. La consulta a NASA PSI incorpora investigaciones de **Combustion Science** y conserva los registros curados. Activa **Ver todo PSI** para consultar otras disciplinas. Los conteos de la interfaz provienen de la respuesta del servicio.
 
-1. Busca por concepto, material o identificador.
-2. Explora los resultados relacionados en el grafo de conocimiento.
-3. Compara condiciones, observaciones y resultados con su contexto y evidencia.
-4. Consulta por qué aparece cada resultado y qué fuente lo respalda.
+Los perfiles incorporados desde PSI indican de dónde salen sus cifras. Las fichas sin perfil cuantitativo aparecen en el catálogo y pueden compararse, con «—» en los campos ausentes. El **Radar NTRS** identifica sus publicaciones como literatura técnica y las enlaza con las fichas cuando corresponde.
+
+Si PSI deja de responder, la aplicación usa un snapshot versionado de Combustion Science. Para regenerarlo, ejecuta `npm run snapshot:psi` con acceso a NASA PSI. La lectura de CSV públicos pequeños es opcional y está desactivada por defecto. [Integración y respaldo de NASA PSI](docs/psi-live.md)
 
 ## Desarrollo local
 
-Se requiere Node.js 24 LTS.
+Con Node.js 24 LTS, ejecuta:
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Abre la aplicación en [http://localhost:3000](http://localhost:3000).
+[Abre la consola local](http://localhost:3000).
 
-Algunas búsquedas de ejemplo:
-
-- `llamas frías`
-- `smoke detection`
-- `acrílico a baja presión`
-
-La búsqueda local combina los conceptos consultados y muestra por qué aparece cada resultado.
-
-## Validación
-
-Ejecuta estas verificaciones antes de entregar cambios:
+**Interpretar** usa un resumen automático por defecto. Para activar la redacción opcional con Claude o Gemini, copia `.env.example` a `.env.local` y configura las variables del proveedor. El motor calcula el FSRS y las diferencias A/B en la aplicación. [Variables de entorno](.env.example)
 
 ```sh
 npm run lint
-npm test
 npm run typecheck
+npm test
 npm run build
 ```
 
-La aplicación se ejecuta como servidor de Next.js (`npm run build` y `npx next start`, o mediante Vercel). Las rutas `/api/interpret` y `/api/psi/search` necesitan servidor.
+Para probar la compilación de producción localmente, ejecuta `npx next start`. La aplicación usa Next.js y React, Zustand para el estado compartido, React Flow para el grafo y Vitest para las pruebas.
 
-### Estado del catálogo
+## Licencia y atribución
 
-La base curada incluye:
-
-- 15 estudios.
-- 23 corridas normalizadas.
-- 5 perfiles nominales PSI.
-- Observaciones documentadas con cobertura parcial.
-
-El catálogo incorpora las investigaciones nuevas de **Combustion Science** y permite explorar otras disciplinas con **Ver todo PSI**. La app conserva la base curada y usa un snapshot versionado cuando PSI no responde. Consulta [la integración NASA PSI](docs/psi-live.md) para ver los endpoints y regenerar el respaldo.
-
-### Interpretación con IA
-
-El comparador y las corridas curadas del ranking ofrecen **Interpretar**. El modelo redacta una explicación de la comparación A/B o del puntaje FSRS a partir del análisis preparado localmente.
-
-El texto puede generarse con Anthropic (Claude) o Google (Gemini). Copia `.env.example` a `.env.local` y configura las variables que necesites:
-
-- `AI_PROVIDER`: `anthropic` o `gemini`. Si se deja vacío, se elige Anthropic cuando hay `ANTHROPIC_API_KEY`; de lo contrario, se usa Gemini si está definida `GEMINI_API_KEY`.
-- `ANTHROPIC_API_KEY`: clave de la API de Anthropic, disponible en [console.anthropic.com](https://console.anthropic.com).
-- `GEMINI_API_KEY`: clave de Gemini, disponible en [Google AI Studio](https://aistudio.google.com). Funciona con el nivel gratuito.
-- `AI_MODEL`: modelo opcional del proveedor elegido. Por defecto, `claude-haiku-5-5` o `gemini-3.5-flash-lite`.
-
-Sin una clave de API, la aplicación utiliza el resumen automático. En Vercel, configura estas variables en **Settings → Environment Variables**.
-
-Sobre el nivel gratuito de Gemini:
-
-- **Uso de datos:** Google puede usar el contenido para mejorar sus productos. La aplicación solo envía datos públicos de NASA PSI (CC0), no datos de usuarios.
-- **Límites:** hay límites por minuto y por día, que se reinician a medianoche, hora del Pacífico. Si se agotan, Gemini puede responder con un error 429 y se muestra el resumen automático. La caché reduce las solicitudes repetidas.
-
-## Entregables previstos
-
-1. **Evidencia trazable y búsqueda evaluada** — Normalizar corridas de CFI, FLEX-2, DAFT, BRE y E-FIELD según la disponibilidad de tablas citables. Registrar unidades, localizadores de fuente y tipos de evidencia.
-2. **GravityBridge y mapa de fases** — Incorporar controles de gravedad y referencias comparables. Publicar intervalos y procedencia de las estimaciones, e identificar escenarios sin cobertura antes de mostrarlos.
-3. **Matriz de seguridad y exportación** — Vincular prevención, detección y supresión con la evidencia que sustenta cada conclusión. Permitir exportar corridas filtradas con unidades y referencias.
-4. **Publicación reproducible** — Conectar el proyecto de Vercel al repositorio y ejecutar pruebas, verificación de tipos y compilación en cada actualización de la rama de producción.
-
-## Contribución
-
-Las contribuciones son bienvenidas. Si quieres mejorar el catálogo, la comparación de datos o la experiencia de búsqueda, abre un pull request con una descripción clara del cambio y su impacto.
-
-## Licencia
-
-Consulta el archivo de licencia del repositorio para más información.
+Consulta la [licencia del repositorio](LICENSE). AETHER-SI es un proyecto independiente. Cada ficha enlaza a su fuente y conserva la licencia declarada cuando estos metadatos están disponibles.
