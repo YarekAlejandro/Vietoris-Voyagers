@@ -184,6 +184,7 @@ select {
 .cockpit-grid[data-graph-collapsed="true"] > .nexus { min-height: 0; align-self: start; }
 
 @media (min-width: 901px) {
+  .cockpit-grid[data-graph-focused="true"] { grid-template-rows: minmax(252px, 1.6fr) minmax(255px, 1fr); }
   .cockpit-grid[data-graph-collapsed="true"] { grid-template-rows: 46px minmax(370px, 1fr); }
   .cockpit-grid[data-catalog-collapsed="true"] {
     grid-template-columns: 46px minmax(350px, 1fr) minmax(253px, 24%);

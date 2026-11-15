@@ -27,11 +27,12 @@ interface ComparisonProps extends PanelSizeProps {
   studiesById: ReadonlyMap<string, Investigation>;
   areaStudies: readonly Investigation[];
   guidedSelectors?: readonly string[];
+  onInteract: () => void;
 }
 
 const atmosphereFields = new Set<string>(atmosphereControls.map(({ field }) => field));
 
-export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, guidedSelectors, expanded, onToggleSize }: ComparisonProps) {
+export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, guidedSelectors, expanded, onToggleSize, onInteract }: ComparisonProps) {
   const comparison = useAetherStore((state) => state.comparison);
   const mode = useAetherStore((state) => state.mode);
   const scenario = useAetherStore((state) => state.atmosphere);
@@ -85,7 +86,8 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, gu
   const stale = Boolean(interpretation && current && interpretationKey(interpretation) !== interpretationKey(current));
 
   return (
-    <section className="panel comparison" data-expanded={expanded} aria-labelledby="comparison-title">
+    <section className="panel comparison" data-expanded={expanded} aria-labelledby="comparison-title"
+      onClickCapture={onInteract} onChangeCapture={onInteract} onWheelCapture={onInteract}>
       <div className="panel-heading">
         <h2 id="comparison-title" tabIndex={-1}><ArrowLeftRight size={17} aria-hidden /> Comparación experimental</h2>
         <div className="panel-heading-actions">
@@ -190,8 +192,8 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, gu
             const interpretation = interpretationRef.current?.getBoundingClientRect().height;
             return table === undefined || interpretation === undefined ? null : { top: table, total: table + interpretation };
           }}
-          onResize={setTableHeight}
-          onReset={() => setTableHeight(null)}
+          onResize={(height) => { onInteract(); setTableHeight(height); }}
+          onReset={() => { onInteract(); setTableHeight(null); }}
         />}
         {interpretation && <div className="comparison-interpretation" ref={interpretationRef}><InterpretationCard
           request={interpretation}

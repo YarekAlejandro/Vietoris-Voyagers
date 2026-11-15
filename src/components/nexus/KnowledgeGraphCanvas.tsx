@@ -82,9 +82,10 @@ interface GraphProps extends PanelSizeProps, PanelCollapseProps {
   runs: readonly ExperimentalRun[];
   current: EvidenceSelection | null;
   searchActive: boolean;
+  onInteract: () => void;
 }
 
-export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, expanded, onToggleSize, collapsed, onToggleCollapse }: GraphProps) {
+export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, expanded, onToggleSize, collapsed, onToggleCollapse, onInteract }: GraphProps) {
   const facility = useAetherStore((state) => state.facility);
   const topic = useAetherStore((state) => state.topic);
   const graphView = useAetherStore((state) => state.graphView);
@@ -175,7 +176,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
       <div className="panel-heading graph-heading">
         <h2 id="nexus-title" tabIndex={-1}><Network size={17} aria-hidden /> PSI-Nexus</h2>
         <div className="panel-heading-actions">
-          {!collapsed && <div className="segments" role="group" aria-label="Vista del grafo">
+          {!collapsed && <div className="segments" role="group" aria-label="Vista del grafo" onClickCapture={onInteract}>
             <button type="button" aria-pressed={graphView === "relationships"} onClick={() => { setBridge(null); setGraphView("relationships"); }}>Relaciones</button>
             <button type="button" aria-pressed={graphView === "overview"} onClick={() => setGraphView("overview")}>General</button>
             <button type="button" aria-pressed={Boolean(runStudy)} disabled={currentRunCount === 0} onClick={() => setGraphView("runs")}>Corridas</button>
@@ -185,7 +186,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
           {!collapsed && <PanelSizeButton name="PSI-Nexus" expanded={expanded} onToggleSize={onToggleSize} />}
         </div>
       </div>
-      <div id="nexus-body" className="panel-body-contents" hidden={collapsed}>
+      <div id="nexus-body" className="panel-body-contents" hidden={collapsed} onClickCapture={onInteract}>
       {graphView === "relationships" && <div className="bridge-filters" role="group" aria-label="Puentes científicos">
         {bridgeFilters.map(({ label, title }) => <button type="button" key={label} title={title}
           aria-pressed={bridgeFilter?.label === label} onClick={() => {
@@ -208,6 +209,8 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
               if (moved.length) setDragged((positions) => ({ ...positions, ...Object.fromEntries(moved) }));
             }}
             elementsSelectable={false} zoomOnScroll={false} panOnDrag
+            onMoveEnd={(event) => { if (event) onInteract(); }}
+            onNodeDragStop={onInteract}
             defaultMarkerColor="#8097b5"
             onNodeClick={(_event, node) => selectNode(node)}
             onKeyDown={(event) => {
@@ -216,6 +219,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
               const node = nodes.find(({ id }) => id === element?.dataset.id);
               if (!node) return;
               event.preventDefault();
+              onInteract();
               selectNode(node);
             }}
             ariaLabelConfig={ariaLabels}
