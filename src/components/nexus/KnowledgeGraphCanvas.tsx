@@ -6,6 +6,7 @@ import { evidenceTopics } from "../../data/psi_vocabulary";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { ExperimentalRun, Investigation } from "../../types/psi";
 import { ExperimentalCoveragePlot } from "../simulator/ExperimentalCoveragePlot";
+import { SceneComparison } from "../simulator/SceneComparison";
 import { PanelCollapseButton, PanelSizeButton, type PanelCollapseProps, type PanelSizeProps } from "./PanelSizeButton";
 
 type FlowEvidenceNode = Node<GraphNode & { context: string }, "evidence">;
@@ -109,6 +110,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
   const currentStudyId = current?.kind === "run" ? graphRuns.get(current.id)?.investigationId : current?.id;
   const currentRunCount = runs.filter(({ investigationId }) => investigationId === currentStudyId).length;
   const showConditions = graphView === "conditions";
+  const showScene = graphView === "scene";
   const runStudy = graphView === "runs" && currentRunCount > 0 ? currentStudyId : undefined;
   const highlightedId = runStudy && current?.kind === "run" ? `run:${current.id}` : `study:${currentStudyId}`;
 
@@ -187,6 +189,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
             <button type="button" aria-pressed={graphView === "overview"} onClick={() => setGraphView("overview")}>General</button>
             <button type="button" aria-pressed={Boolean(runStudy)} disabled={currentRunCount === 0} onClick={() => setGraphView("runs")}>Corridas</button>
             <button type="button" aria-pressed={showConditions} disabled={runs.length === 0} onClick={() => setGraphView("conditions")}>Condiciones</button>
+            <button type="button" aria-pressed={showScene} onClick={() => setGraphView("scene")}>Esquema A/B</button>
           </div>
           {!expanded && <PanelCollapseButton name="grafo PSI-Nexus" controls="nexus-body" collapsed={collapsed} onToggleCollapse={onToggleCollapse} />}
           <div className="graph-view-controls graph-maximize" inert={collapsed}>
@@ -205,7 +208,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
           }}>{label}</button>)}
       </div>}
       <div className="graph">
-        {showConditions ? <ExperimentalCoveragePlot runs={runs} current={current} /> : nodes.length > 0 ? (
+        {showScene ? <SceneComparison /> : showConditions ? <ExperimentalCoveragePlot runs={runs} current={current} /> : nodes.length > 0 ? (
           <ReactFlow
             key={nodes.map(({ id }) => id).join("|")}
             nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
@@ -242,7 +245,11 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
           <div className="empty-evidence empty-graph"><Network size={30} aria-hidden /><p>Las conexiones aparecerán aquí al encontrar evidencia.</p></div>
         )}
       </div>
-      {showConditions ? <div className="graph-caption">
+      {showScene ? <div className="graph-caption">
+        <span><i className="study-dot" /> Corrida A</span>
+        <span><i className="run-dot" /> Corrida B</span>
+        <span className="graph-context">Esquema A/B</span>
+      </div> : showConditions ? <div className="graph-caption">
         <span><i className="study-dot" /> Corrida registrada</span>
         <span><i className="run-dot" /> Comparación A/B</span>
         <span><i className="facility-dot" /> Escenario de misión</span>

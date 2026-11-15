@@ -18,6 +18,7 @@ export function sceneEvidenceForRun(run: ExperimentalRun) {
       kind: "droplet", material, flow_cm_s, showArrows: false,
       initial_droplet_diameter_mm,
       extinction_droplet_diameter_mm: run.extinction_droplet_diameter_mm,
+      co2_pct: run.co2_pct,
     } as const;
   }
 
@@ -33,10 +34,12 @@ export function sceneEvidenceForRun(run: ExperimentalRun) {
 
   const outcome = run.outcome?.toLowerCase() ?? "";
   const concurrent = configuration.includes("concurrente");
-  // Estilos ilustrativos asociados a descripciones de la corrida, sin inferir un régimen por umbral.
+  // Estilos ilustrativos asociados a evidencia reportada; sin evidencia no se dibuja llama.
+  const combustionEvidence = configuration.includes("llama en")
+    || run.steady_flame_length_cm !== undefined || run.cabin_heat_added_kj !== undefined;
   const flame = /sin ignición|por soplado/.test(outcome) ? "none"
     : outcome.includes("extinción a bajo flujo") ? "rounded"
-      : concurrent ? "attached" : "none";
+      : combustionEvidence ? "attached" : "unreported";
 
   return {
     kind: "solid", material, flow_cm_s, showArrows: concurrent && hasMeasuredFlow,
@@ -45,4 +48,21 @@ export function sceneEvidenceForRun(run: ExperimentalRun) {
     flame,
     twoFaces: flame === "attached" && configuration.includes("dos caras"),
   } as const;
+}
+
+const ARROW_MIN_PX = 14;
+const ARROW_MAX_PX = 44;
+const ARROW_FULL_SCALE_CM_S = 60;
+
+/** Largo de la flecha de flujo: escala logarítmica con tope, para distinguir 2.2, 20 y 47 cm/s. */
+export function flowArrowLength_px(flow_cm_s: number | undefined) {
+  const flow = Math.max(0, flow_cm_s ?? 0);
+  const fraction = Math.min(1, Math.log1p(flow) / Math.log1p(ARROW_FULL_SCALE_CM_S));
+  return ARROW_MIN_PX + (ARROW_MAX_PX - ARROW_MIN_PX) * fraction;
+}
+
+export function sceneComparison(runA: ExperimentalRun, runB: ExperimentalRun) {
+  const a = sceneEvidenceForRun(runA);
+  const b = sceneEvidenceForRun(runB);
+  return { a, b, sameKind: a !== null && b !== null && a.kind === b.kind };
 }

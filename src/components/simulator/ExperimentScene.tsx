@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { Box } from "lucide-react";
 import { Component, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import type { ExperimentSceneEvidence } from "../../core/si-engine/experiment-scene";
+import { flowArrowLength_px, type ExperimentSceneEvidence } from "../../core/si-engine/experiment-scene";
 
 const ExperimentSceneCanvas = dynamic(() => import("./ExperimentSceneCanvas"), {
   ssr: false,
@@ -16,8 +16,24 @@ class SceneErrorBoundary extends Component<{ fallback: ReactNode; children: Reac
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-function SceneDiagram({ evidence }: { evidence: ExperimentSceneEvidence }) {
-  return <svg viewBox="0 0 320 174" className="scene-diagram" aria-hidden="true">
+const value = (v: number | undefined, unit: string) => v === undefined ? "sin dato" : `${v} ${unit}`;
+
+export function sceneAriaLabel(evidence: ExperimentSceneEvidence) {
+  const flow = evidence.flow_cm_s === undefined ? "flujo sin medición" : `flujo ${evidence.flow_cm_s} cm/s`;
+  if (evidence.kind === "solid") {
+    const flame = evidence.flame === "unreported" ? "resultado sin dato"
+      : evidence.flame === "none" ? "sin llama" : evidence.flame === "rounded" ? "llama redondeada de bajo flujo"
+        : evidence.twoFaces ? "llama en dos caras" : "llama en una cara";
+    return `Esquema de ${evidence.material}: espesor ${value(evidence.thickness_mm, "mm")}, ancho ${value(evidence.width_cm, "cm")}, ${flow}, ${flame}.`;
+  }
+  if (evidence.kind === "droplet") {
+    return `Esquema de gota de ${evidence.material}: diámetro inicial ${evidence.initial_droplet_diameter_mm} mm, diámetro de extinción ${value(evidence.extinction_droplet_diameter_mm, "mm")}, CO₂ ${value(evidence.co2_pct, "%")}.`;
+  }
+  return `Esquema de pirólisis sin llama de ${evidence.material}: calentamiento ${value(evidence.heating_duration_s, "s")}, envejecimiento ${value(evidence.aging_time_s, "s")}, ${flow}.`;
+}
+
+export function SceneDiagram({ evidence }: { evidence: ExperimentSceneEvidence }) {
+  return <svg viewBox="0 0 320 174" className="scene-diagram" role="img" aria-label={sceneAriaLabel(evidence)}>
     {evidence.kind === "solid" ? <SolidDiagram evidence={evidence} />
       : evidence.kind === "droplet" ? <DropletDiagram evidence={evidence} />
         : <AerosolDiagram evidence={evidence} />}
@@ -25,12 +41,12 @@ function SceneDiagram({ evidence }: { evidence: ExperimentSceneEvidence }) {
 }
 
 function SolidDiagram({ evidence }: { evidence: Extract<ExperimentSceneEvidence, { kind: "solid" }> }) {
-  const arrowEnd = 76 + Math.min(38, (evidence.flow_cm_s ?? 0) * 1.7);
+  const arrowEnd = 58 + flowArrowLength_px(evidence.flow_cm_s);
   return <>
     <path d="M38 49 72 26h212l-34 23v91l34-23V26M38 49h212v91H38z" fill="#0d2237" stroke="#4d728d" strokeLinejoin="round" />
     <path d="m80 111 27-13h109l-26 13z" fill="#c5d3dc" />
     <path d="M80 111h110v5H80z" fill="#758da2" />
-    {evidence.showArrows && [65, 84].map((y) => <path key={y} transform={`translate(0 ${y})`}
+    {evidence.showArrows && [65, 84].map((y) => <path key={y} className="flow-arrow" transform={`translate(0 ${y})`}
       d={`M58 0H${arrowEnd}m-7-6 7 6-7 6`} stroke="#78e8ed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />)}
     {evidence.flame === "rounded" && <ellipse cx="129" cy="96" rx="15" ry="11" fill="#f3ac59" opacity=".68" />}
     {evidence.flame === "attached" && <path d="M111 102c5-10 3-18 17-21 8-1 20 0 29-7-6 13-20 27-46 28Z" fill="#ffb34a" />}
@@ -57,27 +73,36 @@ function AerosolDiagram({ evidence }: { evidence: Extract<ExperimentSceneEvidenc
     <rect x="130" y="51" width="131" height="70" rx="9" fill="#142d42" stroke="#4d728d" />
     {[[150, 77], [166, 91], [185, 67], [185, 104], [207, 84], [228, 69], [238, 98]].map(([x, y]) =>
       <circle key={`${x}:${y}`} cx={x} cy={y} r="3" fill="#b9e0ec" />)}
-    {evidence.showArrows && <path d="M51 70h62m-7-6 7 6-7 6" stroke="#78e8ed" strokeWidth="2"
+    {evidence.showArrows && <path className="flow-arrow" d="M51 70h62m-7-6 7 6-7 6" stroke="#78e8ed" strokeWidth="2"
       strokeLinecap="round" strokeLinejoin="round" fill="none" />}
   </>;
 }
 
-function SceneReadout({ label, value, unit }: { label: string; value: number | undefined; unit: string }) {
-  return <div><dt>{label}</dt><dd>{value === undefined ? "Sin dato" : `${value} ${unit}`}</dd></div>;
+export type SceneStatuses = Partial<Record<string, "equal" | "changed" | "missing" | "nominal">>;
+
+function SceneReadout({ field, label, value, unit, statuses }: {
+  field: string; label: string; value: number | undefined; unit: string; statuses?: SceneStatuses;
+}) {
+  return <div data-status={statuses?.[field]}><dt>{label}</dt><dd>{value === undefined ? "Sin dato" : `${value} ${unit}`}</dd></div>;
 }
 
-function SceneReadouts({ evidence }: { evidence: ExperimentSceneEvidence }) {
+export function SceneReadouts({ evidence, statuses }: { evidence: ExperimentSceneEvidence; statuses?: SceneStatuses }) {
   return <dl className="scene-readouts">
-    {evidence.kind === "solid" && <SceneReadout label="Espesor" value={evidence.thickness_mm} unit="mm" />}
+    {evidence.kind === "solid" && <>
+      <SceneReadout field="thickness_mm" label="Espesor" value={evidence.thickness_mm} unit="mm" statuses={statuses} />
+      <SceneReadout field="width_cm" label="Ancho" value={evidence.width_cm} unit="cm" statuses={statuses} />
+      {evidence.flame === "unreported" && <div><dt>Llama</dt><dd>Resultado sin dato</dd></div>}
+    </>}
     {evidence.kind === "droplet" && <>
-      <SceneReadout label="Diámetro inicial" value={evidence.initial_droplet_diameter_mm} unit="mm" />
-      <SceneReadout label="Diámetro al extinguirse la llama visible" value={evidence.extinction_droplet_diameter_mm} unit="mm" />
+      <SceneReadout field="initial_droplet_diameter_mm" label="Diámetro inicial" value={evidence.initial_droplet_diameter_mm} unit="mm" statuses={statuses} />
+      <SceneReadout field="extinction_droplet_diameter_mm" label="Diámetro al extinguirse la llama visible" value={evidence.extinction_droplet_diameter_mm} unit="mm" statuses={statuses} />
+      <SceneReadout field="co2_pct" label="CO₂" value={evidence.co2_pct} unit="%" statuses={statuses} />
     </>}
     {evidence.kind === "aerosol" && <>
-      <SceneReadout label="Calentamiento" value={evidence.heating_duration_s} unit="s" />
-      <SceneReadout label="Envejecimiento del aerosol" value={evidence.aging_time_s} unit="s" />
+      <SceneReadout field="heating_duration_s" label="Calentamiento" value={evidence.heating_duration_s} unit="s" statuses={statuses} />
+      <SceneReadout field="aging_time_s" label="Envejecimiento del aerosol" value={evidence.aging_time_s} unit="s" statuses={statuses} />
     </>}
-    <div><dt>Flujo</dt><dd>{evidence.flow_cm_s === undefined ? "Sin medición" : `${evidence.flow_cm_s} cm/s`}</dd></div>
+    <div data-status={statuses?.flow_velocity_cm_s}><dt>Flujo</dt><dd>{evidence.flow_cm_s === undefined ? "Sin medición" : `${evidence.flow_cm_s} cm/s`}</dd></div>
   </dl>;
 }
 
