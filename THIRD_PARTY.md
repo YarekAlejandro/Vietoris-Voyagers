@@ -22,6 +22,8 @@ Las licencias se comprobaron en los manifiestos de los paquetes instalados o en 
 | Vitest | MIT | [vitest-dev/vitest](https://github.com/vitest-dev/vitest) |
 | Zod, incluido en Next.js | MIT | [Licencia del paquete Zod en el repositorio oficial](https://github.com/colinhacks/zod/blob/main/LICENSE) |
 
+Bricolage Grotesque e IBM Plex Sans se sirven desde archivos WOFF2 locales, obtenidos mediante Fontsource. Sus licencias SIL OFL 1.1 están incluidas en el repositorio: [Bricolage Grotesque](src/components/experiment/fonts/Bricolage-OFL.txt) e [IBM Plex Sans](src/components/experiment/fonts/IBM-Plex-OFL.txt).
+
 ## Fuentes y licencias por registro
 
 El [snapshot de PSI](data/psi-snapshot.json) conserva `license` por ficha. El valor `null` indica que el snapshot carece de una declaración. En las consultas de detalle de la [auditoría](docs/data-audit.md), la API declaró CC0 1.0 para los siguientes registros:
