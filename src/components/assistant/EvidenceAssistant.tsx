@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowUp, ArrowUpRight, MessageCircleQuestion, Minus, MousePointer2, RotateCcw } from "lucide-react";
+import { ArrowUp, ArrowUpRight, MessageCircleQuestion, Minus, MousePointer2, RotateCcw, Volume2 } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { AssistantPointer, PageAssistantAnswer } from "../../core/si-engine/page-assistant";
 import styles from "./EvidenceAssistant.module.css";
 
 export interface AssistantConversationContext {
-  previousQuestion?: string;
+  history: { question: string; answer: string }[];
   previousSelection?: AssistantPointer["selection"];
 }
 
@@ -14,6 +14,7 @@ interface EvidenceAssistantProps {
   onAsk: (question: string, context: AssistantConversationContext) => PageAssistantAnswer | Promise<PageAssistantAnswer>;
   onNavigate: (pointer: AssistantPointer) => void;
   side?: "left" | "right";
+  speechEnabled: boolean;
 }
 
 interface Turn {
@@ -32,9 +33,37 @@ const unavailable: PageAssistantAnswer = {
   pointers: [],
 };
 
-function AssistantReply({ answer, onNavigate }: {
+function WrittenReply({ text, animate }: { text: string; animate: boolean }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!animate) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setCount(text.length);
+      return;
+    }
+    const start = performance.now();
+    const duration = Math.min(8600, Math.max(550, text.length * 12));
+    let frame = 0;
+    const tick = (now: number) => {
+      const fraction = Math.min(1, (now - start) / duration);
+      setCount(Math.floor(text.length * fraction));
+      if (fraction < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [text, animate]);
+
+  const visible = animate ? count : text.length;
+  return <p>
+    <span className="sr-only">Respuesta: {text}</span>
+    <span aria-hidden="true">{text.slice(0, visible)}{visible < text.length && <span className={styles.caret} />}</span>
+  </p>;
+}
+
+function AssistantReply({ answer, onNavigate, animate }: {
   answer: PageAssistantAnswer | undefined;
   onNavigate: (pointer: AssistantPointer) => void;
+  animate: boolean;
 }) {
   if (!answer) {
     return (
@@ -53,7 +82,7 @@ function AssistantReply({ answer, onNavigate }: {
   return (
     <div className={styles.reply} data-assistant-reply>
       {answer.origin && <span className={styles.origin}>{answer.origin === "ai" ? "Respuesta con IA" : "Respuesta local"}</span>}
-      <p><span className="sr-only">Respuesta: </span>{answer.text}</p>
+      <WrittenReply text={answer.text} animate={animate} />
       {answer.pointers.length > 0 && <ul className={styles.pointers}>
         {answer.pointers.map((pointer, index) => <li key={`${pointer.target}:${pointer.selection?.id ?? ""}:${index}`}>
           <button type="button" onClick={() => onNavigate(pointer)}>
@@ -72,10 +101,18 @@ function AssistantReply({ answer, onNavigate }: {
   );
 }
 
-export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: EvidenceAssistantProps) {
+export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEnabled }: EvidenceAssistantProps) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [restored, setRestored] = useState(false);
+  const [animatedTurn, setAnimatedTurn] = useState<number | null>(null);
+  const [voiceOn, setVoiceOn] = useState(false);
+  const voiceActive = useRef(false);
+  const audioContext = useRef<AudioContext | null>(null);
+  const speechSource = useRef<AudioBufferSourceNode | null>(null);
+  const previousError = useRef(false);
+  const speechRequest = useRef<AbortController | null>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -83,6 +120,78 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
   const titleId = useId();
   const previousTurn = turns.at(-1);
   const pending = previousTurn !== undefined && previousTurn.answer === undefined;
+
+  useEffect(() => () => {
+    speechRequest.current?.abort();
+    if (audioContext.current) void audioContext.current.close().catch(() => {});
+  }, []);
+
+  function stopVoice() {
+    speechRequest.current?.abort();
+    const source = speechSource.current;
+    speechSource.current = null;
+    source?.stop();
+  }
+
+  async function speak(answer: PageAssistantAnswer) {
+    const repeatedError = answer === unavailable && previousError.current;
+    previousError.current = answer === unavailable;
+    const context = audioContext.current;
+    if (!voiceActive.current || !context || repeatedError) return;
+    stopVoice();
+    const controller = new AbortController();
+    speechRequest.current = controller;
+    try {
+      const response = await fetch("/api/assistant/speech", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: answer.text }), signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Audio no disponible");
+      const buffer = await context.decodeAudioData(await response.arrayBuffer());
+      if (controller.signal.aborted) return;
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      source.onended = () => {
+        source.disconnect();
+        if (speechSource.current === source) speechSource.current = null;
+      };
+      source.start();
+      speechSource.current = source;
+    } catch {
+      // La lectura es opcional y la respuesta escrita ya está disponible.
+    }
+  }
+
+  function toggleVoice() {
+    const enabled = !voiceActive.current;
+    voiceActive.current = enabled;
+    setVoiceOn(enabled);
+    if (enabled) {
+      audioContext.current ??= new AudioContext();
+      void audioContext.current.resume().catch(() => {});
+    } else stopVoice();
+  }
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("aether-assistant-history") ?? "[]");
+      if (Array.isArray(saved)) setTurns(saved.filter((turn) => typeof turn?.question === "string" &&
+        typeof turn?.answer?.text === "string" && Array.isArray(turn.answer.pointers)));
+    } catch {
+      // El chat sigue disponible si el navegador bloquea el almacenamiento.
+    }
+    setRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      sessionStorage.setItem("aether-assistant-history", JSON.stringify(turns.filter(({ answer }) => answer)));
+    } catch {
+      // Se conserva la conversación en memoria.
+    }
+  }, [restored, turns]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus({ preventScroll: true });
@@ -105,24 +214,30 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
     const cleanQuestion = value.trim();
     if (!cleanQuestion || pending) return;
 
+    stopVoice();
+    if (voiceActive.current) void audioContext.current?.resume().catch(() => {});
+    setAnimatedTurn(turns.length);
     setQuestion("");
     inputRef.current?.focus({ preventScroll: true });
     try {
       const result = onAsk(cleanQuestion, {
-        previousQuestion: previousTurn?.question,
-        previousSelection: previousTurn?.answer?.pointers.find(({ selection }) => selection)?.selection,
+        history: turns.slice(-6).flatMap(({ question, answer }) => answer ? [{ question, answer: answer.text.slice(0, 900) }] : []),
+        previousSelection: [...turns].reverse().flatMap(({ answer }) => answer?.pointers ?? []).find(({ selection }) => selection)?.selection,
       });
       if (result instanceof Promise) {
         setTurns((history) => [...history, { question: cleanQuestion }]);
         const finish = (answer: PageAssistantAnswer) => {
           setTurns((history) => [...history.slice(0, -1), { question: cleanQuestion, answer }]);
+          void speak(answer);
         };
         void result.then(finish, () => finish(unavailable));
       } else {
         setTurns((history) => [...history, { question: cleanQuestion, answer: result }]);
+        void speak(result);
       }
     } catch {
       setTurns((history) => [...history, { question: cleanQuestion, answer: unavailable }]);
+      void speak(unavailable);
     }
   }
 
@@ -156,6 +271,10 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
         <header className={styles.header}>
           <span className={styles.emblem}><MessageCircleQuestion size={18} aria-hidden="true" /></span>
           <h2 id={titleId}>Asistente de AETHER-SI</h2>
+          {speechEnabled && <button type="button" role="switch" aria-checked={voiceOn} aria-label="Voz automática"
+            className={styles.voiceSwitch} onClick={toggleVoice}>
+            <Volume2 size={14} aria-hidden="true" /> Voz <span aria-hidden="true" />
+          </button>}
           {turns.length > 0 && <button
             type="button"
             className={styles.iconButton}
@@ -163,6 +282,9 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
             title="Limpiar conversación"
             disabled={pending}
             onClick={() => {
+              stopVoice();
+              previousError.current = false;
+              setAnimatedTurn(null);
               setTurns([]);
               setQuestion("");
               inputRef.current?.focus({ preventScroll: true });
@@ -194,7 +316,8 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
             {turns.map(({ question: asked, answer }, index) => <div className={styles.turn} key={index}>
               <p className={styles.question}><span className="sr-only">Tu pregunta: </span>{asked}</p>
               <div className={styles.answer}>
-                <AssistantReply answer={answer} onNavigate={(pointer) => {
+                <AssistantReply answer={answer} animate={animatedTurn === index}
+                  onNavigate={(pointer) => {
                   minimize();
                   onNavigate(pointer);
                 }} />

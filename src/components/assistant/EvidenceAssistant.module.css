@@ -303,3 +303,31 @@
     scroll-behavior: auto;
   }
 }
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-inline-start: 2px;
+  vertical-align: -.12em;
+  background: var(--accent);
+}
+.speech {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  margin-block-start: 9px;
+}
+.speech audio { width: 100%; max-width: 320px; height: 34px; }
+.speech p { color: var(--muted); font-size: 12px; }
+.listen {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid #3c716e;
+  border-radius: 7px;
+  color: var(--accent);
+}
+.listen:hover:enabled { background: #193942; }
+.listen:disabled { opacity: .7; }

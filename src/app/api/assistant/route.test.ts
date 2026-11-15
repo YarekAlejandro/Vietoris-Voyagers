@@ -69,6 +69,6 @@ it("omite el proveedor sin clave o si la pregunta o el cuerpo exceden su límite
   expect(await (await submit()).json()).toEqual({ answer: null });
   vi.stubEnv("GEMINI_API_KEY", "clave-de-prueba");
   expect(await (await submit(JSON.stringify({ question: "a".repeat(401) }))).json()).toEqual({ answer: null });
-  expect(await (await submit(JSON.stringify({ question }).padStart(8193))).json()).toEqual({ answer: null });
+  expect(await (await submit(JSON.stringify({ question }).padStart(32769))).json()).toEqual({ answer: null });
   expect(fetchMock).not.toHaveBeenCalled();
 });

@@ -15,6 +15,7 @@ import { buildEvidenceIndex } from "./semantic-search";
 export interface AssistantGroundingInput {
   question: string;
   previousQuestion?: string;
+  history?: readonly { question: string; answer: string }[];
   selection?: AssistantPointer["selection"];
   comparison?: AssistantPointer["comparison"];
   profileId?: string;
@@ -148,7 +149,8 @@ export function buildAssistantGrounding(input: AssistantGroundingInput) {
   const local = answerPageQuestion(input.question, context);
   const exact = namedSelections(input.question);
   const refersBack = /\b(?:su|sus|ese|esa|eso|ellos|ellas|anterior|cuando|que fecha|cual fue|how long|when did|that|it)\b/.test(normalized(input.question));
-  const previous = !exact.length && refersBack && input.previousQuestion ? namedSelections(input.previousQuestion) : [];
+  const previousQuestions = input.history?.map(({ question }) => question) ?? [input.previousQuestion ?? ""];
+  const previous = !exact.length && refersBack ? [...previousQuestions].reverse().flatMap(namedSelections) : [];
   const facts = new Map<string, GroundingFact>();
   const add = (fact: GroundingFact) => { if (!facts.has(fact.id)) facts.set(fact.id, fact); };
   const pointerForRun = new Map(local.pointers.flatMap((pointer) => pointer.selection?.kind === "run" ? [[pointer.selection.id, pointer] as const] : []));

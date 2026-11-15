@@ -19,10 +19,11 @@ describe("respuestas del asistente con evidencia", () => {
 
   it("retiene el contexto anterior para una pregunta de seguimiento y respeta otra mención explícita", () => {
     const selection = { kind: "study", id: "SAME" } as const;
-    const previousQuestion = "¿Qué fue Saffire VI?";
-    const dates = buildAssistantGrounding({ question: "¿Y cuándo ocurrió?", previousQuestion, selection });
+    const history = [{ question: "¿Qué fue Saffire VI?", answer: "Un estudio de combustión." },
+      { question: "¿Y qué materiales usaron?", answer: "PMMA y tejido SIBAL." }];
+    const dates = buildAssistantGrounding({ question: "¿Y cuándo ocurrió?", history, selection });
     expect(dates.some(({ dates }) => dates?.includes("2023-12-22"))).toBe(true);
-    const different = buildAssistantGrounding({ question: "¿Cuándo ocurrió SAME-R?", previousQuestion, selection });
+    const different = buildAssistantGrounding({ question: "¿Cuándo ocurrió SAME-R?", history, selection });
     expect(different.some(({ dates }) => dates?.includes("2010-07"))).toBe(true);
     expect(different.some(({ dates }) => dates?.includes("2023-12-22"))).toBe(false);
   });

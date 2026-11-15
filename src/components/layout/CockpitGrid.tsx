@@ -51,7 +51,7 @@ async function requestAssistantAnswer(input: AssistantGroundingInput): Promise<P
   }
 }
 
-export function CockpitGrid({ assistantAiEnabled }: { assistantAiEnabled: boolean }) {
+export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAiEnabled: boolean; speechEnabled: boolean }) {
   const [expandedPanel, setExpandedPanel] = useState<"graph" | "comparison" | null>(null);
   const [spotlight, setSpotlight] = useState<SpotlightRequest | null>(null);
   const [assistantSide, setAssistantSide] = useState<"left" | "right">("right");
@@ -182,7 +182,7 @@ export function CockpitGrid({ assistantAiEnabled }: { assistantAiEnabled: boolea
     });
   }
 
-  function askAssistant(question: string, { previousQuestion, previousSelection }: AssistantConversationContext) {
+  function askAssistant(question: string, { history, previousSelection }: AssistantConversationContext) {
     const areaStudyIds = new Set(areaStudies.map(({ id }) => id));
     const stateAtQuestion = useAetherStore.getState();
     const context: PageAssistantContext = {
@@ -196,7 +196,7 @@ export function CockpitGrid({ assistantAiEnabled }: { assistantAiEnabled: boolea
       (localPointer?.target === "graph" && Boolean(localPointer.selection));
     if (assistantAiEnabled && navigator.onLine && !directControl) {
       return requestAssistantAnswer({
-        question, previousQuestion, selection: context.selection ?? undefined, comparison: context.comparison,
+        question, history, selection: context.selection ?? undefined, comparison: context.comparison,
         profileId: profile.id, atmosphere,
       }).then((answer) => {
         const latest = useAetherStore.getState();
@@ -234,7 +234,7 @@ export function CockpitGrid({ assistantAiEnabled }: { assistantAiEnabled: boolea
         </main>
       </div>
       <AssistantSpotlight request={spotlight} />
-      <EvidenceAssistant onAsk={askAssistant} onNavigate={(pointer) => pointTo(pointer, true)} side={assistantSide} />
+      <EvidenceAssistant onAsk={askAssistant} onNavigate={(pointer) => pointTo(pointer, true)} side={assistantSide} speechEnabled={speechEnabled} />
     </>
   );
 }
