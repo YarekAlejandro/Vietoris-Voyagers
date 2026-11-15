@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
-import { Background, BaseEdge, Controls, Handle, MarkerType, Position, ReactFlow, type Edge, type EdgeProps, type Node, type NodeProps, type NodeTypes, type XYPosition } from "@xyflow/react";
+import { useEffect, useMemo, useState } from "react";
+import { Background, BaseEdge, Controls, Handle, MarkerType, Position, ReactFlow, useReactFlow, useStore as useFlowStore, type Edge, type EdgeProps, type Node, type NodeProps, type NodeTypes, type XYPosition } from "@xyflow/react";
 import { AudioLines, Boxes, FlaskConical, Network, Tag } from "lucide-react";
 import { buildKnowledgeGraph, type GraphEdge, type GraphNode } from "../../core/si-engine/knowledge-graph";
 import { evidenceTopics } from "../../data/psi_vocabulary";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { ExperimentalRun, Investigation } from "../../types/psi";
 import { ExperimentalCoveragePlot } from "../simulator/ExperimentalCoveragePlot";
+import { PanelSizeButton, type PanelSizeProps } from "./PanelSizeButton";
 
 type FlowEvidenceNode = Node<GraphNode & { context: string }, "evidence">;
 
@@ -56,14 +57,24 @@ function GraphCard({ data }: NodeProps<FlowEvidenceNode>) {
 }
 const nodeTypes = { evidence: GraphCard } satisfies NodeTypes;
 
-interface GraphProps {
+function FitGraphOnResize() {
+  const width = useFlowStore((state) => state.width);
+  const height = useFlowStore((state) => state.height);
+  const { fitView } = useReactFlow();
+  useEffect(() => {
+    if (width > 0 && height > 0) void fitView(fitOptions);
+  }, [width, height, fitView]);
+  return null;
+}
+
+interface GraphProps extends PanelSizeProps {
   studies: readonly Investigation[];
   runs: readonly ExperimentalRun[];
   current: EvidenceSelection | null;
   searchActive: boolean;
 }
 
-export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: GraphProps) {
+export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, expanded, onToggleSize }: GraphProps) {
   const facility = useAetherStore((state) => state.facility);
   const topic = useAetherStore((state) => state.topic);
   const graphView = useAetherStore((state) => state.graphView);
@@ -142,14 +153,17 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
   }
 
   return (
-    <section className="panel nexus" aria-labelledby="nexus-title">
+    <section className="panel nexus" data-expanded={expanded} aria-labelledby="nexus-title">
       <div className="panel-heading graph-heading">
         <h2 id="nexus-title"><Network size={17} aria-hidden /> PSI-Nexus</h2>
-        <div className="segments" role="group" aria-label="Vista del grafo">
-          <button type="button" aria-pressed={graphView === "relationships"} onClick={() => { setBridge(null); setGraphView("relationships"); }}>Relaciones</button>
-          <button type="button" aria-pressed={graphView === "overview"} onClick={() => setGraphView("overview")}>General</button>
-          <button type="button" aria-pressed={Boolean(runStudy)} disabled={currentRunCount === 0} onClick={() => setGraphView("runs")}>Corridas</button>
-          <button type="button" aria-pressed={showConditions} disabled={runs.length === 0} onClick={() => setGraphView("conditions")}>Condiciones</button>
+        <div className="panel-heading-actions">
+          <div className="segments" role="group" aria-label="Vista del grafo">
+            <button type="button" aria-pressed={graphView === "relationships"} onClick={() => { setBridge(null); setGraphView("relationships"); }}>Relaciones</button>
+            <button type="button" aria-pressed={graphView === "overview"} onClick={() => setGraphView("overview")}>General</button>
+            <button type="button" aria-pressed={Boolean(runStudy)} disabled={currentRunCount === 0} onClick={() => setGraphView("runs")}>Corridas</button>
+            <button type="button" aria-pressed={showConditions} disabled={runs.length === 0} onClick={() => setGraphView("conditions")}>Condiciones</button>
+          </div>
+          <PanelSizeButton name="PSI-Nexus" expanded={expanded} onToggleSize={onToggleSize} />
         </div>
       </div>
       {graphView === "relationships" && <div className="bridge-filters" role="group" aria-label="Puentes científicos">
@@ -188,6 +202,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
           >
             <Background gap={20} size={1.5} color="#35445c" />
             <Controls position="bottom-right" showInteractive={false} />
+            <FitGraphOnResize />
           </ReactFlow>
         ) : (
           <div className="empty-evidence empty-graph"><Network size={30} aria-hidden /><p>Las conexiones aparecerán aquí al encontrar evidencia.</p></div>

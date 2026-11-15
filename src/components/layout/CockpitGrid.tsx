@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { TopNavbar } from "./TopNavbar";
 import { RankedDatasetList } from "../sidebar/RankedDatasetList";
 import { EvidenceSearch } from "../sidebar/EvidenceSearch";
@@ -18,6 +18,9 @@ import { useAetherStore, type EvidenceSelection } from "../../store/useAetherSto
 import type { ExperimentalRun } from "../../types/psi";
 
 export function CockpitGrid() {
+  const [expandedPanel, setExpandedPanel] = useState<"graph" | "comparison" | null>(null);
+  const toggleGraph = useCallback(() => setExpandedPanel((panel) => panel === "graph" ? null : "graph"), []);
+  const toggleComparison = useCallback(() => setExpandedPanel((panel) => panel === "comparison" ? null : "comparison"), []);
   const profile = useAetherStore((state) => state.profile);
   const atmosphere = useAetherStore((state) => state.atmosphere);
   const query = useAetherStore((state) => state.query);
@@ -102,12 +105,14 @@ export function CockpitGrid() {
       <main className="cockpit-grid">
         <RankedDatasetList studies={studies} rankedRuns={rankedRuns} studyScores={studyScores} studiesById={studiesById}
           runsByStudy={runsByStudy} search={search} current={current} view={view} />
-        <KnowledgeGraphCanvas studies={studies} runs={scopedRuns} current={current} searchActive={search.active} />
+        <KnowledgeGraphCanvas studies={studies} runs={scopedRuns} current={current} searchActive={search.active}
+          expanded={expandedPanel === "graph"} onToggleSize={toggleGraph} />
         <EvidenceInspector study={current ? studiesById.get(runsById.get(current.id)?.investigationId ?? current.id) : undefined}
           run={current?.kind === "run" ? runsById.get(current.id) : undefined}
           search={search} availableRuns={availableRuns} literature={literature}
           rankedRun={rank.find(({ run }) => current?.kind === "run" && run.id === current.id)} />
-        <ExperimentGitDiff runs={dataset.runs} runsById={runsById} studiesById={studiesById} areaStudies={areaStudies} />
+        <ExperimentGitDiff runs={dataset.runs} runsById={runsById} studiesById={studiesById} areaStudies={areaStudies}
+          expanded={expandedPanel === "comparison"} onToggleSize={toggleComparison} />
       </main>
     </div>
   );

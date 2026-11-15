@@ -9,6 +9,7 @@ import { useAetherStore } from "../../store/useAetherStore";
 import type { ExperimentalRun, Facility, Investigation } from "../../types/psi";
 import { InterpretationCard } from "./InterpretationCard";
 import { SplitHandle } from "./SplitHandle";
+import { PanelSizeButton, type PanelSizeProps } from "./PanelSizeButton";
 
 // Mínimos del reparto entre la tabla y la interpretación: encabezado y una fila / título y algo de texto.
 const minTableHeight = 72;
@@ -20,7 +21,7 @@ function formatValue(value: number | string | undefined, decimals = 0, unit = ""
   return unit ? `${value.toFixed(decimals)} ${unit}` : value.toFixed(decimals);
 }
 
-interface ComparisonProps {
+interface ComparisonProps extends PanelSizeProps {
   runs: readonly ExperimentalRun[];
   runsById: ReadonlyMap<string, ExperimentalRun>;
   studiesById: ReadonlyMap<string, Investigation>;
@@ -29,7 +30,7 @@ interface ComparisonProps {
 
 const atmosphereFields = new Set<string>(atmosphereControls.map(({ field }) => field));
 
-export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies }: ComparisonProps) {
+export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, expanded, onToggleSize }: ComparisonProps) {
   const comparison = useAetherStore((state) => state.comparison);
   const mode = useAetherStore((state) => state.mode);
   const selectRun = useAetherStore((state) => state.selectRun);
@@ -63,7 +64,7 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies }: 
   const stale = Boolean(interpretation && current && interpretationKey(interpretation) !== interpretationKey(current));
 
   return (
-    <section className="panel comparison" aria-labelledby="comparison-title">
+    <section className="panel comparison" data-expanded={expanded} aria-labelledby="comparison-title">
       <div className="panel-heading">
         <h2 id="comparison-title"><ArrowLeftRight size={17} aria-hidden /> Comparación experimental</h2>
         <div className="panel-heading-actions">
@@ -74,6 +75,7 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies }: 
           }}>
             <Sparkles size={13} aria-hidden /> {interpretation ? "Ocultar interpretación" : "Interpretar"}
           </button>}
+          <PanelSizeButton name="comparación experimental" expanded={expanded} onToggleSize={onToggleSize} />
         </div>
       </div>
       <div className={`panel-content comparison-content${interpretation ? " with-interpretation" : ""}`}>

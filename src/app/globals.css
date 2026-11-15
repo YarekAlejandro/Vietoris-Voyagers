@@ -542,3 +542,30 @@ body[data-resizing="row"], body[data-resizing="row"] * { cursor: row-resize !imp
   .graph-heading { flex-wrap: wrap; }
   .sliders { grid-template-columns: minmax(0, 1fr); }
 }
+
+.panel-size-button { display: grid; place-items: center; flex-shrink: 0; min-width: 32px; min-height: 32px; }
+.panel-size-button:hover { color: var(--text); }
+.graph-heading .panel-heading-actions { flex-wrap: wrap; }
+.comparison .panel-heading { flex-wrap: wrap; }
+
+body:has(.cockpit-grid > .panel[data-expanded="true"]) { overflow: hidden; }
+.cockpit:has(.panel[data-expanded="true"]) > :not(.cockpit-grid),
+.cockpit-grid:has(> .panel[data-expanded="true"]) > :not([data-expanded="true"]) { visibility: hidden; }
+.cockpit-grid > .panel[data-expanded="true"] {
+  position: fixed;
+  inset: clamp(6px, 1.5vw, 22px);
+  z-index: 20;
+  min-height: 0;
+  box-shadow: 0 0 0 30px var(--canvas);
+}
+.comparison[data-expanded="true"] .comparison-content { flex: 1 1 auto; overflow: auto; }
+.comparison[data-expanded="true"] .comparison-scroll { max-height: none; }
+.comparison[data-expanded="true"] table { font-size: 13px; }
+.comparison[data-expanded="true"] th,
+.comparison[data-expanded="true"] td { padding: 6px 8px; }
+
+@media (max-width: 900px) {
+  .comparison[data-expanded="true"] .comparison-content.with-interpretation > .comparison-scroll {
+    flex: 1 0 auto !important;
+  }
+}
