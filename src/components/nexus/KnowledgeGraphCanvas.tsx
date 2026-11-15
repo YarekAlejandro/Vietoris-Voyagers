@@ -221,7 +221,7 @@ export function KnowledgeGraphCanvas({ studies, runs, runsById, studiesById, cur
               const moved = changes.flatMap((change) => change.type === "position" && change.position ? [[change.id, change.position] as const] : []);
               if (moved.length) setDragged((positions) => ({ ...positions, ...Object.fromEntries(moved) }));
             }}
-            elementsSelectable={false} zoomOnScroll={false} panOnDrag
+            elementsSelectable={false} zoomOnScroll panOnDrag
             onMoveEnd={(event) => { if (event) onInteract(); }}
             onNodeDragStop={onInteract}
             defaultMarkerColor="#8097b5"
