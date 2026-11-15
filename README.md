@@ -1,22 +1,35 @@
 # AETHER-SI · Vietoris-Voyagers
 
+![Portada de AETHER-SI con una ilustración de una llama en microgravedad](docs/images/aether-si-cover.png)
+
 AETHER-SI es una consola para explorar experimentos de combustión y seguridad contra incendios en microgravedad. Reúne registros de NASA Physical Sciences Informatics (PSI) y literatura de NASA Technical Reports Server (NTRS) para comparar condiciones y resultados con sus fuentes.
 
-[Demo en Vercel](https://vietoris-voyagers-delta.vercel.app/)
+**[🚀 Abrir la demo](https://vietoris-voyagers-delta.vercel.app/)** · **[🧭 Explorar la consola](#explora-la-consola)** · **[💻 Ejecutar en local](#desarrollo-local)**
+
+![Captura de AETHER-SI con el catálogo FSRS a la izquierda, el grafo PSI-Nexus y la comparación A/B en el centro, y la ficha de evidencia a la derecha](docs/images/aether-si-console.jpg)
+
+*Consola de AETHER-SI en modo Ingeniería.*
 
 ## Explora la consola
 
-1. **Busca evidencia.** Prueba `llamas frías`, `smoke detection`, `acrílico a baja presión` o una accesión como `PSI-99`. El buscador admite términos en español e inglés.
-2. **Elige un escenario.** Selecciona un perfil de misión o ajusta gravedad, oxígeno, presión y flujo en **Atmósfera**. El índice FSRS reordena la evidencia cuantitativa según su pertinencia para el escenario.
-3. **Recorre PSI-Nexus.** Explora los vínculos entre instalaciones, estudios, temas y corridas. Abre **Condiciones** para ver la cobertura experimental frente al escenario activo.
-4. **Compara en A/B.** Usa `+A` y `+B` para cargar evidencias en **Comparación experimental**. La tabla muestra los resultados, los cambios de condiciones y los campos sin dato con sus fuentes.
-5. **Amplía el panel.** El botón del encabezado de **PSI-Nexus** y **Comparación experimental** amplía cada panel a casi toda la pantalla. Usa el mismo control o `Esc` para restaurarlo. La comparación conserva las selecciones A/B.
+| Herramienta | Qué puedes hacer |
+| --- | --- |
+| 🔎 **Búsqueda** | Encuentra estudios y corridas en español o inglés. Prueba `llamas frías`, `smoke detection`, `acrílico a baja presión` o `PSI-99`. |
+| 🎛️ **Atmósfera y FSRS** | Elige un perfil de misión o ajusta gravedad, oxígeno, presión y flujo. El índice FSRS ordena la evidencia cuantitativa según su pertinencia para el escenario. |
+| 🕸️ **PSI-Nexus** | Sigue los vínculos entre instalaciones, estudios, temas y corridas. Abre **Condiciones** para ver la cobertura experimental frente al escenario activo. |
+| ↔️ **Comparación A/B** | Usa `+A` y `+B` para contrastar resultados y condiciones con sus fuentes. Los campos ausentes aparecen como «—». |
+
+**⤢ Ampliar paneles.** Usa el botón del encabezado de **PSI-Nexus** o **Comparación experimental**. Pulsa el mismo control o `Esc` para restaurar el panel. Las selecciones A/B se conservan.
 
 La ficha reúne la evidencia seleccionada y su contexto de prevención, detección y supresión cuando está disponible. El modo **Estudiante** añade explicaciones, casos históricos y aplicaciones terrestres.
 
 ## Fuentes y respaldo
 
-La base curada contiene **15 estudios, 23 corridas normalizadas y 5 perfiles de referencia**. La consulta a NASA PSI incorpora investigaciones de **Combustion Science** y conserva los registros curados. Activa **Ver todo PSI** para consultar otras disciplinas. Los conteos de la interfaz provienen de la respuesta del servicio.
+| Estudios curados | Corridas normalizadas | Perfiles de referencia |
+| :---: | :---: | :---: |
+| **15** | **23** | **5** |
+
+La consulta a NASA PSI incorpora investigaciones de **Combustion Science** y conserva los registros curados. Activa **Ver todo PSI** para consultar otras disciplinas. Los conteos en vivo provienen de la respuesta del servicio.
 
 Los perfiles incorporados desde PSI indican de dónde salen sus cifras. Las fichas sin perfil cuantitativo aparecen en el catálogo y pueden compararse, con «—» en los campos ausentes. El **Radar NTRS** identifica sus publicaciones como literatura técnica y las enlaza con las fichas cuando corresponde.
 
