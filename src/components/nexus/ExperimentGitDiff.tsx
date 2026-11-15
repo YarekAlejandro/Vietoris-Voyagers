@@ -1,6 +1,6 @@
 import { ArrowLeftRight, ExternalLink, Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
-import { compareRuns, summarizeChangedDrivers } from "../../core/si-engine/git-diff";
+import { compareRuns, comparisonAvailability, reportedComparisonRows, summarizeChangedDrivers } from "../../core/si-engine/git-diff";
 import { buildDiffPayload, interpretationKey, type InterpretRequest } from "../../core/si-engine/interpret";
 import { psiStudyComparisonId } from "../../core/si-engine/merge-psi-catalog";
 import { atmosphereControls } from "../../data/mission_presets";
@@ -26,12 +26,12 @@ interface ComparisonProps extends PanelSizeProps {
   runsById: ReadonlyMap<string, ExperimentalRun>;
   studiesById: ReadonlyMap<string, Investigation>;
   areaStudies: readonly Investigation[];
+  guidedSelectors?: readonly string[];
 }
 
 const atmosphereFields = new Set<string>(atmosphereControls.map(({ field }) => field));
-const cabinGasFields = new Set(["cabin_co_ppm", "cabin_co2_ppm"]);
 
-export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, expanded, onToggleSize }: ComparisonProps) {
+export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, guidedSelectors, expanded, onToggleSize }: ComparisonProps) {
   const comparison = useAetherStore((state) => state.comparison);
   const mode = useAetherStore((state) => state.mode);
   const scenario = useAetherStore((state) => state.atmosphere);
@@ -41,6 +41,8 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
   const [opened, setOpened] = useState<InterpretRequest | null>(null);
   // Alto de la tabla fijado con el divisor; null reparte por mitades.
   const [tableHeight, setTableHeight] = useState<number | null>(null);
+  const [rowFilter, setRowFilter] = useState<"all" | "changed" | "missing">("all");
+  const [showMatches, setShowMatches] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   const interpretationRef = useRef<HTMLDivElement>(null);
   const importedStudies = areaStudies.filter((study) => study.importedPsi && !study.importedPsi.profile);
@@ -60,12 +62,22 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
   const hasPsiProfile = Boolean(a.psiProfile || b.psiProfile);
   const hasBibliographic = bibliographic.has(a.id) || bibliographic.has(b.id);
   const hasNominalProfile = Boolean(a.reference || b.reference);
-  const comparesSaffireCabin = [a, b].some(({ investigationId }) =>
-    investigationId === "SAFFIRE-IV-V" || investigationId === "SAFFIRE-VI");
-  const rows = compareRuns(a, b, studiesById).filter(({ field, valueA, valueB }) =>
-    valueA !== undefined || valueB !== undefined ||
-    (comparesSaffireCabin && cabinGasFields.has(field.id)) ||
-    ((hasPsiProfile || hasBibliographic || hasNominalProfile) && atmosphereFields.has(field.id)));
+  const allRows = compareRuns(a, b, studiesById);
+  const reported = new Set(reportedComparisonRows(allRows, a, b));
+  const rows = allRows.filter((row) => reported.has(row) ||
+    ((hasPsiProfile || hasBibliographic || hasNominalProfile) && atmosphereFields.has(row.field.id)));
+  const annotatedRows = rows.map((row) => ({
+    ...row,
+    availabilityA: comparisonAvailability(row.field.id, row.valueA, a),
+    availabilityB: comparisonAvailability(row.field.id, row.valueB, b),
+  }));
+  const matchingCount = rows.filter(({ status }) => status === "equal").length;
+  const visibleRows = annotatedRows.filter(({ field, status, availabilityA, availabilityB }) => {
+    if (rowFilter === "changed") return status === "changed";
+    if (rowFilter === "missing") return availabilityA === "missing" || availabilityB === "missing";
+    return status !== "equal" || showMatches || guidedSelectors?.some((selector) =>
+      selector.includes(`data-assistant-diff-row="${field.id}"`) || selector.includes(`data-assistant-diff-cell="${field.id}:`));
+  });
   const drivers = summarizeChangedDrivers(rows);
   const current: InterpretRequest | null = hasPsiProfile || hasBibliographic || hasNominalProfile ? null
     : { kind: "diff", payload: buildDiffPayload(a, b, rows, studiesById), mode, lang: "es", scenario, profileId };
@@ -113,24 +125,52 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
           <p>Cambiaron varias condiciones a la vez: la diferencia no puede atribuirse a una sola variable.</p>
           <p>{drivers.changedVariables.join(" · ")}</p>
         </div>}
+        <div className="comparison-toolbar">
+          <div className="segments" role="group" aria-label="Filtrar filas de la comparación">
+            {([["all", "Resumen"], ["changed", "Solo diferencias"], ["missing", "Datos faltantes"]] as const).map(([id, label]) =>
+              <button key={id} type="button" aria-pressed={rowFilter === id} onClick={() => setRowFilter(id)}>{label}</button>)}
+          </div>
+          {rowFilter === "all" && matchingCount > 0 && <button type="button" className="quiet-button" aria-expanded={showMatches}
+            aria-controls="comparison-rows" onClick={() => setShowMatches(!showMatches)}>
+            {showMatches ? "Plegar" : "Ver"} coincidencias ({matchingCount})
+          </button>}
+        </div>
         <div className="comparison-scroll" ref={tableRef}
           style={interpretation && tableHeight !== null ? { flex: `0 0 ${tableHeight}px` } : undefined}>
           <table>
             <thead><tr><th scope="col">Variable</th><th scope="col">Corrida A</th><th scope="col">Corrida B</th><th scope="col">{mode === "engineer" ? "Δ B − A" : "Diferencia"}</th></tr></thead>
-            <tbody>
-              {rows.map(({ field, valueA, valueB, nominalA, nominalB, status, delta, relativeDelta_pct, outcome }) => {
+            <tbody id="comparison-rows">
+              {visibleRows.length === 0 && <tr><td colSpan={4} className="diff-empty" role="status">No hay filas para este filtro.</td></tr>}
+              {visibleRows.map(({ field, valueA, valueB, nominalA, nominalB, availabilityA, availabilityB, status, delta, relativeDelta_pct, outcome }) => {
                 const { decimals, unit } = "unit" in field ? field : { decimals: undefined, unit: undefined };
                 const deltaUnit = "deltaUnit" in field ? field.deltaUnit : unit;
+                const comparisonState = status === "nominal" || (status === "missing" &&
+                  (availabilityA !== "missing" || availabilityB !== "missing")) ? "not-comparable" : status;
                 const display = (value: typeof valueA) => field.id === "facility" && typeof value === "string" && Object.hasOwn(facilities, value)
                   ? facilities[value as Facility].label : formatValue(value, decimals, unit);
                 return <tr key={field.id} data-status={status} data-outcome={outcome} data-assistant-diff-row={field.id}>
                   <th scope="row">{field.label}</th>
-                  <td data-assistant-diff-cell={`${field.id}:a`}>{display(valueA)}{nominalA && <small>Nominal</small>}</td>
-                  <td data-assistant-diff-cell={`${field.id}:b`}>{display(valueB)}{nominalB && <small>Nominal</small>}</td>
+                  {([{ run: a, value: valueA, nominal: nominalA, availability: availabilityA, side: "a" },
+                    { run: b, value: valueB, nominal: nominalB, availability: availabilityB, side: "b" }] as const).map(({ run, value, nominal, availability, side }) => {
+                    const source = field.id === "facility" ? studiesById.get(run.investigationId)?.source ?? run.source : run.source;
+                    return <td key={side} data-assistant-diff-cell={`${field.id}:${side}`}>
+                      {availability === "present" ? <><span className="diff-value">{display(value)}</span>
+                        <div className="diff-provenance">
+                          <span>{run.psiProfile ? "Perfil PSI" : nominal ? "Nominal" : field.id === "cabin_heat_added_kj" ? "Estimación publicada" : "Documentado"}</span>
+                          <a href={source.url} target="_blank" rel="noreferrer" title={source.label}
+                            aria-label={`Fuente de ${field.label}, ${run.label}: ${source.label}`}>
+                            {source.label.split(" · ").slice(1).join(" · ") || "Fuente"} <ExternalLink size={10} aria-hidden />
+                          </a>
+                        </div></> : <span className="diff-status" data-availability={availability}
+                          title={availability === "not-applicable" ? "La variable no corresponde al tipo de muestra." : "La variable no figura en el registro."}>
+                          {availability === "not-applicable" ? "No aplica" : "Sin dato"}
+                        </span>}
+                    </td>;
+                  })}
                   <td>
-                    {delta === undefined ? <span className="diff-status">{{
-                      equal: "Igual", missing: "Sin dato", changed: "Cambió", nominal: "Valor nominal",
-                    }[status]}</span> : (
+                    {delta === undefined ? <span className="diff-status" data-availability={comparisonState}>{{
+                      equal: "Igual", missing: "Sin dato", changed: "Cambió", "not-comparable": "No comparable",
+                    }[comparisonState as "equal" | "missing" | "changed" | "not-comparable"]}</span> : (
                       <><span className="diff-delta">{delta > 0 ? "+" : ""}{formatValue(delta, decimals, deltaUnit)}</span>
                         {relativeDelta_pct !== undefined && <small className="diff-relative" title="Cambio relativo a A">/ {relativeDelta_pct > 0 ? "+" : ""}{relativeDelta_pct.toFixed(1)}%</small>}
                       </>
@@ -171,7 +211,6 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
         {(hasPsiProfile || hasBibliographic || hasNominalProfile) && <div className="comparison-sources">
           {hasPsiProfile && <span>Condiciones publicadas como perfil PSI.</span>}
           {hasNominalProfile && <span>El perfil nominal muestra condiciones de referencia.</span>}
-          {hasBibliographic && <span>Los campos sin dato se muestran con «—».</span>}
         </div>}
         <div className="comparison-sources">
           {[a, b].map((run, index) => (

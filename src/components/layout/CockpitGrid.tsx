@@ -55,6 +55,8 @@ async function requestAssistantAnswer(input: AssistantGroundingInput): Promise<P
 
 export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAiEnabled: boolean; speechEnabled: boolean }) {
   const [expandedPanel, setExpandedPanel] = useState<"graph" | "comparison" | null>(null);
+  const [catalogCollapsed, setCatalogCollapsed] = useState(false);
+  const [graphCollapsed, setGraphCollapsed] = useState(false);
   const [spotlight, setSpotlight] = useState<SpotlightRequest | null>(null);
   const [annotations, setAnnotations] = useState<{ selectors: string[]; active: string } | null>(null);
   const guidedAnswer = useRef<{ answer: PageAssistantAnswer; cues: ReturnType<typeof comparisonCues>; index: number } | null>(null);
@@ -168,6 +170,8 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
     }
 
     if (expandedPanel && expandedPanel !== panel) setExpandedPanel(null);
+    if (target === "graph") setGraphCollapsed(false);
+    if (target === "catalog") setCatalogCollapsed(false);
     if (!visible && studyId) {
       if (!areaStudies.some((study) => study.id === studyId)) state.setPsiArea("all");
       state.clearFilters();
@@ -300,17 +304,19 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
       <div className="cockpit">
         <TopNavbar sync={sync} />
         <EvidenceSearch search={search} />
-        <main className="cockpit-grid">
+        <main className="cockpit-grid" data-catalog-collapsed={catalogCollapsed} data-graph-collapsed={graphCollapsed}>
           <RankedDatasetList studies={studies} rankedRuns={rankedRuns} studyScores={studyScores} studiesById={studiesById}
-            runsByStudy={runsByStudy} search={search} current={current} view={view} />
+            runsByStudy={runsByStudy} search={search} current={current} view={view}
+            collapsed={catalogCollapsed} onToggleCollapse={() => setCatalogCollapsed(!catalogCollapsed)} />
           <KnowledgeGraphCanvas studies={studies} runs={scopedRuns} current={current} searchActive={search.active}
-            expanded={expandedPanel === "graph"} onToggleSize={toggleGraph} />
+            expanded={expandedPanel === "graph"} onToggleSize={toggleGraph}
+            collapsed={graphCollapsed} onToggleCollapse={() => setGraphCollapsed(!graphCollapsed)} />
           <EvidenceInspector study={current ? studiesById.get(runsById.get(current.id)?.investigationId ?? current.id) : undefined}
             run={current?.kind === "run" ? runsById.get(current.id) : undefined}
             search={search} availableRuns={availableRuns} literature={literature} coverage={coverage}
             rankedRun={rank.find(({ run }) => current?.kind === "run" && run.id === current.id)} />
           <ExperimentGitDiff runs={dataset.runs} runsById={runsById} studiesById={studiesById} areaStudies={areaStudies}
-            expanded={expandedPanel === "comparison"} onToggleSize={toggleComparison} />
+            guidedSelectors={annotations?.selectors} expanded={expandedPanel === "comparison"} onToggleSize={toggleComparison} />
         </main>
       </div>
       <AssistantSpotlight request={spotlight} />

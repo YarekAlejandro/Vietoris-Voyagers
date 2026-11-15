@@ -6,7 +6,7 @@ import { evidenceTopics } from "../../data/psi_vocabulary";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { ExperimentalRun, Investigation } from "../../types/psi";
 import { ExperimentalCoveragePlot } from "../simulator/ExperimentalCoveragePlot";
-import { PanelSizeButton, type PanelSizeProps } from "./PanelSizeButton";
+import { PanelCollapseButton, PanelSizeButton, type PanelCollapseProps, type PanelSizeProps } from "./PanelSizeButton";
 
 type FlowEvidenceNode = Node<GraphNode & { context: string }, "evidence">;
 
@@ -77,14 +77,14 @@ function CenterSelection({ nodeId }: { nodeId?: string }) {
   </ControlButton>;
 }
 
-interface GraphProps extends PanelSizeProps {
+interface GraphProps extends PanelSizeProps, PanelCollapseProps {
   studies: readonly Investigation[];
   runs: readonly ExperimentalRun[];
   current: EvidenceSelection | null;
   searchActive: boolean;
 }
 
-export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, expanded, onToggleSize }: GraphProps) {
+export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, expanded, onToggleSize, collapsed, onToggleCollapse }: GraphProps) {
   const facility = useAetherStore((state) => state.facility);
   const topic = useAetherStore((state) => state.topic);
   const graphView = useAetherStore((state) => state.graphView);
@@ -175,15 +175,17 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
       <div className="panel-heading graph-heading">
         <h2 id="nexus-title" tabIndex={-1}><Network size={17} aria-hidden /> PSI-Nexus</h2>
         <div className="panel-heading-actions">
-          <div className="segments" role="group" aria-label="Vista del grafo">
+          {!collapsed && <div className="segments" role="group" aria-label="Vista del grafo">
             <button type="button" aria-pressed={graphView === "relationships"} onClick={() => { setBridge(null); setGraphView("relationships"); }}>Relaciones</button>
             <button type="button" aria-pressed={graphView === "overview"} onClick={() => setGraphView("overview")}>General</button>
             <button type="button" aria-pressed={Boolean(runStudy)} disabled={currentRunCount === 0} onClick={() => setGraphView("runs")}>Corridas</button>
             <button type="button" aria-pressed={showConditions} disabled={runs.length === 0} onClick={() => setGraphView("conditions")}>Condiciones</button>
-          </div>
-          <PanelSizeButton name="PSI-Nexus" expanded={expanded} onToggleSize={onToggleSize} />
+          </div>}
+          {!expanded && <PanelCollapseButton name="grafo PSI-Nexus" controls="nexus-body" collapsed={collapsed} onToggleCollapse={onToggleCollapse} />}
+          {!collapsed && <PanelSizeButton name="PSI-Nexus" expanded={expanded} onToggleSize={onToggleSize} />}
         </div>
       </div>
+      <div id="nexus-body" className="panel-body-contents" hidden={collapsed}>
       {graphView === "relationships" && <div className="bridge-filters" role="group" aria-label="Puentes científicos">
         {bridgeFilters.map(({ label, title }) => <button type="button" key={label} title={title}
           aria-pressed={bridgeFilter?.label === label} onClick={() => {
@@ -242,6 +244,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
         {bridgeFilter?.label === "Humo ↔ Polvo" && <a href="https://www.youtube.com/watch?v=_43Ei9eQVww" target="_blank" rel="noreferrer">Alarma de Artemis II · NASA</a>}
         {topic && <span className="graph-context">{evidenceTopics[topic].label}</span>}
       </div>}
+      </div>
     </section>
   );
 }

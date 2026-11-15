@@ -18,6 +18,7 @@ import { ScenarioCoverageCard } from "../simulator/ScenarioCoverageCard";
 import type { ScenarioCoverage } from "../../core/si-engine/scenario-coverage";
 import { sceneEvidenceForRun } from "../../core/si-engine/experiment-scene";
 import { ExperimentScene } from "../simulator/ExperimentScene";
+import { ScoreDetails } from "../sidebar/RankedDatasetList";
 
 function SourceLink({ source }: { source: Citation }) {
   return <a className="source-link" href={source.url} target="_blank" rel="noreferrer">{source.label} <ExternalLink size={13} aria-hidden /></a>;
@@ -64,7 +65,7 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
           <button type="button" aria-label="Radar NTRS" aria-pressed={view === "radar"} onClick={() => setView("radar")}>NTRS</button>
         </div>
       </div>
-      {view !== "radar" && <div className="scenario-coverage"><ScenarioCoverageCard coverage={coverage} /></div>}
+      {view === "atmosphere" && <div className="scenario-coverage"><ScenarioCoverageCard coverage={coverage} /></div>}
       {view === "atmosphere" ? <AtmosphereSliders /> : view === "radar" ? <NtrsRadar literature={literature} /> : study ? (
         <div className="panel-content inspector-content" key={run?.id ?? study.id}>
           <div className="evidence-kind">
@@ -90,7 +91,7 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
             {!run && <p>{study.summary}</p>}
           </> : run ? (
             <>
-              <p id="assistant-evidence-outcome" data-assistant-run={run.id}>{run.configuration}{run.outcome ? ` · ${run.outcome}` : ""}</p>
+              {run.configuration && <p className="psi-note">{run.configuration}</p>}
               <dl className="evidence-readouts">
                 {atmosphereControls.map(({ field, label, unit, decimals }) => {
                   const value = run.atmosphere[field];
@@ -108,9 +109,18 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
               </dl>}
               {run.cabin_heat_added_kj !== undefined && <p id="assistant-field-cabin_heat_added_kj" tabIndex={-1} className="observation"><strong>{run.cabin_heat_added_kj} kJ</strong> de calor añadido a cabina (estimación publicada).</p>}
               {run.steady_flame_length_cm !== undefined && <p className="observation"><strong>{run.steady_flame_length_cm} cm</strong> de longitud de llama estable.</p>}
+              <div className="search-reason" id="assistant-evidence-outcome" data-assistant-run={run.id}>
+                <strong>Resultado observado</strong>
+                <p>{run.outcome ?? "Sin dato en este registro."}</p>
+              </div>
             </>
           ) : <p>{mode === "student" ? studentDescriptions[study.id] ?? study.summary : study.summary}</p>}
           <SourceLink source={run?.source ?? study.source} />
+          {rankedRun && !run?.reference && <div className="search-reason">
+            <strong>Similitud con el escenario (FSRS) · {rankedRun.score.toFixed(1)} / 100</strong>
+            <ScoreDetails result={rankedRun} label={run?.label ?? study.id} />
+          </div>}
+          <ScenarioCoverageCard coverage={coverage} />
           {scene ? <ExperimentScene evidence={scene} /> : sceneEnabled && run && <p className="psi-note">
             {run.reference || run.psiProfile ? "La escena requiere una corrida experimental documentada."
               : "Montaje sin escena disponible."}
@@ -146,10 +156,6 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
             <p>{bridge.description}</p>
             <SourceLink source={bridge.citation} />
           </div>)}
-          {rankedRun && !run?.reference && mode === "engineer" && <div className="search-reason">
-            <strong>Similitud con el escenario (FSRS) · {rankedRun.score.toFixed(1)} / 100</strong>
-            <p>Combina cercanía al escenario, instrumentación y vínculos experimentales. Bonificación del escenario: {rankedRun.bonus_pts} pts.</p>
-          </div>}
           {mode === "student" && <>
             <section className="student-card">
               <h4>¿Por qué cambia de forma una llama?</h4>

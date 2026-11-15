@@ -38,3 +38,13 @@ it.each(["Se publicaron 62 % O₂.", "Se publicaron 26,5 kPa.", "Se publicaron 2
 it("rechaza una cita inexistente", () => {
   expect(validateInterpretation({ ...valid, claims: [{ ...valid.claims[0], runIds: ["inventada"] }] }, bundle)).toBeNull();
 });
+
+it("limita las citas de A/B a la pareja y deja interpretar las dimensiones documentadas", () => {
+  expect(bundle.comparison?.rows.find(({ field }) => field === "CO₂ de cabina")).toMatchObject({
+    a: { availability: "missing" }, b: { availability: "missing" },
+  });
+  const text = "El espesor pasó de 5 mm en A a 10 mm en B.";
+  expect(validateInterpretation({ ...valid, claims: [{ text, runIds: [...comparison] }] }, bundle)).not.toBeNull();
+  expect(validateInterpretation({ ...valid, claims: [{ text, runIds: [comparison[0]] }] }, bundle)).toBeNull();
+  expect(validateInterpretation({ ...valid, claims: [{ text: "Se describe la muestra.", runIds: ["SAME-1"] }] }, bundle)).toBeNull();
+});

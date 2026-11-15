@@ -246,7 +246,7 @@ const text = {
     partialOnly: { engineer: "La presión parcial de O₂ solo está disponible en", student: "La presión que aporta el oxígeno solo está disponible en" },
     many: "Cambiaron varias condiciones a la vez; no se puede atribuir la diferencia de resultados a una sola.",
     gaps: (labels: string) => `Faltan datos en: ${labels}.`,
-    zeroG: "Ambas corridas son de 0 g; no hay datos de gravedad parcial en PSI.",
+    zeroG: "Ambas corridas son de 0 g. Esta pareja no permite evaluar gravedad parcial.",
     score: (label: string, score: string, max: string, profile: string) => `${label} obtiene ${score} de ${max} en FSRS para el perfil ${profile}.`,
     components: (atm: string, flow: string, grav: string) => ` Componentes: atmósfera ${atm} %, flujo ${flow} % y gravedad/puente ${grav} %.`,
     bonus: (pts: string) => ` Incluye una bonificación por escenario de ${pts} pts.`,
@@ -279,7 +279,7 @@ const text = {
     partialOnly: { engineer: "The O₂ partial pressure is only available in", student: "The pressure contributed by oxygen is only available in" },
     many: "Several conditions changed at once; the difference in outcomes cannot be attributed to a single one.",
     gaps: (labels: string) => `Missing data in: ${labels}.`,
-    zeroG: "Both runs are at 0 g; PSI has no partial-gravity data.",
+    zeroG: "Both runs are at 0 g. This pair cannot assess partial gravity.",
     score: (label: string, score: string, max: string, profile: string) => `${label} scores ${score} out of ${max} on FSRS for the ${profile} profile.`,
     components: (atm: string, flow: string, grav: string) => ` Components: atmosphere ${atm} %, flow ${flow} % and gravity/bridge ${grav} %.`,
     bonus: (pts: string) => ` It includes a scenario bonus of ${pts} pts.`,
@@ -350,6 +350,10 @@ function diffTemplate(payload: DiffPayload, mode: InterpretMode, lang: Interpret
       ? t.noChange(a.label, b.label)
       : t.changed(conditions.length, a.label, b.label) + conditions.map(change).join("; ") + ".",
     outcomes.length > 0 ? t.outcomes + outcomes.map(change).join("; ") + "." : "",
+    ...payload.rows.filter(({ id, status }) => id === "outcome" && status === "missing").map((row) =>
+      lang === "es"
+        ? `Resultado observado · A: ${row.valueA === "missing" ? "sin dato" : row.valueA}. B: ${row.valueB === "missing" ? "sin dato" : row.valueB}.`
+        : `Observed outcome · A: ${row.valueA === "missing" ? "no data" : row.valueA}. B: ${row.valueB === "missing" ? "no data" : row.valueB}.`),
   ].filter(Boolean).join(" ");
   const missingA = a.oxygen_partial_pressure_psia === "missing";
   const missingB = b.oxygen_partial_pressure_psia === "missing";

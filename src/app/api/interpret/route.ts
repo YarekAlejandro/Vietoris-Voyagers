@@ -2,7 +2,7 @@ import { atmosphereControls, missionPresets } from "../../../data/mission_preset
 import { investigationsById, psiDataset, runsById } from "../../../data/psi";
 import { buildEvidenceBundle, validateInterpretation } from "../../../core/si-engine/evidence-bundle";
 import { rankRuns } from "../../../core/si-engine/fsrs-ranker";
-import { compareRuns } from "../../../core/si-engine/git-diff";
+import { compareRuns, reportedComparisonRows } from "../../../core/si-engine/git-diff";
 import {
   buildDiffPayload, buildRankPayload, coverageAbstention, coverageCaveats, parseInterpretRequest, templateInterpretation,
   type InterpretRequest, type InterpretationResult,
@@ -37,6 +37,8 @@ Usa únicamente cifras con unidades exactas del paquete; evita números sin unid
 Presenta observaciones y límites. Evita predicciones, calificaciones de seguridad y afirmaciones de certificación.
 Si confounded es true, describe cambios simultáneos sin afirmar causalidad. No uses literatura ni conocimiento externo.
 Responde con summary, claims (text y runIds) y limitations. Usa pocas frases y cita al menos un registro.`;
+
+const comparisonGuidance = `Para A/B, empieza con el hallazgo principal en summary. Distingue observaciones, estimaciones publicadas y condiciones de ensayo. Usa claims para aportar detalles que el resumen aún no cubre, como una coincidencia relevante o los cambios de condiciones que más importan. Da valores A y B cuando estén disponibles y cita ambas corridas si contrastas sus datos. Si la fila Resultado observado carece de dato en A, B o ambos, indícalo explícitamente y explica qué queda sin poder comparar. Distingue ausencias, variables que no aplican y valores nominales. En limitations, si hubo cambios simultáneos, indica «Las condiciones cambiaron juntas y el contraste no aísla el efecto de ninguna de ellas». Cita únicamente las dos corridas de comparison.runIds. Identifica las corridas en la prosa como A y B. Cada entrada debe caber en 500 caracteres. Si usas una cantidad, copia su unidad del paquete.`;
 
 function invalid() {
   return Response.json({ error: "Solicitud inválida." }, { status: 400 });
@@ -88,8 +90,7 @@ export async function POST(httpRequest: Request) {
     const a = recordedRun(candidate.payload.runs.a.id);
     const b = recordedRun(candidate.payload.runs.b.id);
     if (!a || !b) return invalid();
-    const rows = compareRuns(a, b, investigationsById);
-    const reported = rows.filter((row) => row.valueA !== undefined || row.valueB !== undefined);
+    const reported = reportedComparisonRows(compareRuns(a, b, investigationsById), a, b);
     request = { kind: "diff", mode: candidate.mode, lang: candidate.lang, scenario: target,
       payload: buildDiffPayload(a, b, reported, investigationsById) };
     bundle = buildEvidenceBundle({ ...context, comparison: [a.id, b.id] });
@@ -116,12 +117,19 @@ export async function POST(httpRequest: Request) {
   if (now >= rate.until) rate = { count: 0, until: now + minuteMs };
   if (rate.count >= requestsPerMinute) return Response.json(fallback);
   rate.count += 1;
-  const signal = AbortSignal.timeout(timeoutMs);
-  const evidence = JSON.stringify(bundle).replaceAll("<", "\\u003c");
+  const signal = AbortSignal.any([httpRequest.signal, AbortSignal.timeout(request.kind === "diff" ? 15_000 : timeoutMs)]);
+  const modelEvidence = bundle.comparison ? {
+    comparison: bundle.comparison,
+    evidence: bundle.evidence.filter(({ runId }) => bundle.comparison?.runIds.includes(runId)),
+    confounded: bundle.confounded,
+    coverage: bundle.coverage.status,
+  } : bundle;
+  const evidence = JSON.stringify(modelEvidence).replaceAll("<", "\\u003c");
   let feedback = "";
   for (let attempt = 0; attempt < 2 && !signal.aborted; attempt += 1) {
     try {
-      const result = await provider.call({ system, schema, model: provider.model, apiKey: provider.apiKey, signal,
+      const result = await provider.call({ system: request.kind === "diff" ? `${system}\n${comparisonGuidance}` : system,
+        schema, model: provider.model, apiKey: provider.apiKey, signal, maxOutputTokens: request.kind === "diff" ? 1200 : undefined,
         userContent: `Idioma: ${request.lang}. Modo: ${request.mode}.\n${feedback}\n<evidence>\n${evidence}\n</evidence>`,
       });
       if (result.ok) {
@@ -131,6 +139,7 @@ export async function POST(httpRequest: Request) {
             caveats: [...caveats, ...narrative.limitations], fieldsUsed: [...new Set(narrative.claims.flatMap(({ runIds }) => runIds))],
           } satisfies InterpretationResult);
         }
+        console.warn("[interpret] La respuesta del modelo no pasó la validación de evidencia.");
         feedback = "La respuesta anterior no pasó la validación de citas, cifras o atribución. Simplifica y usa solo evidencia explícita.";
       } else if (!result.retryable) {
         break;

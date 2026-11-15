@@ -4,13 +4,14 @@ import type { FSRS, rankRuns } from "../../core/si-engine/fsrs-ranker";
 import { buildRankPayload, interpretationKey, type InterpretRequest } from "../../core/si-engine/interpret";
 import { psiStudyComparisonId } from "../../core/si-engine/merge-psi-catalog";
 import { InterpretationCard } from "../nexus/InterpretationCard";
+import { PanelCollapseButton, type PanelCollapseProps } from "../nexus/PanelSizeButton";
 import type { EvidenceSearchResults } from "../../core/si-engine/semantic-search";
 import { evidenceTopics, facilities } from "../../data/psi_vocabulary";
 import { atmosphereControls } from "../../data/mission_presets";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { EvidenceTopicId, ExperimentalRun, Investigation } from "../../types/psi";
 
-interface DatasetListProps {
+interface DatasetListProps extends PanelCollapseProps {
   studies: Investigation[];
   rankedRuns: ReturnType<typeof rankRuns>;
   studyScores: ReadonlyMap<string, FSRS>;
@@ -25,12 +26,13 @@ function ScoreBadge({ result }: { result: FSRS }) {
   return <span className="fsrs-badge mono" title="Similitud con el escenario (FSRS)">FSRS {result.score.toFixed(1)}</span>;
 }
 
-function ScoreDetails({ result, label }: { result: FSRS; label: string }) {
+export function ScoreDetails({ result, label }: { result: FSRS; label: string }) {
   return <div className="fsrs-details">
     <meter aria-label={`Similitud con el escenario (FSRS) de ${label}`} min={0} max={100} value={result.score} />
     <p>Atm {Math.round(result.atmosphere_pct)}% · Flujo {Math.round(result.flow_pct)}% · Grav/Puente {Math.round(result.gravityBridge_pct)}%</p>
     <details className="fsrs-explanation">
       <summary>¿Por qué este puntaje?</summary>
+      <p className="fsrs-data-coverage">Datos del registro: {result.criteria.filter(({ input }) => input?.measured).length} de {result.criteria.length} variables con medición. La cobertura del escenario evalúa cuántas corridas coinciden dentro de las tolerancias.</p>
       <dl>
         {atmosphereControls.map(({ field, label, unit, decimals }) => {
           const criterion = result.criteria.find(({ axis }) => axis === field)!;
@@ -56,7 +58,7 @@ function ScoreDetails({ result, label }: { result: FSRS; label: string }) {
   </div>;
 }
 
-export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesById, runsByStudy, search, current, view }: DatasetListProps) {
+export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesById, runsByStudy, search, current, view, collapsed, onToggleCollapse }: DatasetListProps) {
   const facility = useAetherStore((state) => state.facility);
   const topic = useAetherStore((state) => state.topic);
   const studyFilter = useAetherStore((state) => state.studyFilter);
@@ -86,10 +88,14 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesByI
 
   return (
     <section className="panel ranking" aria-labelledby="ranking-title">
-      <div className="panel-heading">
+      <div className="panel-heading ranking-heading">
         <h2 id="ranking-title" tabIndex={-1}><ListFilter size={17} aria-hidden /> {search.active ? "Resultados" : "Catálogo de evidencia"}</h2>
-        <span className="panel-meta" aria-live="polite">{count} {view === "study" ? (count === 1 ? "estudio" : "estudios") : (count === 1 ? "corrida" : "corridas")}</span>
+        <div className="panel-heading-actions">
+          {!collapsed && <span className="panel-meta" aria-live="polite">{count} {view === "study" ? (count === 1 ? "estudio" : "estudios") : (count === 1 ? "corrida" : "corridas")}</span>}
+          <PanelCollapseButton name="catálogo de evidencia" controls="ranking-body" horizontal collapsed={collapsed} onToggleCollapse={onToggleCollapse} />
+        </div>
       </div>
+      <div id="ranking-body" className="panel-body-contents" hidden={collapsed}>
       <div className="ranking-controls">
         <div className="segments result-segments" role="group" aria-label="Tipo de evidencia">
           <button type="button" aria-pressed={view === "study"} onClick={() => setResultsView("study")}>Estudios <span>{studies.length}</span></button>
@@ -211,6 +217,7 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesByI
           })}
         </ol>
       )}
+      </div>
     </section>
   );
 }

@@ -43,6 +43,23 @@ const outcomeFields = new Set<(typeof diffFields)[number]["id"]>([
 type ComparisonEvidence = Pick<ExperimentalRun, "investigationId" | "atmosphere"> & Partial<ExperimentalRun>;
 type DiffFieldId = (typeof diffFields)[number]["id"];
 
+export function comparisonAvailability(field: DiffFieldId, value: string | number | undefined, run: ComparisonEvidence) {
+  if (value !== undefined) return "present";
+  const category = run.fuelCategory;
+  if (!category || run.reference || run.psiProfile) return "missing";
+  if ((field === "initial_droplet_diameter_mm" || field === "extinction_droplet_diameter_mm") && category !== "LIQUID_DROPLET") {
+    return "not-applicable";
+  }
+  if ((field === "width_cm" || field === "thickness_mm") && category === "LIQUID_DROPLET") return "not-applicable";
+  return "missing";
+}
+
+export function reportedComparisonRows(rows: ReturnType<typeof compareRuns>, a: ComparisonEvidence, b: ComparisonEvidence) {
+  const cabin = [a, b].some(({ investigationId }) => investigationId === "SAFFIRE-IV-V" || investigationId === "SAFFIRE-VI");
+  return rows.filter(({ field, valueA, valueB }) => valueA !== undefined || valueB !== undefined || field.id === "outcome" ||
+    (cabin && (field.id === "cabin_co_ppm" || field.id === "cabin_co2_ppm")));
+}
+
 const driverGroups: readonly { label: string; fields: readonly DiffFieldId[] }[] = [
   { label: "Oxígeno", fields: ["oxygen_pct"] },
   { label: "Presión absoluta", fields: ["pressure_psia"] },

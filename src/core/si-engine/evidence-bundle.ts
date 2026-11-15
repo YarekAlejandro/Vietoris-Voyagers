@@ -1,6 +1,6 @@
 import type { Atmosphere, EnvironmentPreset, ExperimentalRun, Investigation } from "../../types/psi";
 import { rankRuns } from "./fsrs-ranker";
-import { compareRuns, summarizeChangedDrivers } from "./git-diff";
+import { compareRuns, comparisonAvailability, reportedComparisonRows, summarizeChangedDrivers } from "./git-diff";
 import { computeCoverage, measuredRuns } from "./scenario-coverage";
 
 const units = { oxygen_pct: "% O₂", pressure_psia: "psia", flow_velocity_cm_s: "cm/s", gravity_g: "g" } as const;
@@ -26,7 +26,7 @@ export function buildEvidenceBundle(state: {
   const coverage = computeCoverage(state.scenario, runs);
   const left = byId.get(state.comparison?.[0] ?? "");
   const right = byId.get(state.comparison?.[1] ?? "");
-  const rows = left && right ? compareRuns(left, right, state.investigations) : [];
+  const rows = left && right ? reportedComparisonRows(compareRuns(left, right, state.investigations), left, right) : [];
   const drivers = summarizeChangedDrivers(rows);
   const selected = new Set([...state.focusIds ?? [], ...state.comparison ?? [], ...ranked.map(({ run }) => run.id)]);
   if (coverage.closest) selected.add(coverage.closest.runId);
@@ -44,6 +44,11 @@ export function buildEvidenceBundle(state: {
   const comparison = left && right ? {
     runIds: [left.id, right.id],
     changedVariables: drivers.changedVariables,
+    rows: rows.map(({ field, valueA, valueB, nominalA, nominalB, outcome, status }) => ({
+      field: field.label, unit: "unit" in field ? field.unit : null, outcome, status,
+      a: { value: valueA ?? null, nominal: nominalA, availability: comparisonAvailability(field.id, valueA, left) },
+      b: { value: valueB ?? null, nominal: nominalB, availability: comparisonAvailability(field.id, valueB, right) },
+    })),
     quantities: rows.flatMap(({ field, delta, relativeDelta_pct }) => delta === undefined || !("unit" in field) ? [] : [
       { field: field.label, value: delta, unit: "deltaUnit" in field ? field.deltaUnit : field.unit },
       ...(relativeDelta_pct === undefined ? [] : [{ field: field.label, value: relativeDelta_pct, unit: "%" }]),
@@ -64,7 +69,7 @@ export type ValidatedNarrative = { summary: string; claims: { text: string; runI
 const prohibited = /\b(?:segur[oa]s?|safe|certific\w*|garanti[sz]\w*|guarantee\w*|concluyente|no es conservador|explosiv\w*|re[- ]ignici[oó]n)\b/i;
 const causal = /\b(?:caus\w*|debido a|a causa de|se debe a|atribu\w*|provoc\w*|produj\w*|gener[oó]|hizo que|result[oó] en|explica|determina|por efecto de|como consecuencia|due to|because|led to|resulted in|caus\w*|attribut\w*|produc\w*|dr[io]ve)\b/i;
 const confoundingNotice = "Cambiaron varias condiciones a la vez: la diferencia no puede atribuirse a una sola variable.";
-const unitsPattern = /(?<![\p{L}\d.,_])([+−-]?\d+(?:[.,]\d+)?)\s*(%\s*(?:O[₂2]|CO[₂2])?|(?:cm\/s|mm²\/s|mg\/min|psia|kPa|kV\/cm|pp|kJ|mm|cm|g|s)(?![\p{L}\d²/]))/giu;
+const unitsPattern = /(?<![\p{L}\d.,_])([+−-]?\d+(?:[.,]\d+)?)\s*(%\s*(?:O[₂2]|CO[₂2])?|(?:cm\/s|mm²\/s|mg\/min|psia|kPa|kV\/cm|ppm|pp|kJ|mm|cm|g|s)(?![\p{L}\d²/]))/giu;
 const bareNumber = /(?<![\p{L}\d_])\d/u;
 const normalizedUnit = (unit: string) => unit.toLowerCase().replace(/\s/g, "").replaceAll("₂", "2");
 
@@ -97,13 +102,16 @@ export function validateInterpretation(output: unknown, bundle: EvidenceBundle):
     });
     const comparison = bundle.comparison;
     const deltas = comparison?.runIds.every((id) => ids.includes(id)) ? comparison.quantities : [];
-    return validNumbers(textToCheck, [...bundle.scenario, ...citedQuantities, ...deltas]);
+    const comparedValues = comparison?.rows.flatMap(({ a, b, field, unit }) => [a, b].flatMap(({ value, nominal }, side) =>
+      ids.includes(comparison.runIds[side]) && typeof value === "number" && unit && !nominal ? [{ field, value, unit }] : [])) ?? [];
+    const scenarioValues = comparison ? [] : bundle.scenario;
+    return validNumbers(textToCheck, [...scenarioValues, ...citedQuantities, ...comparedValues, ...deltas]);
   };
-  const allIds = [...byId.keys()];
+  const allIds = bundle.comparison?.runIds ?? [...byId.keys()];
   if (![summary, ...limitations].every((item) => hasSupportedText(item, allIds))) return null;
   for (const claim of claims) {
     if (!claim || !validText(claim.text) || !Array.isArray(claim.runIds) || !claim.runIds.length ||
-        !claim.runIds.every((id) => byId.has(id)) || !hasSupportedText(claim.text, claim.runIds)) return null;
+        !claim.runIds.every((id) => allIds.includes(id)) || !hasSupportedText(claim.text, claim.runIds)) return null;
   }
   return { summary, claims, limitations };
 }
