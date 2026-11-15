@@ -53,7 +53,7 @@ function SolidScene({ evidence }: { evidence: Extract<ExperimentSceneEvidence, {
       <meshStandardMaterial color="#bfd2e2" roughness={0.65} />
     </mesh>
     {evidence.showArrows && <FlowArrows length={flowLength} />}
-    {evidence.flame !== "none" && <mesh position={[-0.58, -0.11 + sheetHeight / 2, 0]}
+    {(evidence.flame === "rounded" || evidence.flame === "attached") && <mesh position={[-0.58, -0.11 + sheetHeight / 2, 0]}
       scale={evidence.flame === "rounded" ? [0.2, 0.13, 0.19] : [0.49, 0.14, 0.26]} rotation-z={0.19}>
       <sphereGeometry args={[1, 16, 10]} />
       <meshBasicMaterial color={evidence.flame === "rounded" ? "#ffbd73" : "#ffad45"} transparent opacity={0.79} />

@@ -20,7 +20,7 @@ interface AetherState {
   studyFilter: string | null;
   resultsView: "study" | "run" | null;
   inspectorView: "evidence" | "atmosphere" | "radar";
-  graphView: "relationships" | "overview" | "runs" | "conditions";
+  graphView: "relationships" | "overview" | "runs" | "conditions" | "scene";
   comparison: Record<Side, string>;
   psiArea: PsiArea;
   psiRecords: ReadonlyMap<string, SyncedPsiRecord>;
@@ -84,7 +84,7 @@ export const useAetherStore = create<AetherState>((set) => ({
     const isRun = selection.kind === "run";
     return {
       selection, resultsView: selection.kind, inspectorView: "evidence",
-      graphView: graphView === "conditions" ? graphView : isRun ? "runs" : "relationships",
+      graphView: graphView === "conditions" || graphView === "scene" ? graphView : isRun ? "runs" : "relationships",
       studyFilter: isRun && investigationId === studyFilter ? studyFilter : null,
     };
   }),

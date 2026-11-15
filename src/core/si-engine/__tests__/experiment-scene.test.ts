@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { runsById } from "../../../data/psi";
-import { sceneEvidenceForRun } from "../experiment-scene";
+import { dropletRadius_px, flowArrowLength_px, plateEdge_px, sceneComparison, sceneEvidenceForRun } from "../experiment-scene";
 
 it("usa el espesor y el flujo reportados y respeta la configuración en dos caras", () => {
   const run = runsById.get("SAFFIRE-VI-E6")!;
@@ -47,4 +47,54 @@ it("excluye perfiles nominales e inferidos incluso cuando hay un montaje reconoc
   expect(sceneEvidenceForRun({ ...run, reference: true })).toBeNull();
   expect(sceneEvidenceForRun({ ...run, psiProfile: {} })).toBeNull();
   expect(sceneEvidenceForRun(runsById.get("BRE-REF-QUIET")!)).toBeNull();
+});
+
+it("no dibuja llama sin evidencia de combustión reportada", () => {
+  expect(sceneEvidenceForRun(runsById.get("SAFFIRE-VI-E5")!)).toMatchObject({ kind: "solid", flame: "unreported", twoFaces: false });
+  expect(sceneEvidenceForRun(runsById.get("SAFFIRE-I-1")!)).toMatchObject({ flame: "attached" });
+  expect(sceneEvidenceForRun(runsById.get("SAFFIRE-VI-E6")!)).toMatchObject({ flame: "attached", twoFaces: true });
+});
+
+it("incluye el CO₂ reportado de la gota", () => {
+  expect(sceneEvidenceForRun(runsById.get("FLEX-C10H101")!)).toMatchObject({ kind: "droplet", co2_pct: 30 });
+});
+
+it("escala el largo de la flecha de flujo de forma monótona y con tope", () => {
+  const lengths = [2.2, 5, 10, 20, 47].map(flowArrowLength_px);
+  lengths.slice(1).forEach((length, i) => expect(length - lengths[i]).toBeGreaterThan(3));
+  expect(Math.max(...lengths)).toBeLessThanOrEqual(60);
+  expect(flowArrowLength_px(1e6)).toBe(flowArrowLength_px(1e9));
+  expect(flowArrowLength_px(undefined)).toBe(flowArrowLength_px(0));
+});
+
+it("compara esquemas solo cuando ambos lados son del mismo tipo", () => {
+  const get = (id: string) => runsById.get(id)!;
+  expect(sceneComparison(get("SAFFIRE-V-E6"), get("SAFFIRE-VI-E6"))).toMatchObject({ sameKind: true });
+  expect(sceneComparison(get("SAFFIRE-VI-E6"), get("FLEX-C10H101"))).toMatchObject({ sameKind: false });
+  expect(sceneComparison(get("SAFFIRE-VI-E6"), get("BRE-REF-QUIET"))).toMatchObject({ b: null, sameKind: false });
+});
+
+it("dibuja el espesor de la placa en una escala común y monótona", () => {
+  const [thin, mid, thick] = [0.32, 5, 10].map(plateEdge_px);
+  expect(thin).toBeLessThan(mid);
+  expect(mid).toBeLessThan(thick);
+  expect(plateEdge_px(1000)).toBe(thick);
+  expect(plateEdge_px(undefined)).toBe(5);
+});
+
+it("escala las gotas de un par con el mismo diámetro de referencia", () => {
+  expect(dropletRadius_px(3.57, 3.57)).toBe(40);
+  expect(dropletRadius_px(1.785, 3.57)).toBeCloseTo(20);
+  const get = (id: string) => runsById.get(id)!;
+  expect(sceneComparison(get("FLEX-40CAL01"), get("FLEX-C10H101")).scale.droplet_reference_mm).toBe(3.57);
+  expect(sceneComparison(get("SAFFIRE-V-E6"), get("SAFFIRE-VI-E6")).scale.droplet_reference_mm).toBeUndefined();
+});
+
+it("no dibuja esquema para perfiles PSI Live ni fichas bibliográficas", () => {
+  const curated = runsById.get("SAFFIRE-V-E6")!;
+  const live = { ...curated, id: "psi-live", psiProfile: {} };
+  const ficha = { ...curated, id: "psi-study:X", atmosphere: {}, fuel: undefined, fuelCategory: undefined, thickness_mm: undefined };
+  expect(sceneComparison(live, live)).toMatchObject({ a: null, b: null, sameKind: false });
+  expect(sceneComparison(ficha, curated)).toMatchObject({ a: null, sameKind: false });
+  expect(sceneComparison(undefined, curated)).toMatchObject({ a: null, sameKind: false });
 });

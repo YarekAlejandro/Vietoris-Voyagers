@@ -903,3 +903,22 @@ body:has(.cockpit-grid > .panel[data-expanded="true"]) { overflow: hidden; }
     flex: 1 0 auto !important;
   }
 }
+
+/* Vista «Esquema A/B» */
+.scene-compare { height: 100%; overflow: auto; padding: 10px; display: grid; gap: 8px; align-content: start; }
+.scene-compare-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.scene-card { padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-deep); }
+.scene-card header { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; font-size: 12px; }
+.scene-side-badge { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; font-weight: 700; font-size: 11px; }
+.scene-card[data-side="a"] .scene-side-badge { color: var(--series-a); background: #17433f; }
+.scene-card[data-side="b"] .scene-side-badge { color: var(--series-b); background: #2b3255; }
+.scene-compare .scene-readouts > div { padding: 1px 6px; border-left: 3px solid var(--line); }
+.scene-compare [data-status="changed"] { border-color: var(--amber); }
+.scene-compare [data-status="equal"] { border-color: var(--accent); }
+.scene-compare [data-status="missing"], .scene-compare [data-status="nominal"] { border-color: #6b7a8e; color: var(--muted); }
+.scene-legend { margin: 0; color: var(--muted); font-size: 11px; }
+.scene-legend span { padding-left: 5px; border-left: 3px solid var(--line); margin-right: 4px; }
+@media (prefers-reduced-motion: no-preference) {
+  .scene-compare .flow-arrow { animation: flow-drift 1.6s ease-in-out infinite alternate; }
+  @keyframes flow-drift { to { translate: 6px 0; } }
+}
