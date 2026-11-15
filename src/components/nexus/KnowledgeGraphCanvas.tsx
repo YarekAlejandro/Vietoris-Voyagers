@@ -173,7 +173,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
   return (
     <section className="panel nexus" data-expanded={expanded} aria-labelledby="nexus-title">
       <div className="panel-heading graph-heading">
-        <h2 id="nexus-title"><Network size={17} aria-hidden /> PSI-Nexus</h2>
+        <h2 id="nexus-title" tabIndex={-1}><Network size={17} aria-hidden /> PSI-Nexus</h2>
         <div className="panel-heading-actions">
           <div className="segments" role="group" aria-label="Vista del grafo">
             <button type="button" aria-pressed={graphView === "relationships"} onClick={() => { setBridge(null); setGraphView("relationships"); }}>Relaciones</button>

@@ -39,6 +39,8 @@ La ficha **Cobertura del escenario** muestra la corrida medida más cercana, las
 
 Abre **Escena del experimento** desde una corrida compatible para explorar en 3D el montaje de sólidos de BASS-II o Saffire, las gotas aisladas de FLEX o la pirólisis sin llama de SAME y SAME-R. Cada escena muestra las condiciones registradas para esa corrida. La vista 2D está disponible en el mismo panel y se abre si WebGL falla. Usa `NEXT_PUBLIC_EXPERIMENT_SCENE=false` antes de compilar para ocultar el control. [Alcance del visor y fuentes](docs/evidence.md#escena-del-experimento)
 
+Abre **Asistente** para preguntar por una corrida, por la comparación activa o por un control. Prueba «¿Cuál fue el diámetro de FLEX-C10H101?» o «¿Dónde cambio el oxígeno?». Las respuestas incluyen accesos para señalar su evidencia en la consola. [Asistente y configuración](docs/evidence.md#asistente-de-la-consola)
+
 ## Desarrollo local
 
 Con Node.js 24 LTS, ejecuta:

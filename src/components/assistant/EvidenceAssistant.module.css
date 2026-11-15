@@ -1,0 +1,215 @@
+.assistant {
+  position: fixed;
+  right: max(22px, calc((100% - 1740px) / 2 + 22px));
+  bottom: 20px;
+  z-index: 25;
+}
+
+.assistant[data-side="left"] {
+  right: auto;
+  left: max(22px, calc((100% - 1740px) / 2 + 22px));
+}
+
+.launcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 15px 8px 12px;
+  border: 1px solid #4d958c;
+  border-radius: 11px;
+  background: #193942;
+  color: var(--accent);
+  box-shadow: 0 6px 22px #050a1496;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.launcher:is(:hover, [aria-expanded="true"]) {
+  border-color: var(--accent);
+  background: #204950;
+}
+
+.drawer {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(375px, calc(100vw - 44px));
+  max-height: min(540px, calc(100dvh - 91px));
+  border: 1px solid #48647b;
+  border-radius: 14px;
+  background: var(--panel-deep);
+  box-shadow: 0 14px 42px #050813b5, 0 2px 8px #05081391;
+}
+
+.drawer[hidden] { display: none; }
+.assistant[data-side="left"] .drawer { right: auto; left: 0; }
+
+.header {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 11px 12px;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 13px 13px 0 0;
+  background: var(--panel-raised);
+}
+
+.header h2 {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.emblem, .iconButton {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 7px;
+}
+
+.emblem {
+  border: 1px solid #3c716e;
+  background: #18353e;
+  color: var(--accent);
+}
+
+.iconButton { color: var(--muted); }
+.iconButton:enabled:hover { background: #24384e; color: var(--text); }
+
+.transcript {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 12px;
+  scrollbar-color: #435671 transparent;
+  scrollbar-width: thin;
+}
+
+.welcome {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.examples {
+  display: grid;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.examples button,
+.pointer button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px solid #38516b;
+  border-radius: 7px;
+  background: #142238;
+  color: var(--blue);
+  font-size: 12px;
+  text-align: left;
+}
+
+.examples button { justify-content: space-between; }
+.examples svg, .pointer svg { flex: none; }
+.examples button:hover, .pointer button:hover { border-color: var(--blue); color: var(--text); }
+
+.turns, .turn {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.turns { gap: 13px; }
+
+.question, .answer {
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.question {
+  max-width: 92%;
+  justify-self: end;
+  border: 1px solid #315c5b;
+  background: #18363e;
+}
+
+.answer {
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.answer > p { white-space: pre-wrap; }
+.waiting { color: var(--muted); }
+
+.pointers {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.pointer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 8px;
+}
+
+.pointer button {
+  border-color: #3c716e;
+  color: var(--accent);
+}
+
+.pointer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.composer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 12px;
+  padding: 4px;
+  border: 1px solid #41637c;
+  border-radius: 8px;
+  background: #101d30;
+}
+
+.composer:focus-within { border-color: var(--accent); }
+
+.composer input {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 7px;
+  outline: none;
+  font-size: 13px;
+}
+
+.composer input::placeholder { color: var(--muted); }
+
+.composer button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: 31px;
+  min-height: 31px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #102226;
+}
+
+.composer button:enabled:hover { background: #acf9e6; }

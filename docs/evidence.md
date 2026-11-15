@@ -35,3 +35,9 @@ Las fichas generales y los perfiles nominales o inferidos se consultan como cont
 > Representación ilustrativa de las condiciones del experimento; no es una predicción.
 
 La escena 3D se carga al abrirla en una pantalla amplia. El diagrama 2D queda disponible en el mismo panel y se usa en pantallas estrechas o si falla WebGL. `NEXT_PUBLIC_EXPERIMENT_SCENE=false` oculta el control tras volver a compilar. [Informe de evaluación](eval.md)
+
+## Asistente de la consola
+
+El asistente usa el catálogo disponible y el contexto activo de la consola. Puede explicar la selección, señalar el comparador A/B y dirigir a la ficha, al grafo o a un control. Los botones de cada respuesta vuelven a señalar el destino y conservan la conversación. Las observaciones experimentales enlazan a la fuente de su registro.
+
+La búsqueda y las respuestas sobre datos funcionan localmente. Activa `ENABLE_ASSISTANT_AI=true` antes de compilar y configura el proveedor de «Interpretar» para habilitar el reconocimiento opcional de preguntas de navegación. En ese modo, solo se envía al proveedor el texto de una pregunta que el asistente local no pudo resolver. El resultado se limita a una sección de la consola. Si el proveedor falla o no reconoce una sección, se muestra la respuesta local.

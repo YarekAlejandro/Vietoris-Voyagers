@@ -608,6 +608,34 @@ body:has(.cockpit-grid > .panel[data-expanded="true"]) { overflow: hidden; }
 .comparison[data-expanded="true"] th,
 .comparison[data-expanded="true"] td { padding: 6px 8px; }
 
+[data-assistant-highlighted="true"] {
+  outline: 2px solid #6cf8de;
+  outline-offset: -2px;
+  border-radius: 5px;
+  background-color: #163a44;
+  scroll-margin-block: 10px;
+}
+.assistant-spotlight {
+  position: fixed;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #6cf8de;
+  border-radius: 50%;
+  color: #6cf8de;
+  background: #0c2d35;
+  box-shadow: 0 0 0 3px #6cf8de30;
+  pointer-events: none;
+  animation: assistant-point-in 220ms ease-out both;
+}
+@keyframes assistant-point-in {
+  from { opacity: 0; transform: translate(6px, 6px) scale(.85); }
+  to { opacity: 1; transform: translate(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .assistant-spotlight { animation: none; } }
+
 @media (max-width: 900px) {
   .comparison[data-expanded="true"] .comparison-content.with-interpretation > .comparison-scroll {
     flex: 1 0 auto !important;

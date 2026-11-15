@@ -87,7 +87,7 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesByI
   return (
     <section className="panel ranking" aria-labelledby="ranking-title">
       <div className="panel-heading">
-        <h2 id="ranking-title"><ListFilter size={17} aria-hidden /> {search.active ? "Resultados" : "Catálogo de evidencia"}</h2>
+        <h2 id="ranking-title" tabIndex={-1}><ListFilter size={17} aria-hidden /> {search.active ? "Resultados" : "Catálogo de evidencia"}</h2>
         <span className="panel-meta" aria-live="polite">{count} {view === "study" ? (count === 1 ? "estudio" : "estudios") : (count === 1 ? "corrida" : "corridas")}</span>
       </div>
       <div className="ranking-controls">

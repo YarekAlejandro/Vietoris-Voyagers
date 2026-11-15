@@ -9,7 +9,7 @@ function gap(value: number | null, unit: string) {
 
 export function ScenarioCoverageCard({ coverage }: { coverage: ScenarioCoverage }) {
   const { status, withinTolerance, closest, scenarioGravity } = coverage;
-  return <section className="search-reason" aria-label="Cobertura del escenario" aria-live="polite">
+  return <section id="assistant-coverage" tabIndex={-1} className="search-reason" aria-label="Cobertura del escenario" aria-live="polite">
     <h4><ScanLine size={13} aria-hidden className="inline" /> Cobertura del escenario</h4>
     <p>{status === "ninguna" ? "Sin evidencia directa para este escenario"
       : status === "parcial" ? "Cobertura parcial. Sin evidencia directa para este escenario" : "Cobertura directa"}

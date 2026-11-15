@@ -7,19 +7,53 @@ import { EvidenceSearch } from "../sidebar/EvidenceSearch";
 import { KnowledgeGraphCanvas } from "../nexus/KnowledgeGraphCanvas";
 import { EvidenceInspector } from "../nexus/EvidenceInspector";
 import { ExperimentGitDiff } from "../nexus/ExperimentGitDiff";
+import { AssistantSpotlight, type SpotlightRequest } from "../assistant/AssistantSpotlight";
+import { EvidenceAssistant } from "../assistant/EvidenceAssistant";
 import { buildEvidenceIndex } from "../../core/si-engine/semantic-search";
+import { answerAssistantIntent, answerPageQuestion, type AssistantPointer, type PageAssistantContext } from "../../core/si-engine/page-assistant";
 import { computeFSRS, rankRuns } from "../../core/si-engine/fsrs-ranker";
 import { mergePsiCatalog } from "../../core/si-engine/merge-psi-catalog";
 import { computeCoverage } from "../../core/si-engine/scenario-coverage";
 import { psiDataset } from "../../data/psi";
+import { missionPresets } from "../../data/mission_presets";
 import { topicsForRun } from "../../data/psi_vocabulary";
 import { usePsiLiveSync } from "../../hooks/usePsiLiveSync";
 import { isCombustion } from "../../lib/psi/records";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { ExperimentalRun } from "../../types/psi";
 
-export function CockpitGrid() {
+const assistantPanels = {
+  search: ["#evidence-query", "Búsqueda semántica"],
+  catalog: ["#ranking-title", "Catálogo de evidencia"],
+  graph: ["#nexus-title", "PSI-Nexus"],
+  inspector: ["#assistant-evidence-record", "Ficha de evidencia"],
+  coverage: ["#assistant-coverage", "Cobertura del escenario"],
+  comparison: ["#comparison-title", "Comparación experimental"],
+  atmosphere: ["#assistant-atmosphere", "Atmósfera"],
+  scene: ["#assistant-scene", "Escena del experimento"],
+  interpret: ["#assistant-interpret", "Interpretar"],
+} as const satisfies Record<AssistantPointer["target"], readonly [string, string]>;
+
+async function requestAssistantIntent(question: string): Promise<keyof typeof assistantPanels | null> {
+  try {
+    const response = await fetch("/api/assistant", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ question }),
+      signal: AbortSignal.timeout(4500),
+    });
+    if (!response.ok) return null;
+    const { intent } = await response.json();
+    return typeof intent === "string" && Object.hasOwn(assistantPanels, intent) ? intent as keyof typeof assistantPanels : null;
+  } catch {
+    return null;
+  }
+}
+
+export function CockpitGrid({ assistantAiEnabled }: { assistantAiEnabled: boolean }) {
   const [expandedPanel, setExpandedPanel] = useState<"graph" | "comparison" | null>(null);
+  const [spotlight, setSpotlight] = useState<SpotlightRequest | null>(null);
+  const [assistantSide, setAssistantSide] = useState<"left" | "right">("right");
   const toggleGraph = useCallback(() => setExpandedPanel((panel) => panel === "graph" ? null : "graph"), []);
   const toggleComparison = useCallback(() => setExpandedPanel((panel) => panel === "comparison" ? null : "comparison"), []);
   const profile = useAetherStore((state) => state.profile);
@@ -101,22 +135,89 @@ export function CockpitGrid() {
   const fallbackKind = view === "run" && rankedRuns.length ? "run" : "study";
   const current: EvidenceSelection | null = hasSelection ? selection : fallbackId ? { kind: fallbackKind, id: fallbackId } : null;
 
+  function pointTo(pointer: AssistantPointer, navigate: boolean) {
+    const state = useAetherStore.getState();
+    const { target, selection: requested, comparison, profileId, atmosphereField, evidenceField } = pointer;
+    const [selector, label] = assistantPanels[target];
+    const panel = target === "graph" ? "graph" : target === "comparison" || target === "interpret" ? "comparison" : null;
+    const studyId = requested?.kind === "run" ? runsById.get(requested.id)?.investigationId : requested?.id;
+    if (requested && (!studyId || !studiesById.has(studyId))) return;
+    const visible = !requested || (requested.kind === "run" ? availableRunIds.has(requested.id) : visibleStudyIds.has(requested.id));
+
+    if (!navigate && (!visible || (expandedPanel && expandedPanel !== panel) ||
+      (profileId && profileId !== state.profile.id) ||
+      (comparison && (comparison.a !== state.comparison.a || comparison.b !== state.comparison.b)))) {
+      setSpotlight(null);
+      return;
+    }
+
+    if (expandedPanel && expandedPanel !== panel) setExpandedPanel(null);
+    if (!visible && studyId) {
+      if (!areaStudies.some((study) => study.id === studyId)) state.setPsiArea("all");
+      state.clearFilters();
+      state.setQuery("");
+    }
+    if (requested) state.inspect(requested, studyId);
+    if (comparison && runsById.has(comparison.a) && runsById.has(comparison.b)) {
+      if (comparison.a !== state.comparison.a || comparison.b !== state.comparison.b) useAetherStore.setState({ comparison });
+    }
+    if (profileId && profileId !== state.profile.id) {
+      const preset = missionPresets.find(({ id }) => id === profileId);
+      if (preset) state.selectMission(preset);
+    }
+    if (target === "graph" && requested) state.setGraphView(requested.kind === "run" ? "runs" : "overview");
+    if (target === "inspector" || target === "scene" || (target === "coverage" && state.inspectorView === "radar")) state.setInspectorView("evidence");
+    if (target === "atmosphere" && (navigate || atmosphereField)) state.setInspectorView("atmosphere");
+
+    const nodeSelector = target === "graph" && requested
+      ? `.react-flow__node[data-id="${CSS.escape(`${requested.kind}:${requested.id}`)}"]` : null;
+    const fieldSelector = atmosphereField ? `#${CSS.escape(atmosphereField)}`
+      : evidenceField ? `#assistant-field-${CSS.escape(evidenceField)}` : null;
+    const inspectorTarget = target === "inspector" || target === "scene" || target === "coverage" || target === "atmosphere";
+    setAssistantSide(inspectorTarget ? "left" : "right");
+    setSpotlight({
+      selector: nodeSelector ?? fieldSelector ?? selector, label, focus: navigate,
+      fallback: nodeSelector || fieldSelector ? selector : inspectorTarget ? "#inspector-title" : target === "interpret" ? "#comparison-title" : undefined,
+    });
+  }
+
+  function askAssistant(question: string) {
+    const areaStudyIds = new Set(areaStudies.map(({ id }) => id));
+    const context: PageAssistantContext = {
+      studies: areaStudies, runs: dataset.runs.filter(({ investigationId }) => areaStudyIds.has(investigationId)),
+      search: evidenceIndex.search, coverage, profile, atmosphere, selection: current, comparison: useAetherStore.getState().comparison,
+      sceneEnabled: process.env.NEXT_PUBLIC_EXPERIMENT_SCENE !== "false",
+    };
+    const answer = answerPageQuestion(question, context);
+    if (answer.mayClassify && assistantAiEnabled) {
+      setSpotlight(null);
+      return requestAssistantIntent(question).then((intent) => intent ? answerAssistantIntent(intent, context) : answer);
+    }
+    if (answer.pointers[0] && !answer.mayClassify) pointTo(answer.pointers[0], false);
+    else setSpotlight(null);
+    return answer;
+  }
+
   return (
-    <div className="cockpit">
-      <TopNavbar sync={sync} />
-      <EvidenceSearch search={search} />
-      <main className="cockpit-grid">
-        <RankedDatasetList studies={studies} rankedRuns={rankedRuns} studyScores={studyScores} studiesById={studiesById}
-          runsByStudy={runsByStudy} search={search} current={current} view={view} />
-        <KnowledgeGraphCanvas studies={studies} runs={scopedRuns} current={current} searchActive={search.active}
-          expanded={expandedPanel === "graph"} onToggleSize={toggleGraph} />
-        <EvidenceInspector study={current ? studiesById.get(runsById.get(current.id)?.investigationId ?? current.id) : undefined}
-          run={current?.kind === "run" ? runsById.get(current.id) : undefined}
-          search={search} availableRuns={availableRuns} literature={literature} coverage={coverage}
-          rankedRun={rank.find(({ run }) => current?.kind === "run" && run.id === current.id)} />
-        <ExperimentGitDiff runs={dataset.runs} runsById={runsById} studiesById={studiesById} areaStudies={areaStudies}
-          expanded={expandedPanel === "comparison"} onToggleSize={toggleComparison} />
-      </main>
-    </div>
+    <>
+      <div className="cockpit">
+        <TopNavbar sync={sync} />
+        <EvidenceSearch search={search} />
+        <main className="cockpit-grid">
+          <RankedDatasetList studies={studies} rankedRuns={rankedRuns} studyScores={studyScores} studiesById={studiesById}
+            runsByStudy={runsByStudy} search={search} current={current} view={view} />
+          <KnowledgeGraphCanvas studies={studies} runs={scopedRuns} current={current} searchActive={search.active}
+            expanded={expandedPanel === "graph"} onToggleSize={toggleGraph} />
+          <EvidenceInspector study={current ? studiesById.get(runsById.get(current.id)?.investigationId ?? current.id) : undefined}
+            run={current?.kind === "run" ? runsById.get(current.id) : undefined}
+            search={search} availableRuns={availableRuns} literature={literature} coverage={coverage}
+            rankedRun={rank.find(({ run }) => current?.kind === "run" && run.id === current.id)} />
+          <ExperimentGitDiff runs={dataset.runs} runsById={runsById} studiesById={studiesById} areaStudies={areaStudies}
+            expanded={expandedPanel === "comparison"} onToggleSize={toggleComparison} />
+        </main>
+      </div>
+      <AssistantSpotlight request={spotlight} />
+      <EvidenceAssistant onAsk={askAssistant} onNavigate={(pointer) => pointTo(pointer, true)} side={assistantSide} />
+    </>
   );
 }

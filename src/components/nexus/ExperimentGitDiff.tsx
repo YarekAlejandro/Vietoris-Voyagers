@@ -75,10 +75,10 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
   return (
     <section className="panel comparison" data-expanded={expanded} aria-labelledby="comparison-title">
       <div className="panel-heading">
-        <h2 id="comparison-title"><ArrowLeftRight size={17} aria-hidden /> Comparación experimental</h2>
+        <h2 id="comparison-title" tabIndex={-1}><ArrowLeftRight size={17} aria-hidden /> Comparación experimental</h2>
         <div className="panel-heading-actions">
           {mode === "engineer" && <span className="panel-meta">Git-Diff · A/B</span>}
-          {current && <button type="button" className="interpret-toggle" aria-expanded={interpretation !== null} onClick={() => {
+          {current && <button id="assistant-interpret" type="button" className="interpret-toggle" aria-expanded={interpretation !== null} onClick={() => {
             setOpened(interpretation ? null : current);
             setTableHeight(null);
           }}>

@@ -57,10 +57,10 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
   return (
     <section className="panel inspector" aria-labelledby="inspector-title">
       <div className="panel-heading inspector-heading">
-        <h2 id="inspector-title"><FileText size={16} aria-hidden /> {view === "evidence" ? "Ficha" : view === "radar" ? "Radar NTRS" : "Escenario"}</h2>
+        <h2 id="inspector-title" tabIndex={-1}><FileText size={16} aria-hidden /> {view === "evidence" ? "Ficha" : view === "radar" ? "Radar NTRS" : "Escenario"}</h2>
         <div className="segments" role="group" aria-label="Vista de la ficha">
           <button type="button" aria-pressed={view === "evidence"} onClick={() => setView("evidence")}>Evidencia</button>
-          <button type="button" aria-pressed={view === "atmosphere"} onClick={() => setView("atmosphere")}>Atmósfera</button>
+          <button id="assistant-atmosphere" type="button" aria-pressed={view === "atmosphere"} onClick={() => setView("atmosphere")}>Atmósfera</button>
           <button type="button" aria-label="Radar NTRS" aria-pressed={view === "radar"} onClick={() => setView("radar")}>NTRS</button>
         </div>
       </div>
@@ -73,7 +73,7 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
             <span>{facilities[study.facility].label}</span>
           </div>
           <div>
-            <h3>{run?.label ?? imported?.acronym ?? study.id}</h3>
+            <h3 id="assistant-evidence-record" tabIndex={-1}>{run?.label ?? imported?.acronym ?? study.id}</h3>
             <p className="evidence-study-name">{run?.fuel ? `${study.id} · ${run.fuel}` : study.name}</p>
           </div>
           {comparisonId && <div className="inspector-actions" role="group" aria-label="Añadir al comparador">
@@ -94,7 +94,7 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
               <dl className="evidence-readouts">
                 {atmosphereControls.map(({ field, label, unit, decimals }) => {
                   const value = run.atmosphere[field];
-                  return <div key={field}><dt>{label}</dt>
+                  return <div key={field} id={`assistant-field-${field}`} tabIndex={-1}><dt>{label}</dt>
                     <dd>{value === undefined ? <small>Sin dato</small> : <>{value.toFixed(field === "pressure_psia" ? 2 : decimals)} <small>{unit}</small></>}</dd>
                     {run.nominal?.fields.includes(field) && <small>Nominal</small>}
                   </div>;
@@ -102,11 +102,11 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
               </dl>
               {run.nominal && <p>{run.nominal.basis}</p>}
               {extraReadouts.length > 0 && <dl className="evidence-readouts">
-                {extraReadouts.map(({ id, label, value, unit }) => <div key={id}>
+                {extraReadouts.map(({ id, label, value, unit }) => <div key={id} id={`assistant-field-${id}`} tabIndex={-1}>
                   <dt>{label}</dt><dd>{value} <small>{unit}</small></dd>
                 </div>)}
               </dl>}
-              {run.cabin_heat_added_kj !== undefined && <p className="observation"><strong>{run.cabin_heat_added_kj} kJ</strong> de calor añadido a cabina (estimación publicada).</p>}
+              {run.cabin_heat_added_kj !== undefined && <p id="assistant-field-cabin_heat_added_kj" tabIndex={-1} className="observation"><strong>{run.cabin_heat_added_kj} kJ</strong> de calor añadido a cabina (estimación publicada).</p>}
               {run.steady_flame_length_cm !== undefined && <p className="observation"><strong>{run.steady_flame_length_cm} cm</strong> de longitud de llama estable.</p>}
             </>
           ) : <p>{mode === "student" ? studentDescriptions[study.id] ?? study.summary : study.summary}</p>}
@@ -170,7 +170,7 @@ function ProfileReadouts({ profile }: { profile: PsiProfile }) {
   return <dl className="evidence-readouts psi-profile">
     {atmosphereControls.map(({ field, label, decimals }) => {
       const quantity = profile[field];
-      return <div key={field}>
+      return <div key={field} id={`assistant-field-${field}`} tabIndex={-1}>
         <dt>{label}</dt>
         <dd>{quantity ? formatPsiQuantity(quantity, field === "pressure_psia" ? 2 : decimals) : "—"}</dd>
         {quantity && <small title={quantity.evidence}>

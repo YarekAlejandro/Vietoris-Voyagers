@@ -106,7 +106,7 @@ export function ExperimentScene({ evidence }: { evidence: ExperimentSceneEvidenc
   }
 
   return <section className="experiment-scene">
-    <button type="button" className="quiet-button scene-toggle" aria-expanded={open} aria-controls={bodyId} onClick={toggleScene}>
+    <button id="assistant-scene" type="button" className="quiet-button scene-toggle" aria-expanded={open} aria-controls={bodyId} onClick={toggleScene}>
       <Box size={15} aria-hidden="true" /> Escena del experimento
     </button>
     <div id={bodyId} hidden={!open}>
