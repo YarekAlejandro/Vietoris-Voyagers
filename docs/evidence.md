@@ -24,6 +24,14 @@ En Relaciones, la selección inicial muestra el estudio activo con hasta tres es
 
 ## Escena del experimento
 
-El control aparece en la ficha de las corridas documentadas con muestra sólida. La escena dibuja una lámina dentro de un conducto esquemático. Usa el espesor y el ancho publicados cuando existen. Las dimensiones de dibujo son ilustrativas. Los valores medidos se muestran aparte y conservan el enlace a la fuente en la ficha. Las flechas representan el flujo concurrente cuando el registro contiene una velocidad medida. La forma de la llama toma como referencia las descripciones de la corrida, incluidas la extinción a flujo bajo o la configuración concurrente.
+Abre **Escena del experimento** desde una corrida con un montaje compatible. Las dimensiones del dibujo son esquemáticas. La ficha muestra los valores registrados con su unidad y su fuente.
+
+- **Muestras sólidas (BASS-II y Saffire).** Una lámina dentro de un conducto esquemático. La ficha presenta el espesor y el ancho publicados cuando existen. Las flechas indican el flujo concurrente medido. La forma de la llama se basa en la descripción de la corrida.
+- **Gotas aisladas (FLEX).** Una gota en el montaje MDCA. La ficha distingue el diámetro inicial del diámetro de la gota al extinguirse la llama visible, cuando se reporta. La velocidad del aire de estas corridas es un valor nominal y queda fuera de la escena. [Informe NASA/TP–2015-216046, tabla IX](https://ntrs.nasa.gov/citations/20150023456)
+- **Aerosoles (SAME y SAME-R).** Un montaje de pirólisis sin llama con partículas simbólicas. La ficha muestra el flujo medido, el tiempo de envejecimiento del aerosol y, cuando se reporta, el tiempo de calentamiento. El flujo medido de 0 cm/s se distingue de una velocidad sin dato. [SAME en NASA PSI](https://psi.nasa.gov/physci/repo/data/investigations/PSI-102) · [SAME-R en NASA PSI](https://psi.nasa.gov/physci/repo/data/investigations/PSI-101)
+
+Las fichas generales y los perfiles nominales o inferidos se consultan como contexto del estudio. Los experimentos con gases del catálogo curado se presentan actualmente como perfiles de referencia.
+
+> Representación ilustrativa de las condiciones del experimento; no es una predicción.
 
 La escena 3D se carga al abrirla en una pantalla amplia. El diagrama 2D queda disponible en el mismo panel y se usa en pantallas estrechas o si falla WebGL. `NEXT_PUBLIC_EXPERIMENT_SCENE=false` oculta el control tras volver a compilar. [Informe de evaluación](eval.md)

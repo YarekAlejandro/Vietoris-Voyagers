@@ -581,7 +581,8 @@ body[data-resizing="row"], body[data-resizing="row"] * { cursor: row-resize !imp
 .scene-diagram { width: 100%; height: 100%; display: block; }
 .scene-loading, .scene-fallback { position: absolute; inset-inline: 5px; bottom: 5px; margin: 0; text-align: center; }
 .experiment-scene figcaption { margin-top: 5px; color: var(--muted); font-size: 11px; }
-.scene-readouts { display: flex; gap: 12px; margin: 6px 0; }
+.experiment-scene figcaption p { margin: 0; }
+.scene-readouts { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; }
 .scene-readouts dt { color: var(--muted); font-size: 10px; }
 .scene-readouts dd { margin: 0; font-size: 12px; }
 @media (max-height: 560px) {

@@ -44,7 +44,8 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
   const bridges = study ? studyBridges.filter(({ source, target }) => source === study.id || target === study.id) : [];
   const matchingRunCount = availableRuns.filter(({ investigationId }) => investigationId === study?.id).length;
   const imported = study?.importedPsi;
-  const scene = run && process.env.NEXT_PUBLIC_EXPERIMENT_SCENE !== "false" ? sceneEvidenceForRun(run) : null;
+  const sceneEnabled = process.env.NEXT_PUBLIC_EXPERIMENT_SCENE !== "false";
+  const scene = run && sceneEnabled ? sceneEvidenceForRun(run) : null;
   const relatedLiterature = study ? ntrsForStudy(study, literature) : [];
   const comparisonId = run?.id ?? (imported && !imported.profile && study ? psiStudyComparisonId(study.id) : undefined);
   const evidenceTopicsForSelection = run ? topicsForRun(run) : study?.topics ?? [];
@@ -110,7 +111,10 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
             </>
           ) : <p>{mode === "student" ? studentDescriptions[study.id] ?? study.summary : study.summary}</p>}
           <SourceLink source={run?.source ?? study.source} />
-          {scene && <ExperimentScene evidence={scene} />}
+          {scene ? <ExperimentScene evidence={scene} /> : sceneEnabled && run && <p className="psi-note">
+            {run.reference || run.psiProfile ? "La escena requiere una corrida experimental documentada."
+              : "Montaje sin escena disponible."}
+          </p>}
           {study.psi && <div className="psi-identity">
             <span>{study.psi.accession}{study.psi.license ? ` · ${study.psi.license}` : ""}{imported ? ` · ${imported.researchArea}` : ""}</span>
             {(run || !imported) && <SourceLink source={{ label: "Ficha oficial · NASA Physical Sciences Informatics", url: study.psi.officialUrl }} />}
