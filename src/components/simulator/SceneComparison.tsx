@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { compareRuns } from "../../core/si-engine/git-diff";
 import { sceneComparison, type ExperimentSceneEvidence } from "../../core/si-engine/experiment-scene";
-import { investigationsById, runsById } from "../../data/psi";
+import { investigationsById } from "../../data/psi";
+import type { ExperimentalRun } from "../../types/psi";
 import { useAetherStore } from "../../store/useAetherStore";
 import { SceneDiagram, SceneReadouts, type SceneStatuses } from "./ExperimentScene";
 
@@ -23,24 +24,24 @@ function SceneCard({ side, label, evidence, statuses, referenceDiameter_mm }: {
   </article>;
 }
 
-export function SceneComparison() {
+export function SceneComparison({ runsById }: { runsById: ReadonlyMap<string, ExperimentalRun> }) {
   const comparison = useAetherStore((state) => state.comparison);
   const runA = runsById.get(comparison.a);
   const runB = runsById.get(comparison.b);
-  const scenes = useMemo(() => runA && runB ? sceneComparison(runA, runB) : undefined, [runA, runB]);
+  const scenes = useMemo(() => sceneComparison(runA, runB), [runA, runB]);
   const statuses = useMemo(() => {
     if (!runA || !runB) return {} as SceneStatuses;
     return Object.fromEntries(compareRuns(runA, runB, investigationsById).map(({ field, status }) => [field.id, status])) as SceneStatuses;
   }, [runA, runB]);
 
-  if (!runA || !runB || !scenes) {
+  if (!runA && !runB) {
     return <div className="empty-evidence"><p>Elige las corridas A y B para ver su esquema.</p></div>;
   }
 
   return <div className="scene-compare">
     <div className="scene-compare-cards">
-      <SceneCard side="a" label={runA.label} evidence={scenes.a} statuses={statuses} referenceDiameter_mm={scenes.scale.droplet_reference_mm} />
-      <SceneCard side="b" label={runB.label} evidence={scenes.b} statuses={statuses} referenceDiameter_mm={scenes.scale.droplet_reference_mm} />
+      <SceneCard side="a" label={runA?.label ?? comparison.a} evidence={scenes.a} statuses={statuses} referenceDiameter_mm={scenes.scale.droplet_reference_mm} />
+      <SceneCard side="b" label={runB?.label ?? comparison.b} evidence={scenes.b} statuses={statuses} referenceDiameter_mm={scenes.scale.droplet_reference_mm} />
     </div>
     {scenes.a && scenes.b && !scenes.sameKind &&
       <p className="psi-note" role="status">Tipos de montaje distintos; compara las condiciones en la tabla.</p>}

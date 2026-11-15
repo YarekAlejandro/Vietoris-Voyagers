@@ -89,3 +89,12 @@ it("escala las gotas de un par con el mismo diámetro de referencia", () => {
   expect(sceneComparison(get("FLEX-40CAL01"), get("FLEX-C10H101")).scale.droplet_reference_mm).toBe(3.57);
   expect(sceneComparison(get("SAFFIRE-V-E6"), get("SAFFIRE-VI-E6")).scale.droplet_reference_mm).toBeUndefined();
 });
+
+it("no dibuja esquema para perfiles PSI Live ni fichas bibliográficas", () => {
+  const curated = runsById.get("SAFFIRE-V-E6")!;
+  const live = { ...curated, id: "psi-live", psiProfile: {} };
+  const ficha = { ...curated, id: "psi-study:X", atmosphere: {}, fuel: undefined, fuelCategory: undefined, thickness_mm: undefined };
+  expect(sceneComparison(live, live)).toMatchObject({ a: null, b: null, sameKind: false });
+  expect(sceneComparison(ficha, curated)).toMatchObject({ a: null, sameKind: false });
+  expect(sceneComparison(undefined, curated)).toMatchObject({ a: null, sameKind: false });
+});

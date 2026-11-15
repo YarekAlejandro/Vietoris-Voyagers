@@ -87,12 +87,13 @@ function CenterSelection({ nodeId }: { nodeId?: string }) {
 interface GraphProps extends PanelSizeProps, PanelCollapseProps {
   studies: readonly Investigation[];
   runs: readonly ExperimentalRun[];
+  runsById: ReadonlyMap<string, ExperimentalRun>;
   current: EvidenceSelection | null;
   searchActive: boolean;
   onInteract: () => void;
 }
 
-export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, expanded, onToggleSize, collapsed, onToggleCollapse, onInteract }: GraphProps) {
+export function KnowledgeGraphCanvas({ studies, runs, runsById, current, searchActive, expanded, onToggleSize, collapsed, onToggleCollapse, onInteract }: GraphProps) {
   const facility = useAetherStore((state) => state.facility);
   const topic = useAetherStore((state) => state.topic);
   const graphView = useAetherStore((state) => state.graphView);
@@ -208,7 +209,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
           }}>{label}</button>)}
       </div>}
       <div className="graph">
-        {showScene ? <SceneComparison /> : showConditions ? <ExperimentalCoveragePlot runs={runs} current={current} /> : nodes.length > 0 ? (
+        {showScene ? <SceneComparison runsById={runsById} /> : showConditions ? <ExperimentalCoveragePlot runs={runs} current={current} /> : nodes.length > 0 ? (
           <ReactFlow
             key={nodes.map(({ id }) => id).join("|")}
             nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}

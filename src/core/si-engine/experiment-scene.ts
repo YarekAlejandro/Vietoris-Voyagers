@@ -87,9 +87,9 @@ export function dropletReference_mm(...evidence: (ExperimentSceneEvidence | null
   return diameters.length ? Math.max(...diameters) : undefined;
 }
 
-export function sceneComparison(runA: ExperimentalRun, runB: ExperimentalRun) {
-  const a = sceneEvidenceForRun(runA);
-  const b = sceneEvidenceForRun(runB);
+export function sceneComparison(runA: ExperimentalRun | undefined, runB: ExperimentalRun | undefined) {
+  const a = runA ? sceneEvidenceForRun(runA) : null;
+  const b = runB ? sceneEvidenceForRun(runB) : null;
   const sameKind = a !== null && b !== null && a.kind === b.kind;
   return { a, b, sameKind, scale: { droplet_reference_mm: sameKind ? dropletReference_mm(a, b) : undefined } };
 }
