@@ -61,6 +61,57 @@ export function geminiErrorLabel(body: unknown): string {
   return [code, status, reason].filter((value): value is string => typeof value === "string").join(", ");
 }
 
+function retryableStatus(status: unknown) {
+  return /^(?:cancelled|canceled|deadline_exceeded|gateway_timeout|service_unavailable|rate_limit_exceeded|too_many_requests|api_error|unavailable|aborted|499|500|502|503|504)$/i.test(String(status));
+}
+
+async function readGeminiStream(stream: ReadableStream<Uint8Array>) {
+  type Event = {
+    event_type?: string; type?: string; status?: string; index?: number; step?: { type?: string; content?: { type?: string; text?: string }[] };
+    delta?: { type?: string; text?: string }; interaction?: { status?: string };
+    error?: { code?: unknown; status?: unknown };
+  };
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let outputIndex: number | undefined;
+  let text = "";
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) return failed(true);
+      buffer += decoder.decode(value, { stream: true });
+      if (buffer.length > 256_000) return failed();
+      const frames = buffer.split(/\r?\n\r?\n/);
+      buffer = frames.pop() ?? "";
+      for (const frame of frames) {
+        const lines = frame.split(/\r?\n/);
+        const payload = lines.filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trimStart()).join("\n");
+        if (!payload || payload === "[DONE]") continue;
+        const event: Event = JSON.parse(payload);
+        const eventType = event.event_type ?? event.type ?? lines.find((line) => line.startsWith("event:"))?.slice(6).trim();
+        if (eventType === "error") return failed(retryableStatus(event.error?.code) || retryableStatus(event.error?.status));
+        if (eventType === "interaction.status_update" && retryableStatus(event.status)) return failed(true);
+        if (eventType === "step.start" && event.step?.type === "model_output") {
+          outputIndex = event.index;
+          text = event.step.content?.filter((item) => item.type === "text" && typeof item.text === "string").map((item) => item.text).join("") ?? "";
+        }
+        if (eventType === "step.delta" && outputIndex !== undefined && event.index === outputIndex &&
+          event.delta?.type === "text" && typeof event.delta.text === "string") {
+          text += event.delta.text;
+          if (text.length > 64_000) return failed();
+        }
+        if (eventType === "interaction.completed") {
+          return event.interaction?.status === "completed" ? succeeded(text) : failed(retryableStatus(event.interaction?.status));
+        }
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+
 export const geminiProvider: LlmProvider = async ({ apiKey, signal, ...args }) => {
   const response = await fetch(endpoint, {
     method: "POST",
@@ -69,8 +120,9 @@ export const geminiProvider: LlmProvider = async ({ apiKey, signal, ...args }) =
       "x-goog-api-key": apiKey,
       "Api-Revision": apiRevision,
       "content-type": "application/json",
+      accept: "text/event-stream",
     },
-    body: JSON.stringify(buildGeminiBody(args)),
+    body: JSON.stringify({ ...buildGeminiBody(args), stream: true }),
   });
   if (!response.ok) {
     // 400 (filtro de seguridad o petición inválida), 401/403 (key), 429 (límite del tier gratuito).
@@ -82,9 +134,13 @@ export const geminiProvider: LlmProvider = async ({ apiKey, signal, ...args }) =
     }
     console.error(`[interpret] Gemini respondió ${response.status}${label ? ` (${label})` : ""}`);
     // 503 (saturación) y 429 por minuto son pasajeros; la cuota diaria agotada no lo es.
-    const retryable = response.status === 500 || response.status === 503 ||
+    const retryable = [499, 500, 502, 503, 504].includes(response.status) ||
+      label.split(", ").some(retryableStatus) ||
       (response.status === 429 && !label.includes("quota_exceeded"));
     return failed(retryable);
   }
-  return succeeded(extractGeminiText(await response.json()));
+  if (response.body && response.headers.get("content-type")?.includes("text/event-stream")) return readGeminiStream(response.body);
+  const json = await response.json();
+  if (retryableStatus(json?.status)) return failed(true);
+  return succeeded(extractGeminiText(json));
 };

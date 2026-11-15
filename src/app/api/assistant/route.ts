@@ -5,11 +5,15 @@ import {
 import type { PageAssistantAnswer } from "../../../core/si-engine/page-assistant";
 import { atmosphereControls, missionPresets } from "../../../data/mission_presets";
 import { resolveProvider } from "../../../lib/llm";
+import { requestValidated } from "../../../lib/llm/retry";
+import { modelResponseTimeout_ms } from "../../../lib/llm/timing";
+import { jsonEventMediaType } from "../../../lib/http/json-events";
+import { streamEvents } from "../../../lib/http/stream-events";
 import type { Atmosphere } from "../../../types/psi";
 
 const maxQuestionLength = 400;
 const maxBodyBytes = 32768;
-const timeoutMs = 9000;
+export const maxDuration = 70;
 const requestsPerMinute = 24;
 let rate = { count: 0, expiresAt: 0 };
 
@@ -100,17 +104,19 @@ export async function POST(request: Request) {
   if (rate.count >= requestsPerMinute) return respond();
   rate.count += 1;
 
-  const signal = AbortSignal.any([request.signal, AbortSignal.timeout(timeoutMs)]);
-  try {
-    const grounding = buildAssistantGrounding(input);
-    const result = await provider.call({
+  const grounding = buildAssistantGrounding(input);
+  const answer = async (parent: AbortSignal): Promise<PageAssistantAnswer | null> => {
+    const signal = AbortSignal.any([parent, AbortSignal.timeout(modelResponseTimeout_ms)]);
+    const result = await requestValidated((feedback) => provider.call({
       system, schema: assistantGroundedSchema, signal, model: provider.model, apiKey: provider.apiKey, maxOutputTokens: 2200,
-      userContent: JSON.stringify({ question: input.question, previousQuestion: input.previousQuestion, history: input.history, facts: assistantFactsForModel(grounding) }),
+      userContent: JSON.stringify({ question: input.question, previousQuestion: input.previousQuestion, history: input.history, facts: assistantFactsForModel(grounding), feedback }),
+    }), (data) => validateAssistantGroundedAnswer(data, grounding), signal);
+    return result.status === "ok" ? { ...result.value, origin: "ai" } : null;
+  };
+  if (request.headers.get("accept")?.includes(jsonEventMediaType)) {
+    return streamEvents<{ type: "answer"; answer: PageAssistantAnswer | null }>(request, async (send, signal) => {
+      send({ type: "answer", answer: await answer(signal) });
     });
-    if (signal.aborted || !result.ok) return respond();
-    const answer = validateAssistantGroundedAnswer(JSON.parse(result.text), grounding);
-    return respond(answer ? { ...answer, origin: "ai" } : null);
-  } catch {
-    return respond();
   }
+  return respond(await answer(request.signal));
 }

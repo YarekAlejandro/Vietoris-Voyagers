@@ -36,6 +36,7 @@
   --amber: #f6d398;
   --series-a: #83efdb;
   --series-b: #b6baff;
+  --workspace-nav-height: 49px;
 }
 
 body {
@@ -61,10 +62,19 @@ a:hover { color: var(--text); text-decoration: underline; }
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto minmax(0, 1fr);
-  height: 100dvh;
+  height: calc(100dvh - var(--workspace-nav-height));
   max-width: 1740px;
   margin-inline: auto;
 }
+
+.workspace-navigation { min-height: var(--workspace-nav-height); border-bottom: 1px solid #304b61; background: #101e30; }
+.workspace-navigation > div { max-width: 1740px; margin-inline: auto; padding: 5px 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px 7px; }
+.workspace-navigation a { display: flex; align-items: center; gap: 6px; padding: 7px 9px; min-height: 36px; border: 1px solid transparent; border-radius: 8px; color: #b7cadf; font-size: 12px; font-weight: 630; }
+.workspace-navigation a:hover { background: #23374c; color: var(--text); }
+.workspace-navigation a[aria-current="page"] { border-color: #4b837e; background: #1b4145; color: #a4f5e2; }
+.workspace-name { display: inline-flex; align-items: center; gap: 4px; margin-right: 13px; color: var(--text); font-size: 15px; font-weight: 720; white-space: nowrap; }
+.workspace-name svg, .workspace-name > span { color: var(--accent); }
+@media (max-width: 480px) { .workspace-navigation > div { padding-inline: 10px; } .workspace-name { margin-right: 3px; } .workspace-navigation a { padding-inline: 5px; } }
 
 .topbar, .topbar-right, .brand, .mission-select, .mission-select > span {
   display: flex;

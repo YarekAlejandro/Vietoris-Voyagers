@@ -9,9 +9,13 @@ import {
 } from "../../../core/si-engine/interpret";
 import { measuredRuns } from "../../../core/si-engine/scenario-coverage";
 import { resolveProvider } from "../../../lib/llm";
+import { requestValidated } from "../../../lib/llm/retry";
+import { modelResponseTimeout_ms } from "../../../lib/llm/timing";
+import { jsonEventMediaType } from "../../../lib/http/json-events";
+import { streamEvents } from "../../../lib/http/stream-events";
 
 const maxBodyBytes = 20_000;
-const timeoutMs = 10_000;
+export const maxDuration = 70;
 const minuteMs = 60_000;
 const requestsPerMinute = 20;
 let rate = { count: 0, until: 0 };
@@ -117,7 +121,6 @@ export async function POST(httpRequest: Request) {
   if (now >= rate.until) rate = { count: 0, until: now + minuteMs };
   if (rate.count >= requestsPerMinute) return Response.json(fallback);
   rate.count += 1;
-  const signal = AbortSignal.any([httpRequest.signal, AbortSignal.timeout(request.kind === "diff" ? 15_000 : timeoutMs)]);
   const modelEvidence = bundle.comparison ? {
     comparison: bundle.comparison,
     evidence: bundle.evidence.filter(({ runId }) => bundle.comparison?.runIds.includes(runId)),
@@ -125,28 +128,23 @@ export async function POST(httpRequest: Request) {
     coverage: bundle.coverage.status,
   } : bundle;
   const evidence = JSON.stringify(modelEvidence).replaceAll("<", "\\u003c");
-  let feedback = "";
-  for (let attempt = 0; attempt < 2 && !signal.aborted; attempt += 1) {
-    try {
-      const result = await provider.call({ system: request.kind === "diff" ? `${system}\n${comparisonGuidance}` : system,
-        schema, model: provider.model, apiKey: provider.apiKey, signal, maxOutputTokens: request.kind === "diff" ? 1200 : undefined,
-        userContent: `Idioma: ${request.lang}. Modo: ${request.mode}.\n${feedback}\n<evidence>\n${evidence}\n</evidence>`,
-      });
-      if (result.ok) {
-        const narrative = validateInterpretation(JSON.parse(result.text), bundle);
-        if (narrative) {
-          return Response.json({ source: "ai", paragraphs: [narrative.summary, ...narrative.claims.map(({ text }) => text)],
-            caveats: [...caveats, ...narrative.limitations], fieldsUsed: [...new Set(narrative.claims.flatMap(({ runIds }) => runIds))],
-          } satisfies InterpretationResult);
-        }
-        console.warn("[interpret] La respuesta del modelo no pasó la validación de evidencia.");
-        feedback = "La respuesta anterior no pasó la validación de citas, cifras o atribución. Simplifica y usa solo evidencia explícita.";
-      } else if (!result.retryable) {
-        break;
-      }
-    } catch {
-      feedback = "Devuelve un JSON válido según el esquema. Usa solo la evidencia indicada.";
-    }
+  const analyze = async (parent: AbortSignal): Promise<InterpretationResult> => {
+    const signal = AbortSignal.any([parent, AbortSignal.timeout(modelResponseTimeout_ms)]);
+    const result = await requestValidated((feedback) => provider.call({
+      system: request.kind === "diff" ? `${system}\n${comparisonGuidance}` : system,
+      schema, model: provider.model, apiKey: provider.apiKey, signal, maxOutputTokens: request.kind === "diff" ? 1200 : undefined,
+      userContent: `Idioma: ${request.lang}. Modo: ${request.mode}.\n${feedback}\n<evidence>\n${evidence}\n</evidence>`,
+    }), (data) => validateInterpretation(data, bundle), signal);
+    if (result.status !== "ok") return fallback;
+    const narrative = result.value;
+    return { source: "ai", paragraphs: [narrative.summary, ...narrative.claims.map(({ text }) => text)],
+      caveats: [...caveats, ...narrative.limitations], fieldsUsed: [...new Set(narrative.claims.flatMap(({ runIds }) => runIds))],
+    };
+  };
+  if (httpRequest.headers.get("accept")?.includes(jsonEventMediaType)) {
+    return streamEvents<{ type: "interpretation"; result: InterpretationResult }>(httpRequest, async (send, signal) => {
+      send({ type: "interpretation", result: await analyze(signal) });
+    });
   }
-  return Response.json(fallback);
+  return Response.json(await analyze(httpRequest.signal));
 }

@@ -76,6 +76,7 @@ describe("Gemini", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/interactions");
     expect(init.headers["x-goog-api-key"]).toBe("clave");
+    expect(JSON.parse(init.body).stream).toBe(true);
     expect(String(url)).not.toContain("clave");
   });
 
@@ -84,6 +85,7 @@ describe("Gemini", () => {
     [401, { error: { code: "authentication", message: "key inválida" } }, false],
     [429, { error: { code: "quota_exceeded", message: "cuota diaria" } }, false],
     [429, { error: { code: "rate_limit_exceeded", message: "por minuto" } }, true],
+    [499, { error: { code: 499, status: "CANCELLED" } }, true],
     [503, { error: { code: "service_unavailable", message: "saturado" } }, true],
   ])("falla ante un %i (%j) sin lanzar error ni registrar la key", async (status, body, retryable) => {
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
@@ -91,6 +93,26 @@ describe("Gemini", () => {
     await expect(geminiProvider({ ...args, apiKey: "clave-secreta", signal: new AbortController().signal })).resolves.toEqual({ ok: false, retryable });
     expect(errors.mock.calls.flat().join(" ")).toContain(String(status));
     expect(errors.mock.calls.flat().join(" ")).not.toContain("clave-secreta");
+  });
+
+  it("ensambla el JSON validable con los fragmentos SSE de salida del modelo", async () => {
+    const frames = [
+      { event_type: "step.start", index: 0, step: { type: "thought" } },
+      { event_type: "step.delta", index: 0, delta: { type: "thought_summary", text: "ignorar" } },
+      { event_type: "step.start", index: 1, step: { type: "model_output", content: [{ type: "text", text: answer.slice(0, 5) }] } },
+      { event_type: "step.delta", index: 1, delta: { type: "text", text: answer.slice(5, 11) } },
+      { event_type: "step.delta", index: 1, delta: { type: "text", text: answer.slice(11) } },
+      { event_type: "interaction.completed", interaction: { status: "completed" } },
+    ].map((item) => `event: ${item.event_type}\r\ndata: ${JSON.stringify(item)}\r\n\r\n`).join("");
+    const encoder = new TextEncoder();
+    const sse = new ReadableStream<Uint8Array>({ start(controller) {
+      for (const offset of Array.from({ length: Math.ceil(frames.length / 37) }, (_, i) => i * 37)) {
+        controller.enqueue(encoder.encode(frames.slice(offset, offset + 37)));
+      }
+      controller.close();
+    } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(sse, { headers: { "Content-Type": "text/event-stream" } })));
+    await expect(geminiProvider({ ...args, apiKey: "clave", signal: new AbortController().signal })).resolves.toEqual({ ok: true, text: answer });
   });
 });
 

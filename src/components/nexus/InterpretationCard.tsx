@@ -8,6 +8,8 @@ import { useAetherStore } from "../../store/useAetherStore";
 import { computeCoverage } from "../../core/si-engine/scenario-coverage";
 import { missionPresets } from "../../data/mission_presets";
 import { psiDataset, runsById } from "../../data/psi";
+import { assistantRequestTimeout_ms } from "../../lib/llm/timing";
+import { jsonEventMediaType, readJsonEvents } from "../../lib/http/json-events";
 
 // Evita llamadas duplicadas a la misma clave (por ejemplo, el doble efecto de React en desarrollo).
 const inflight = new Set<string>();
@@ -19,11 +21,19 @@ async function requestInterpretation(request: InterpretRequest): Promise<{ resul
   try {
     const response = await fetch("/api/interpret", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", accept: jsonEventMediaType },
       body: JSON.stringify(request),
+      signal: AbortSignal.timeout(assistantRequestTimeout_ms),
     });
     if (response.ok) {
-      const data: unknown = await response.json();
+      let data: unknown;
+      if (response.headers.get("content-type")?.includes(jsonEventMediaType)) {
+        await readJsonEvents<{ type: "interpretation"; result: unknown }>(response, (event) => {
+          if (event.type === "interpretation") data = event.result;
+        });
+      } else {
+        data = await response.json();
+      }
       if (isInterpretation(data) && "source" in data && (data.source === "ai" || data.source === "template")) {
         return { result: data as InterpretationResult, failed: false };
       }

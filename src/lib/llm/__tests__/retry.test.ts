@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { callWithRetry } from "../retry";
+import { callWithRetry, requestValidated } from "../retry";
 import type { ProviderResult } from "../types";
 
 const ok: ProviderResult = { ok: true, text: "{}" };
@@ -29,4 +29,21 @@ describe("callWithRetry", () => {
       expect(call).toHaveBeenCalledTimes(1);
     }
   });
+});
+
+it("no reintenta si el usuario cancela durante el backoff", async () => {
+  const controller = new AbortController();
+  const call = vi.fn().mockResolvedValue(transient);
+  const pending = requestValidated(call, () => ({}), controller.signal);
+  await Promise.resolve();
+  controller.abort();
+  await expect(pending).resolves.toEqual({ status: "unavailable" });
+  expect(call).toHaveBeenCalledTimes(1);
+});
+
+it("acepta el resultado tras reintentar un fallo transitorio del proveedor", async () => {
+  const call = vi.fn().mockResolvedValueOnce(transient).mockResolvedValueOnce(ok);
+  await expect(requestValidated(call, (result) => result as object, new AbortController().signal))
+    .resolves.toEqual({ status: "ok", value: {} });
+  expect(call).toHaveBeenCalledTimes(2);
 });

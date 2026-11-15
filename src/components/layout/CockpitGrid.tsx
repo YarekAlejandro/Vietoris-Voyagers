@@ -23,6 +23,8 @@ import { topicsForRun } from "../../data/psi_vocabulary";
 import { usePsiLiveSync } from "../../hooks/usePsiLiveSync";
 import { useComparisonScroll } from "../../hooks/useComparisonScroll";
 import { isCombustion } from "../../lib/psi/records";
+import { assistantRequestTimeout_ms } from "../../lib/llm/timing";
+import { jsonEventMediaType, readJsonEvents } from "../../lib/http/json-events";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { ExperimentalRun } from "../../types/psi";
 
@@ -42,12 +44,21 @@ async function requestAssistantAnswer(input: AssistantGroundingInput): Promise<P
   try {
     const response = await fetch("/api/assistant", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", accept: jsonEventMediaType },
       body: JSON.stringify(input),
-      signal: AbortSignal.timeout(10500),
+      signal: AbortSignal.timeout(assistantRequestTimeout_ms),
     });
     if (!response.ok) return null;
-    const { answer } = await response.json();
+    let answer: PageAssistantAnswer | null = null;
+    if (response.headers.get("content-type")?.includes(jsonEventMediaType)) {
+      const stream: { answer: PageAssistantAnswer | null } = { answer: null };
+      await readJsonEvents<{ type: "answer"; answer: PageAssistantAnswer | null }>(response, (event) => {
+        if (event.type === "answer") stream.answer = event.answer;
+      });
+      answer = stream.answer;
+    } else {
+      ({ answer } = await response.json());
+    }
     return typeof answer?.text === "string" && Array.isArray(answer.pointers) ? answer : null;
   } catch {
     return null;
