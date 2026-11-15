@@ -63,46 +63,44 @@
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, .85fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, .93fr);
   align-items: center;
-  gap: 18px 32px;
-  padding: 23px clamp(18px, 3vw, 36px);
-  border: 1px solid #365868;
-  border-radius: 16px;
-  background: radial-gradient(ellipse at 100% 0%, #1c454b, transparent 60%),
-    linear-gradient(110deg, #142b3c, #111d31 75%);
+  gap: 28px clamp(20px, 5vw, 70px);
+  min-height: 340px;
+  padding-block: 27px;
+  border-bottom: 1px solid var(--trazo);
 }
-
+.heroCopy { min-width: 0; }
 .hero h1 {
-  max-width: 24ch;
-  margin: 4px 0 7px;
+  max-width: 19ch;
+  margin: 0 0 9px;
   color: var(--luz);
-  font-size: clamp(27px, 3.15vw, 44px);
-  font-weight: 740;
-  line-height: 1.07;
-  letter-spacing: -.045em;
+  font-size: clamp(34px, 4.4vw, 62px);
+  font-weight: 760;
+  line-height: .99;
+  letter-spacing: -.055em;
   text-wrap: balance;
 }
-
-.hero p:last-child { max-width: 66ch; color: #c3d2e1; line-height: 1.55; }
-.eyebrow { display: flex; align-items: center; gap: 7px; color: var(--luz); font-size: 12px; font-weight: 650; }
-.examples { display: grid; gap: 6px; min-width: 240px; }
-.examples > span { color: #d0e1eb; font-size: 11px; font-weight: 650; }
+.heroCopy > p { max-width: 44ch; margin-bottom: 15px; color: var(--niebla); }
+.examples { display: grid; gap: 2px; min-width: 0; max-width: 420px; }
 .examples button {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 7px 9px;
-  border: 1px solid #41717a;
-  border-radius: 7px;
-  color: #eaf9fa;
-  background: #0d2736b5;
+  gap: 11px;
+  min-width: 0;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-top-color: var(--trazo);
+  border-radius: 5px;
   text-align: start;
-  font-size: 12px;
+  line-height: 1.26;
 }
-.examples button:hover { border-color: #77c9b8; background: #163c45; }
-.examples button svg { color: var(--luz); flex-shrink: 0; }
+.examples button:hover:enabled { background: var(--panel); border-color: var(--trazo); }
+.examples strong, .examples small { display: block; }
+.examples strong { font-size: 14px; font-weight: 600; }
+.examples small, .specimenNumber { color: var(--niebla); font-size: 13px; }
+.specimenNumber { width: 26px; flex: none; }
 
 .columns {
   display: grid;
@@ -234,8 +232,8 @@
 @media (max-width: 860px) {
   .columns { grid-template-columns: minmax(0, 1fr); }
   .hero { grid-template-columns: minmax(0, 1fr); }
-  .examples { min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
-  .examples > span { grid-column: 1 / -1; }
+  .hero { gap: 20px; min-height: 0; }
+  .workspace { padding-top: 8px; }
 }
 @media (max-width: 450px) {
   .assumptions { grid-template-columns: minmax(0, 1fr); }

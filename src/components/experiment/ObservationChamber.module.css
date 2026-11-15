@@ -1,0 +1,27 @@
+.chamber { min-width: 0; margin: 0; }
+.instrument { position: relative; min-width: 0; }
+.viewport { display: block; width: 100%; max-height: 250px; }
+.readings { display: grid; position: absolute; inset: 16% 0; margin: 0; grid-template-columns: max-content max-content; justify-content: space-between; align-content: space-between; pointer-events: none; }
+.readings div:nth-child(even) { text-align: end; }
+.readings dt, .readings dd span { color: var(--niebla); font-size: 13px; }
+.readings dd { margin: 0; font-weight: 600; font-size: clamp(17px, 2vw, 23px); line-height: 1.2; }
+.chamber figcaption { display: grid; justify-items: center; gap: 5px; margin: 5px auto 0; max-width: 52ch; text-align: center; color: var(--niebla); font-size: 13px; }
+.state { display: inline-flex; gap: 8px; align-items: center; color: var(--luz); }
+.state i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid currentColor; }
+.ignition { animation: ignite 900ms ease-out both; }
+.plume, .halo { transform-origin: 220px 155px; transition: transform 540ms cubic-bezier(.2,.65,.24,1), opacity 470ms ease; }
+.plume { transform: rotate(var(--inclination)) scale(var(--width), var(--height)); opacity: var(--intensity); }
+.halo { opacity: var(--halo); transform: rotate(var(--inclination)) scale(var(--width), var(--height)); }
+.spark { opacity: 0; animation: spark 450ms ease-out both; }
+.chamber[data-paused="true"] :is(.ignition,.spark) { animation-play-state: paused; }
+.chamber[data-paused="true"] :is(.plume,.halo) { transition: none; }
+@keyframes ignite { 0% { opacity: 0; } 12% { opacity: .36; } 38% { opacity: .61; } 100% { opacity: 1; } }
+@keyframes spark { 0%,100% { opacity: 0; } 20% { opacity: 1; } }
+@media (max-width: 540px) {
+  .viewport { height: 170px; }
+  .readings { inset: 9% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ignition,.spark { animation: none; }
+  .plume,.halo { transition: none; }
+}

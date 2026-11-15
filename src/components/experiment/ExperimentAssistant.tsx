@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, FlaskConical, LoaderCircle, Search, Sparkles } from "lucide-react";
+import { Check, FlaskConical, LoaderCircle, Search, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { ExperimentHypothesis } from "../../core/si-engine/experiment-hypotheses";
 import { flowDirections, isNumberField, maxExperimentText, maxProfileText, numberFields, parseExperimentProfile, plainObject,
@@ -9,6 +9,7 @@ import { jsonEventMediaType, readJsonEvents } from "../../lib/http/json-events";
 import { assistantRequestTimeout_ms } from "../../lib/llm/timing";
 import { defaultResultCount, maxResultCount, type ExperimentEvent, type ExperimentRequest, type ExperimentResults as SearchResults } from "../../types/experiment-assistant";
 import { ExperimentResults } from "./ExperimentResults";
+import { ObservationChamber } from "./ObservationChamber";
 import styles from "./ExperimentAssistant.module.css";
 
 type Phase = "extracting" | "searching" | "analyzing";
@@ -42,6 +43,7 @@ const examples: { label: string; description: string; profile: ExperimentProfile
       flowDirection: "concurrente", gravity_g: 0.165, objective: "Propagación de llama en plástico a gravedad parcial" },
   },
 ];
+const specimenNumber = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 3 });
 
 function profileKey(profile: ExperimentProfile, limit: string) {
   return JSON.stringify([limit, ...profileFields.map((field) => profile[field] ?? null)]);
@@ -242,17 +244,18 @@ export function ExperimentAssistant() {
 
   return <main className={styles.workspace}>
     <header className={styles.hero}>
-      <div>
-        <p className={styles.eyebrow}><FlaskConical size={15} aria-hidden /> Asistente IA para investigación</p>
-        <h1>Diseña tu experimento con evidencia</h1>
-        <p>Describe un ensayo de combustión, revisa los parámetros y encuentra investigaciones comparables en NASA PSI.</p>
+      <div className={styles.heroCopy}>
+        <h1>¿Cómo arde en microgravedad?</h1>
+        <p>Describe tu ensayo de combustión y descubre qué condiciones se han estudiado en NASA PSI.</p>
+        <div className={styles.examples} role="group" aria-label="Especímenes de ejemplo">
+          {examples.map((example, index) => <button key={example.label} type="button" disabled={busy} onClick={() => loadExample(example)}>
+            <span className={styles.specimenNumber} aria-hidden>{String(index + 1).padStart(2, "0")}</span>
+            <span><strong>{example.label}</strong>
+              <small>O₂ {specimenNumber.format(example.profile.oxygen_pct!)} % · {specimenNumber.format(example.profile.pressure_kpa!)} kPa · {specimenNumber.format(example.profile.gravity_g!)} g</small></span>
+          </button>)}
+        </div>
       </div>
-      <div className={styles.examples} role="group" aria-label="Ejemplos de experimentos">
-        <span>Explorar un ejemplo</span>
-        {examples.map((example) => <button key={example.label} type="button" disabled={busy} onClick={() => loadExample(example)}>
-          {example.label} <ArrowRight size={14} aria-hidden />
-        </button>)}
-      </div>
+      <ObservationChamber profile={profile} />
     </header>
 
     <div className={styles.columns}>
