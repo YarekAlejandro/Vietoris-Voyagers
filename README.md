@@ -35,6 +35,8 @@ Los perfiles incorporados desde PSI indican de dónde salen sus cifras. Las fich
 
 Si PSI deja de responder, la aplicación usa un snapshot versionado de Combustion Science. Para regenerarlo, ejecuta `npm run snapshot:psi` con acceso a NASA PSI. La lectura de CSV públicos pequeños es opcional y está desactivada por defecto. [Integración y respaldo de NASA PSI](docs/psi-live.md)
 
+La ficha **Cobertura del escenario** muestra la corrida medida más cercana, las brechas y la cantidad de corridas dentro de tolerancias heurísticas. La comparación A/B avisa cuando cambian varias condiciones a la vez. [Cobertura e interpretación](docs/evidence.md) · [Método FSRS](docs/fsrs.md) · [Auditoría de datos](docs/data-audit.md)
+
 ## Desarrollo local
 
 Con Node.js 24 LTS, ejecuta:

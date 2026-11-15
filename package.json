@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "eval": "vitest run --config eval/vitest.config.mjs",
     "build": "next build",
     "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters && node --check scripts/probe-psi-api.mjs && node --check scripts/build-psi-snapshot.mjs",
     "typecheck": "tsc --noEmit",

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Background, BaseEdge, Controls, Handle, MarkerType, Position, ReactFlow, useReactFlow, useStore as useFlowStore, type Edge, type EdgeProps, type Node, type NodeProps, type NodeTypes, type XYPosition } from "@xyflow/react";
+import { Background, BaseEdge, ControlButton, Controls, Handle, MarkerType, Position, ReactFlow, useReactFlow, useStore as useFlowStore, type Edge, type EdgeProps, type Node, type NodeProps, type NodeTypes, type XYPosition } from "@xyflow/react";
 import { AudioLines, Boxes, FlaskConical, Network, Tag } from "lucide-react";
 import { buildKnowledgeGraph, type GraphEdge, type GraphNode } from "../../core/si-engine/knowledge-graph";
 import { evidenceTopics } from "../../data/psi_vocabulary";
@@ -34,7 +34,9 @@ function BridgeEdge({ sourceX, sourceY, targetX, targetY, markerEnd, label }: Ed
     labelBgStyle={{ fill: "#0b0f19", fillOpacity: 0.92 }} />;
 }
 const edgeTypes = { bridge: BridgeEdge };
-const fitOptions = { padding: 0.17, maxZoom: 1.15 };
+const fitOptions = { padding: 0.07, maxZoom: 1.35 };
+const nodeWidth = 164;
+const nodeHeight = 44;
 const ariaLabels = {
   "controls.ariaLabel": "Controles del grafo",
   "controls.zoomIn.ariaLabel": "Acercar",
@@ -67,6 +69,14 @@ function FitGraphOnResize() {
   return null;
 }
 
+function CenterSelection({ nodeId }: { nodeId?: string }) {
+  const { fitView } = useReactFlow();
+  return <ControlButton title="Centrar en la selección" aria-label="Centrar en la selección" disabled={!nodeId}
+    onClick={() => { if (nodeId) void fitView({ nodes: [{ id: nodeId }], maxZoom: 1.35, duration: 180 }); }}>
+    <span aria-hidden>◎</span>
+  </ControlButton>;
+}
+
 interface GraphProps extends PanelSizeProps {
   studies: readonly Investigation[];
   runs: readonly ExperimentalRun[];
@@ -97,11 +107,19 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
 
   const graph = useMemo(() => {
     const study = studies.find(({ id }) => id === currentStudyId);
-    const related = bridgeFilter ? studies.filter(({ id }) => bridgeFilter.studies.includes(id))
-      : graphView === "relationships" && study && !topic && !searchActive
-      ? studies.filter((candidate) => candidate.id === study.id || candidate.topics.some((id) => study.topics.includes(id)))
-      : studies;
-    return buildKnowledgeGraph(related, runs, { topic: topic ?? undefined, runStudy });
+    if (bridgeFilter) return buildKnowledgeGraph(studies.filter(({ id }) => bridgeFilter.studies.includes(id)), runs);
+    if (graphView !== "relationships" || !study || topic || searchActive) {
+      return buildKnowledgeGraph(studies, runs, { topic: topic ?? undefined, runStudy });
+    }
+    const neighbors = studies.filter((candidate) => candidate.id !== study.id)
+      .map((candidate) => ({ candidate, shared: candidate.topics.filter((id) => study.topics.includes(id)).length }))
+      .filter(({ shared }) => shared > 0)
+      .sort((a, b) => b.shared - a.shared || Number(b.candidate.facility === study.facility) - Number(a.candidate.facility === study.facility));
+    const focus = buildKnowledgeGraph([study, ...neighbors.slice(0, 3).map(({ candidate }) => candidate)], runs);
+    const primaryTopics = new Set(focus.nodes.filter((node) => node.kind === "topic").slice(0, 4).map(({ id }) => id));
+    const nodes = focus.nodes.filter((node) => node.kind !== "topic" || primaryTopics.has(node.id));
+    const visible = new Set(nodes.map(({ id }) => id));
+    return { nodes, edges: focus.edges.filter(({ source, target }) => visible.has(source) && visible.has(target)) };
   }, [studies, runs, currentStudyId, topic, runStudy, graphView, searchActive, bridgeFilter]);
 
   const { nodes, edges } = useMemo(() => {
@@ -115,8 +133,8 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
             : kindLabels[node.kind];
         return {
           id: node.id, type: "evidence",
-          position: dragged[node.id] ?? { x: column * 236, y: (row - (items.length - 1) / 2) * 67 },
-          initialWidth: 167, initialHeight: 56,
+          position: dragged[node.id] ?? { x: column * 220, y: (row - (items.length - 1) / 2) * 50 },
+          initialWidth: nodeWidth, initialHeight: nodeHeight,
           data: { ...node, context },
           className: `graph-node graph-node-${node.kind}${highlighted ? " graph-node-active" : ""}`,
           ariaLabel: `${kindLabels[node.kind]}: ${node.label}`,
@@ -201,7 +219,9 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
             ariaLabelConfig={ariaLabels}
           >
             <Background gap={20} size={1.5} color="#35445c" />
-            <Controls position="bottom-right" showInteractive={false} />
+            <Controls position="bottom-right" showInteractive={false}>
+              <CenterSelection nodeId={nodes.some(({ id }) => id === highlightedId) ? highlightedId : undefined} />
+            </Controls>
             <FitGraphOnResize />
           </ReactFlow>
         ) : (

@@ -1,0 +1,22 @@
+[
+  {"q":"¿Qué evidencia hay para PMMA a presión reducida?","profile":"iss","expected":["SAFFIRE-V-E6","SAFFIRE-VI-E6","SAFFIRE-VI-E8"],"abstain":false},
+  {"q":"acrylic at reduced pressure","profile":"iss","expected":["SAFFIRE-V-E6","SAFFIRE-VI-E6","SAFFIRE-VI-E8"],"abstain":false},
+  {"q":"extinción con poca ventilación","profile":"iss","expected":["BASS-II-GMT45-T4","BASS-II-GMT100-T13","BASS-II-GMT178-T14"],"abstain":false},
+  {"q":"flame extinction with weak ventilation","profile":"iss","expected":["BASS-II-GMT45-T4","BASS-II-GMT100-T13","BASS-II-GMT178-T14"],"abstain":false},
+  {"q":"PTFE humo","profile":"iss","expected":["SAME-1","SAME-3","SAME-4"],"abstain":false},
+  {"q":"Teflon smoke","profile":"iss","expected":["SAME-1","SAME-3","SAME-4"],"abstain":false},
+  {"q":"heptano CO₂","profile":"iss","expected":["FLEX-C10H101"],"abstain":false},
+  {"q":"heptane carbon dioxide","profile":"iss","expected":["FLEX-C10H101"],"abstain":false},
+  {"q":"GMT175-T10","profile":"iss","expected":["BASS-II-GMT175-T10"],"abstain":false},
+  {"q":"GMT100-T13","profile":"iss","expected":["BASS-II-GMT100-T13"],"abstain":false},
+  {"q":"¿Qué reporta SAFFIRE-VI-E6?","profile":"iss","expected":["SAFFIRE-VI-E6"],"abstain":false},
+  {"q":"What does SAFFIRE-V-E6 report?","profile":"iss","expected":["SAFFIRE-V-E6"],"abstain":false},
+  {"q":"What was recorded in FLEX-C10H101?","profile":"iss","expected":["FLEX-C10H101"],"abstain":false},
+  {"q":"FLEX 40CAL01","profile":"iss","expected":["FLEX-40CAL01"],"abstain":false},
+  {"q":"Traje EVA a 100 % O₂","profile":"eva","expected":[],"abstain":true},
+  {"q":"EVA suit at 100 percent oxygen","profile":"eva","expected":[],"abstain":true},
+  {"q":"¿Hay evidencia directa para un hábitat lunar?","profile":"artemis","expected":[],"abstain":true},
+  {"q":"Can these tests directly cover the Artemis habitat?","profile":"artemis","expected":[],"abstain":true},
+  {"q":"Comparar con el perfil de minería en Tierra","profile":"mining","expected":[],"abstain":false},
+  {"q":"Compare the lunar rover with the catalogue","profile":"rover","expected":[],"abstain":false}
+]
