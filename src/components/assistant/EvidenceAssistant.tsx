@@ -180,7 +180,7 @@ export function EvidenceAssistant({ onAsk, onNavigate, onProgress, onClear, side
         body: JSON.stringify({ text: answer.text, includeTimings: true }), signal: controller.signal,
       });
       if (!response.ok) throw new Error("Audio no disponible");
-      const { audioBase64, characterEndTimesSeconds, spokenText, spokenStartTimesSeconds, spokenEndTimesSeconds } = await response.json();
+      const { audioBase64, characterEndTimesSeconds, captionText, captionStartTimesSeconds, captionEndTimesSeconds } = await response.json();
       const bytes = Uint8Array.from(atob(audioBase64), (character) => character.charCodeAt(0));
       const buffer = await context.decodeAudioData(bytes.buffer);
       if (controller.signal.aborted) return;
@@ -200,8 +200,8 @@ export function EvidenceAssistant({ onAsk, onNavigate, onProgress, onClear, side
       speechSource.current = source;
       const clock: SpeechClock = {
         audio: context, startSeconds, duration: buffer.duration, ends: characterEndTimesSeconds,
-        spokenText: spokenText ?? answer.text, spokenStarts: spokenStartTimesSeconds ?? [],
-        spokenEnds: spokenEndTimesSeconds ?? characterEndTimesSeconds,
+        spokenText: captionText ?? answer.text, spokenStarts: captionStartTimesSeconds ?? [],
+        spokenEnds: captionEndTimesSeconds ?? characterEndTimesSeconds,
       };
       speechFocus.current = { restore: drawerRef.current?.contains(document.activeElement) ?? false };
       if (speechFocus.current.restore) launcherRef.current?.focus({ preventScroll: true });

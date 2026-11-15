@@ -30,9 +30,10 @@ describe("narración del asistente", () => {
   });
 
   it("sintetiza el guion del modelo configurado y devuelve tiempos para las palabras y la respuesta original", async () => {
+    const modelScript = ["Saffire seis usó 20 cm/s.", segments[1]];
     const mock = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(Response.json({ status: "completed", steps: [{ type: "model_output", content: [{
-        type: "text", text: JSON.stringify({ segments }),
+        type: "text", text: JSON.stringify({ segments: modelScript }),
       }] }] }))
       .mockResolvedValueOnce(audioResponse(segments.join(" ")));
     vi.stubGlobal("fetch", mock);
@@ -48,6 +49,9 @@ describe("narración del asistente", () => {
     const result = await response.json();
     expect(result.spokenText).toBe(segments.join(" "));
     expect(result.spokenStartTimesSeconds).toHaveLength(result.spokenText.length);
+    expect(result.captionText).toBe(modelScript.join(" "));
+    expect(result.captionStartTimesSeconds).toHaveLength(result.captionText.length);
+    expect(result.captionEndTimesSeconds[modelScript[0].length - 1]).toBe(segments[0].length / 20);
     expect(result.characterEndTimesSeconds).toHaveLength(original.length);
     expect(result.characterEndTimesSeconds[original.indexOf("Comparte") - 1]).toBe(segments[0].length / 20);
   });
@@ -64,11 +68,20 @@ describe("narración del asistente", () => {
 
   it("mantiene pausas, convierte fechas, signos y códigos, y descarta decoración", async () => {
     vi.stubEnv("GEMINI_API_KEY", "");
-    const text = "¿Saffire seis fue el catorce de junio de dos mil dieciséis?\nge eme te cuatro cinco te cuatro: veinticuatro por ciento igual a veinticuatro por ciento.";
+    const text = "¿Saffire seis fue el catorce de junio de dos mil dieciséis? ge eme te cuatro cinco te cuatro: veinticuatro por ciento igual a veinticuatro por ciento.";
     const mock = vi.fn<typeof fetch>().mockImplementation(async (_url, init) => audioResponse(JSON.parse(String(init?.body)).text));
     vi.stubGlobal("fetch", mock);
     const result = await POST(received("¿Saffire-VI fue el 2016-06-14?\n_GMT45-T4_: 24 %=24 %. 🔥"));
     const { spokenText } = await result.json();
     expect(spokenText).toBe(text);
+  });
+
+  it("desarrolla los nombres con sus artículos y quita las pausas ornamentales", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "");
+    const mock = vi.fn<typeof fetch>().mockImplementation(async (_url, init) => audioResponse(JSON.parse(String(init?.body)).text));
+    vi.stubGlobal("fetch", mock);
+    const result = await POST(received("El ISS... recibió polvos de PMMA.\nLos datos de IIS y de la EEI coinciden."));
+    const { spokenText } = await result.json();
+    expect(spokenText).toBe("La Estación Espacial Internacional recibió polvos de polimetilmetacrilato. Los datos de la Estación Espacial Internacional y de la Estación Espacial Internacional coinciden.");
   });
 });

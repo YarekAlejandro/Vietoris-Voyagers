@@ -66,12 +66,16 @@ export async function POST(request: Request) {
       const result = await upstream.json();
       if (typeof result.audio_base64 !== "string" || !result.audio_base64) return new Response(null, { status: 502 });
       const ends = speechTimings(narration.text, result.alignment);
+      const starts = speechTimings(narration.text, result.alignment, "start");
       return Response.json({
         audioBase64: result.audio_base64,
         characterEndTimesSeconds: originalSpeechTimings(narration.parts, ends),
         spokenText: narration.text,
-        spokenStartTimesSeconds: speechTimings(narration.text, result.alignment, "start"),
+        spokenStartTimesSeconds: starts,
         spokenEndTimesSeconds: ends,
+        captionText: narration.captionText,
+        captionStartTimesSeconds: originalSpeechTimings(narration.captionParts, starts, "start"),
+        captionEndTimesSeconds: originalSpeechTimings(narration.captionParts, ends),
       }, { headers: { "Cache-Control": "no-store" } });
     }
     if (!upstream.headers.get("content-type")?.startsWith("audio/")) return new Response(null, { status: 502 });
