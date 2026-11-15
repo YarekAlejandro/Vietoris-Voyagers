@@ -9,14 +9,14 @@ import { SceneDiagram, SceneReadouts, type SceneStatuses } from "./ExperimentSce
 
 type Side = "a" | "b";
 
-function SceneCard({ side, label, evidence, statuses }: {
-  side: Side; label: string; evidence: ExperimentSceneEvidence | null | undefined; statuses: SceneStatuses;
+function SceneCard({ side, label, evidence, statuses, referenceDiameter_mm }: {
+  side: Side; label: string; evidence: ExperimentSceneEvidence | null | undefined; statuses: SceneStatuses; referenceDiameter_mm?: number;
 }) {
   return <article className="scene-card" data-side={side} aria-label={`Corrida ${side.toUpperCase()}: ${label}`}>
     <header><span className="scene-side-badge">{side.toUpperCase()}</span><strong>{label}</strong></header>
     {evidence
       ? <>
-        <div className="scene-viewport"><SceneDiagram evidence={evidence} /></div>
+        <div className="scene-viewport"><SceneDiagram evidence={evidence} referenceDiameter_mm={referenceDiameter_mm} /></div>
         <SceneReadouts evidence={evidence} statuses={statuses} />
       </>
       : <p className="psi-note">Sin esquema: la corrida no reporta geometría.</p>}
@@ -39,8 +39,8 @@ export function SceneComparison() {
 
   return <div className="scene-compare">
     <div className="scene-compare-cards">
-      <SceneCard side="a" label={runA.label} evidence={scenes.a} statuses={statuses} />
-      <SceneCard side="b" label={runB.label} evidence={scenes.b} statuses={statuses} />
+      <SceneCard side="a" label={runA.label} evidence={scenes.a} statuses={statuses} referenceDiameter_mm={scenes.scale.droplet_reference_mm} />
+      <SceneCard side="b" label={runB.label} evidence={scenes.b} statuses={statuses} referenceDiameter_mm={scenes.scale.droplet_reference_mm} />
     </div>
     {scenes.a && scenes.b && !scenes.sameKind &&
       <p className="psi-note" role="status">Tipos de montaje distintos; compara las condiciones en la tabla.</p>}
