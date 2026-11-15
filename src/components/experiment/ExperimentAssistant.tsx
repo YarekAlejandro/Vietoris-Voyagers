@@ -343,7 +343,7 @@ export function ExperimentAssistant() {
         {error && <p className={styles.error} role="alert">{error}</p>}
       </div>
 
-      <ExperimentResults result={result} hypotheses={hypotheses} hypothesisSource={hypothesisSource} note={note}
+      <ExperimentResults profile={profile} result={result} hypotheses={hypotheses} hypothesisSource={hypothesisSource} note={note}
         resultStale={Boolean(lastSearch && (lastSearch !== profileKey(profile, limit) || hasUnreviewedText))} searching={phase === "searching"} />
     </div>
   </main>;
