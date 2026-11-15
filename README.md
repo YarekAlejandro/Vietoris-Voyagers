@@ -1,58 +1,79 @@
-# AETHER-SI · Vietoris-Voyagers
+# AETHER-SI
 
-![Portada de AETHER-SI con una ilustración de una llama en microgravedad](docs/images/aether-si-cover.png)
+**Explore microgravity combustion experiments and trace each comparison back to its source.**
 
-AETHER-SI es una consola para explorar experimentos de combustión y seguridad contra incendios en microgravedad. Reúne registros de NASA Physical Sciences Informatics (PSI) y literatura de NASA Technical Reports Server (NTRS) para comparar condiciones y resultados con sus fuentes.
+Built by **Vietoris Voyagers** for the NASA Space Apps challenge *Flame in Freefall*.
 
-**[🚀 Abrir la demo](https://vietoris-voyagers-delta.vercel.app/)** · **[🧭 Explorar la consola](#explora-la-consola)** · **[💻 Ejecutar en local](#desarrollo-local)**
+[Open the demo](https://vietoris-voyagers-delta.vercel.app/) · [Try a guided example](#try-it-in-two-minutes) · [Run locally](#run-locally) · [Read the methods](#methods-and-data)
 
-![Captura de AETHER-SI con el catálogo FSRS a la izquierda, el grafo PSI-Nexus y la comparación A/B en el centro, y la ficha de evidencia a la derecha](docs/images/aether-si-console.jpg)
+![AETHER-SI cover illustration showing a blue flame inside an observation chamber](docs/images/aether-si-cover.png)
 
-*Consola de AETHER-SI en modo Ingeniería.*
+AETHER-SI helps researchers and students find experiments relevant to a proposed test, compare what was measured, and identify gaps in the available evidence. The app combines investigation records from **NASA Physical Sciences Informatics (PSI)** with technical literature from **NASA Technical Reports Server (NTRS)**. [Browse NASA PSI](https://psi.nasa.gov/physci/repo/search) · [Browse NASA NTRS](https://ntrs.nasa.gov/)
 
-## Explora la consola
+## Try it in two minutes
 
-| Herramienta | Qué puedes hacer |
+1. Start on **Asistente IA** and load the **Extinción en tejido SIBAL** example. You can also write a description or fill in the experiment profile directly.
+2. Review the material, oxygen concentration, absolute pressure, gravity, and flow. Choose **Buscar ensayos comparables** to find related investigations.
+3. Open the top match and inspect the conditions that drove its ranking. Follow the PSI accession to the investigation and the run citation to the documented observation.
+4. Open **Consola de evidencia** to compare specific runs. Try searching for `BASS-II`, `llamas frías`, or `smoke detection`.
+
+## Experiment Assistant
+
+![Experiment Assistant showing the SIBAL example, an active observation chamber, live profile values, and numbered PSI measurements on the oxygen-versus-flow chart](docs/images/aether-si-experiment-assistant.png)
+
+*The observation chamber illustrates the input profile. The chart plots the proposed conditions alongside documented experimental points.*
+
+The assistant turns a written description into an editable profile and marks the values it extracted. Unspecified fields stay blank. After you confirm the profile, it ranks NASA PSI investigations by similarity of conditions and study topics. It returns five results by default, with a breakdown of matches, differences, and missing measurements.
+
+The chart includes only recommendations with measured oxygen and flow values. When comparable runs support a qualitative hypothesis, the assistant shows its confidence, assumptions, limitations, and supporting records alongside it. When the evidence is insufficient, it says so.
+
+## Evidence Console
+
+![Evidence Console showing the ranked catalog, PSI-Nexus graph, A/B comparison, and source inspector](docs/images/aether-si-evidence-console.jpg)
+
+| Tool | What you can do |
 | --- | --- |
-| 🔎 **Búsqueda** | Encuentra estudios y corridas en español o inglés. Prueba `llamas frías`, `smoke detection`, `acrílico a baja presión` o `PSI-99`. |
-| 🎛️ **Atmósfera y FSRS** | Elige un perfil de misión o ajusta gravedad, oxígeno, presión y flujo. El índice FSRS ordena la evidencia cuantitativa según su pertinencia para el escenario. |
-| 🕸️ **PSI-Nexus** | Sigue los vínculos entre instalaciones, estudios, temas y corridas. Abre **Condiciones** para ver la cobertura experimental frente al escenario activo. |
-| ↔️ **Comparación A/B** | Usa `+A` y `+B` para contrastar resultados y condiciones con sus fuentes. Los campos ausentes aparecen como «—». |
+| **Evidence catalog and FSRS** | Search in English or Spanish and rank studies by similarity to a mission preset or a custom atmosphere. See how atmosphere, flow, and gravity contribute to the score. |
+| **PSI-Nexus** | Trace relationships among facilities, topics, investigations, and runs. Use the mouse wheel to zoom and drag to pan. Open **Condiciones** to inspect experimental coverage. |
+| **A/B comparison** | Select two runs with `+A` and `+B`, inspect conditions and outcomes with their sources, and filter to differences or missing values. The comparison flags when multiple conditions changed together. |
+| **Evidence inspector** | Open the record and its sources, view coverage gaps, and explore schematic 3D or 2D scenes for supported runs. |
+| **Console assistant** | Ask about a study, a run, or the current comparison. Answers can link to evidence and point to the relevant control or panel. Voice playback is optional. |
 
-**⤢ Ampliar paneles.** Usa el botón del encabezado de **PSI-Nexus** o **Comparación experimental**. Pulsa el mismo control o `Esc` para restaurar el panel. Las selecciones A/B se conservan.
+## Methods and data
 
-La ficha reúne la evidencia seleccionada y su contexto de prevención, detección y supresión cuando está disponible. El modo **Estudiante** añade explicaciones, casos históricos y aplicaciones terrestres.
+| Topic | Reference |
+| --- | --- |
+| How FSRS measures scenario similarity and how rankings respond to changes in weights | [FSRS method](docs/fsrs.md) · [Stability analysis](docs/fsrs-stability.md) |
+| How the app handles coverage, simultaneous changes, and interpretation | [Evidence and interpretation](docs/evidence.md) |
+| PSI synchronization, cited measurements, and the versioned Combustion Science snapshot | [PSI integration](docs/psi-live.md) · [Data audit](docs/data-audit.md) |
+| Evaluation questions and results | [Evaluation report](docs/eval.md) |
 
-## Fuentes y respaldo
+PSI provides investigations and experimental metadata. The NTRS radar presents technical literature separately. If NASA PSI is unavailable, the app uses a versioned snapshot for Combustion Science. Refresh that snapshot with `npm run snapshot:psi` when NASA PSI is reachable. [Snapshot and API details](docs/psi-live.md)
 
-| Estudios curados | Corridas normalizadas | Perfiles de referencia |
-| :---: | :---: | :---: |
-| **15** | **23** | **5** |
+FSRS measures similarity to the selected scenario. Coverage describes how well available measurements support that scenario. AETHER-SI is intended for evidence exploration and research planning.
 
-La consulta a NASA PSI incorpora investigaciones de **Combustion Science** y conserva los registros curados. Activa **Ver todo PSI** para consultar otras disciplinas. Los conteos en vivo provienen de la respuesta del servicio.
+## Run locally
 
-Los perfiles incorporados desde PSI indican de dónde salen sus cifras. Las fichas sin perfil cuantitativo aparecen en el catálogo y pueden compararse, con «—» en los campos ausentes. El **Radar NTRS** identifica sus publicaciones como literatura técnica y las enlaza con las fichas cuando corresponde.
-
-Si PSI deja de responder, la aplicación usa un snapshot versionado de Combustion Science. Para regenerarlo, ejecuta `npm run snapshot:psi` con acceso a NASA PSI. La lectura de CSV públicos pequeños es opcional y está desactivada por defecto. [Integración y respaldo de NASA PSI](docs/psi-live.md)
-
-La ficha **Cobertura del escenario** muestra la corrida medida más cercana, las brechas y la cantidad de corridas dentro de tolerancias heurísticas. La comparación A/B avisa cuando cambian varias condiciones a la vez. [Cobertura e interpretación](docs/evidence.md) · [Método FSRS](docs/fsrs.md) · [Auditoría de datos](docs/data-audit.md)
-
-Abre **Escena del experimento** desde una corrida compatible para explorar en 3D el montaje de sólidos de BASS-II o Saffire, las gotas aisladas de FLEX o la pirólisis sin llama de SAME y SAME-R. Cada escena muestra las condiciones registradas para esa corrida. La vista 2D está disponible en el mismo panel y se abre si WebGL falla. Usa `NEXT_PUBLIC_EXPERIMENT_SCENE=false` antes de compilar para ocultar el control. [Alcance del visor y fuentes](docs/evidence.md#escena-del-experimento)
-
-Abre **Asistente** para preguntar por un estudio, una corrida o la comparación activa. Prueba «¿Qué fue SAFFIRE‑VI y cuándo ocurrió?» o «¿Cuál fue el diámetro de FLEX-C10H101?». Las respuestas enlazan a sus fuentes y pueden señalar el dato en la consola. [Asistente y configuración](docs/evidence.md#asistente-de-la-consola)
-
-## Desarrollo local
-
-Con Node.js 24 LTS, ejecuta:
+With **Node.js 24** and npm installed, run these commands from the repository root.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-[Abre la consola local](http://localhost:3000).
+[Open the local app](http://localhost:3000) or [go directly to the Evidence Console](http://localhost:3000/consola).
 
-**Interpretar** usa un resumen automático por defecto. Para activar la redacción opcional con Claude o Gemini, copia `.env.example` a `.env.local` y configura las variables del proveedor. El motor calcula el FSRS y las diferencias A/B en la aplicación. [Variables de entorno](.env.example)
+The app runs with its local evidence tools and basic text extraction without an API key. For optional AI or voice features, copy `.env.example` to `.env.local` and configure the server environment.
+
+| Feature | Environment variables |
+| --- | --- |
+| **Gemini** | `AI_PROVIDER=gemini` and `GEMINI_API_KEY` |
+| **Claude** | `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` |
+| **Voice playback in the console** | `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` |
+
+Use `AI_MODEL` to override the provider's default model. Keep API keys in the server environment. [Complete environment template](.env.example)
+
+The project uses **Next.js, React, TypeScript, Zustand, React Flow, and Vitest**. Run the checks below before sharing changes.
 
 ```sh
 npm run lint
@@ -61,8 +82,6 @@ npm test
 npm run build
 ```
 
-Para probar la compilación de producción localmente, ejecuta `npx next start`. La aplicación usa Next.js y React, Zustand para el estado compartido, React Flow para el grafo y Vitest para las pruebas.
+## License and attribution
 
-## Licencia y atribución
-
-Consulta la [licencia del repositorio](LICENSE). AETHER-SI es un proyecto independiente. Cada ficha enlaza a su fuente y conserva la licencia declarada cuando estos metadatos están disponibles.
+The source code is licensed under **MIT**. NASA records and publications retain their original terms. Where available, investigation cards preserve the source license and link to the original record. AETHER-SI is an independent project by **Vietoris Voyagers**. [MIT license](LICENSE) · [Third-party licenses and data attribution](THIRD_PARTY.md)
