@@ -44,7 +44,7 @@ describe("narración del asistente", () => {
     expect(mock.mock.calls[1][0]).toContain("api.elevenlabs.io");
     expect(JSON.parse(String(mock.mock.calls[1][1]?.body)).text).toBe(segments.join(" "));
     expect(JSON.parse(String(mock.mock.calls[1][1]?.body))).toMatchObject({
-      model_id: "eleven_flash_v2_5", language_code: "es", voice_settings: { stability: 0.5 },
+      model_id: "eleven_flash_v2_5", language_code: "es", voice_settings: { stability: 0.4, speed: 1.2 },
     });
     const result = await response.json();
     expect(result.spokenText).toBe(segments.join(" "));

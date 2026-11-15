@@ -4,6 +4,7 @@ import styles from "./EvidenceAssistant.module.css";
 export interface SpeechClock {
   audio: AudioContext;
   startSeconds: number;
+  playbackRate: number;
   duration: number;
   ends: number[];
   spokenText: string;
@@ -46,7 +47,7 @@ export function VoiceCaptions({ clock, visible }: { clock: SpeechClock; visible:
       return spokenEnds.length === spokenText.length ? (spokenEnds[offset - 1] ?? 0) : duration * offset / spokenText.length;
     }
     function tick() {
-      const elapsed = clock.audio.currentTime - clock.startSeconds;
+      const elapsed = (clock.audio.currentTime - clock.startSeconds) * clock.playbackRate;
       const priorPage = page;
       const priorWord = word;
       while (page + 1 < pages.length && elapsed >= beginsAt(pages[page + 1][0].offset)) {

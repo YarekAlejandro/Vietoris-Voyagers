@@ -44,7 +44,8 @@ export function AssistantSpotlight({ request }: { request: SpotlightRequest | nu
 
       const next: Marker = {
         label: request.label, visible: true, x, y, width: endX - x, height: endY - y,
-        pointerX: Math.min(window.innerWidth - 33, endX - 9), pointerY: Math.min(window.innerHeight - 33, y + 3),
+        pointerX: Math.max(2, Math.min(window.innerWidth - 42, endX - 10)),
+        pointerY: Math.max(2, Math.min(window.innerHeight - 42, y - 9)),
       };
       setMarker((previous) => previous?.visible && previous.label === next.label && previous.x === x && previous.y === y &&
         previous.width === next.width && previous.height === next.height ? previous : next);
@@ -88,6 +89,6 @@ export function AssistantSpotlight({ request }: { request: SpotlightRequest | nu
       transform: `translate3d(${marker.x}px, ${marker.y}px, 0)`, width: marker.width, height: marker.height,
     }} />
     <div className="assistant-spotlight" data-assistant-pointer={marker.visible ? marker.label : undefined}
-      style={{ transform: `translate3d(${marker.pointerX}px, ${marker.pointerY}px, 0)` }}><MousePointer2 size={15} strokeWidth={1.75} /></div>
+      style={{ transform: `translate3d(${marker.pointerX}px, ${marker.pointerY}px, 0)` }}><MousePointer2 size={22} strokeWidth={2.25} fill="currentColor" /></div>
   </div>;
 }
