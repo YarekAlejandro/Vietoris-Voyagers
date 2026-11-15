@@ -15,8 +15,8 @@
   {"q":"FLEX 40CAL01","profile":"iss","expected":["FLEX-40CAL01"],"abstain":false},
   {"q":"Traje EVA a 100 % O₂","profile":"eva","expected":[],"abstain":true},
   {"q":"EVA suit at 100 percent oxygen","profile":"eva","expected":[],"abstain":true},
-  {"q":"¿Hay evidencia directa para un hábitat lunar?","profile":"artemis","expected":[],"abstain":true},
-  {"q":"Can these tests directly cover the Artemis habitat?","profile":"artemis","expected":[],"abstain":true},
+  {"q":"¿Hay evidencia directa para un hábitat lunar?","profile":"artemis","expected":[],"abstain":true,"requiresDirectCoverage":true},
+  {"q":"Can these tests directly cover the Artemis habitat?","profile":"artemis","expected":[],"abstain":true,"requiresDirectCoverage":true},
   {"q":"Comparar con el perfil de minería en Tierra","profile":"mining","expected":[],"abstain":false},
   {"q":"Compare the lunar rover with the catalogue","profile":"rover","expected":[],"abstain":false}
 ]

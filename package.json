@@ -12,11 +12,13 @@
     "test": "vitest run --pool=threads"
   },
   "dependencies": {
+    "@react-three/fiber": "^9.8.2",
     "@xyflow/react": "^12.0.0",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "three": "^0.187.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
@@ -24,6 +26,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.187.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.0.0",
     "vitest": "^4.0.0"

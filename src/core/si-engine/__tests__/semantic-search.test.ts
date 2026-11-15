@@ -40,6 +40,24 @@ it("conserva consultas por códigos y evita propagar una coincidencia a otras co
   expect(runsById.get("BASS-II-GMT175-T10")?.outcome).toBe("Sin ignición");
 });
 
+it.each([
+  ["¿Qué reporta SAFFIRE-VI-E6?", "SAFFIRE-VI-E6", "SAFFIRE-VI"],
+  ["What does SAFFIRE-V-E6 report?", "SAFFIRE-V-E6", "SAFFIRE-IV-V"],
+  ["What was recorded in FLEX-C10H101?", "FLEX-C10H101", "FLEX"],
+])("resuelve un identificador completo en una pregunta (%s)", (query, runId, studyId) => {
+  const result = index.search(query);
+  expect([...result.runs.keys()]).toEqual([runId]);
+  expect([...result.studies.keys()]).toEqual([studyId]);
+  expect(result.runs.get(runId)?.reasons).toContain(runId);
+});
+
+it("conserva filtros explícitos cuando la consulta nombra corridas concretas", () => {
+  expect([...index.search("SAFFIRE-VI-E6 vs SAFFIRE-V-E6 acrílico").runs.keys()].sort())
+    .toEqual(["SAFFIRE-V-E6", "SAFFIRE-VI-E6"]);
+  expect(index.search("SAFFIRE-VI-E6 y teflón").runs.size).toBe(0);
+  expect(index.search("SAFFIRE-VI-E6 marcador inexistente").runs.size).toBe(0);
+});
+
 it("recupera FLEX con HEPTANE y CO₂ y deja fuera corridas sin supresor", () => {
   expect([...index.search("heptane CO₂").runs.keys()]).toEqual(["FLEX-C10H101"]);
   expect([...index.search("PTFE humo").runs.keys()]).toEqual(["SAME-1", "SAME-3", "SAME-4"]);

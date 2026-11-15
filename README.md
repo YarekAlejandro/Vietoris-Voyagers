@@ -37,6 +37,8 @@ Si PSI deja de responder, la aplicación usa un snapshot versionado de Combustio
 
 La ficha **Cobertura del escenario** muestra la corrida medida más cercana, las brechas y la cantidad de corridas dentro de tolerancias heurísticas. La comparación A/B avisa cuando cambian varias condiciones a la vez. [Cobertura e interpretación](docs/evidence.md) · [Método FSRS](docs/fsrs.md) · [Auditoría de datos](docs/data-audit.md)
 
+En una corrida documentada con muestra sólida, abre **Escena del experimento** para explorar el montaje ilustrativo. La ficha muestra el espesor y el flujo registrados cuando están disponibles. La vista 2D se abre en pantallas estrechas o cuando WebGL falla. Usa `NEXT_PUBLIC_EXPERIMENT_SCENE=false` antes de compilar para ocultar el control. [Escena y evaluación](docs/evidence.md#escena-del-experimento)
+
 ## Desarrollo local
 
 Con Node.js 24 LTS, ejecuta:

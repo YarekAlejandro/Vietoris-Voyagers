@@ -12,6 +12,9 @@ Las licencias se comprobaron en los manifiestos de los paquetes instalados o en 
 | React y React DOM | MIT | [facebook/react](https://github.com/facebook/react) |
 | Zustand | MIT | [pmndrs/zustand](https://github.com/pmndrs/zustand) |
 | React Flow (`@xyflow/react`) | MIT | [xyflow/xyflow](https://github.com/xyflow/xyflow) |
+| React Three Fiber (`@react-three/fiber`) | MIT | [pmndrs/react-three-fiber](https://github.com/pmndrs/react-three-fiber) |
+| Three.js (`three`) | MIT | [mrdoob/three.js](https://github.com/mrdoob/three.js) |
+| Tipos de Three.js (`@types/three`) | MIT | [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/three) |
 | Lucide (`lucide-react`) | ISC | [lucide-icons/lucide](https://github.com/lucide-icons/lucide) |
 | Tailwind CSS y `@tailwindcss/postcss` | MIT | [tailwindlabs/tailwindcss](https://github.com/tailwindlabs/tailwindcss) |
 | TypeScript | Apache-2.0 | [microsoft/TypeScript](https://github.com/microsoft/TypeScript) |

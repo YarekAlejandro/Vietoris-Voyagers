@@ -16,6 +16,8 @@ import { SafetyTriadMatrix } from "../simulator/SafetyTriadMatrix";
 import { NtrsLink, NtrsRadar, ntrsForStudy } from "./NtrsRadar";
 import { ScenarioCoverageCard } from "../simulator/ScenarioCoverageCard";
 import type { ScenarioCoverage } from "../../core/si-engine/scenario-coverage";
+import { sceneEvidenceForRun } from "../../core/si-engine/experiment-scene";
+import { ExperimentScene } from "../simulator/ExperimentScene";
 
 function SourceLink({ source }: { source: Citation }) {
   return <a className="source-link" href={source.url} target="_blank" rel="noreferrer">{source.label} <ExternalLink size={13} aria-hidden /></a>;
@@ -42,6 +44,7 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
   const bridges = study ? studyBridges.filter(({ source, target }) => source === study.id || target === study.id) : [];
   const matchingRunCount = availableRuns.filter(({ investigationId }) => investigationId === study?.id).length;
   const imported = study?.importedPsi;
+  const scene = run && process.env.NEXT_PUBLIC_EXPERIMENT_SCENE !== "false" ? sceneEvidenceForRun(run) : null;
   const relatedLiterature = study ? ntrsForStudy(study, literature) : [];
   const comparisonId = run?.id ?? (imported && !imported.profile && study ? psiStudyComparisonId(study.id) : undefined);
   const evidenceTopicsForSelection = run ? topicsForRun(run) : study?.topics ?? [];
@@ -107,6 +110,7 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
             </>
           ) : <p>{mode === "student" ? studentDescriptions[study.id] ?? study.summary : study.summary}</p>}
           <SourceLink source={run?.source ?? study.source} />
+          {scene && <ExperimentScene evidence={scene} />}
           {study.psi && <div className="psi-identity">
             <span>{study.psi.accession}{study.psi.license ? ` · ${study.psi.license}` : ""}{imported ? ` · ${imported.researchArea}` : ""}</span>
             {(run || !imported) && <SourceLink source={{ label: "Ficha oficial · NASA Physical Sciences Informatics", url: study.psi.officialUrl }} />}

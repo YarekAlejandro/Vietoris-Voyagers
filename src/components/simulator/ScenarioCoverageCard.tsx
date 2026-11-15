@@ -12,7 +12,7 @@ export function ScenarioCoverageCard({ coverage }: { coverage: ScenarioCoverage 
   return <section className="search-reason" aria-label="Cobertura del escenario" aria-live="polite">
     <h4><ScanLine size={13} aria-hidden className="inline" /> Cobertura del escenario</h4>
     <p>{status === "ninguna" ? "Sin evidencia directa para este escenario"
-      : status === "parcial" ? "Cobertura parcial" : "Cobertura directa"}
+      : status === "parcial" ? "Cobertura parcial. Sin evidencia directa para este escenario" : "Cobertura directa"}
       {" · "}{withinTolerance} dentro de las tolerancias heurísticas.</p>
     {closest && <>
       <p>Corrida más cercana · {closest.label}</p>
