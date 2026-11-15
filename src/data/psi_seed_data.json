@@ -212,6 +212,7 @@
   "runs": [
     {
       "id": "BASS-II-GMT45-T4",
+      "reference": false,
       "topics": ["low-flow", "extinction"],
       "investigationId": "BASS-II",
       "label": "GMT45-T4",
@@ -235,6 +236,7 @@
     },
     {
       "id": "BASS-II-GMT100-T13",
+      "reference": false,
       "topics": ["low-flow", "extinction"],
       "investigationId": "BASS-II",
       "label": "GMT100-T13",
@@ -258,6 +260,7 @@
     },
     {
       "id": "BASS-II-GMT175-T9",
+      "reference": false,
       "topics": [],
       "investigationId": "BASS-II",
       "label": "GMT175-T9",
@@ -280,6 +283,7 @@
     },
     {
       "id": "BASS-II-GMT175-T10",
+      "reference": false,
       "topics": [],
       "investigationId": "BASS-II",
       "label": "GMT175-T10",
@@ -302,6 +306,7 @@
     },
     {
       "id": "BASS-II-GMT178-T14",
+      "reference": false,
       "topics": ["low-flow", "extinction"],
       "investigationId": "BASS-II",
       "label": "GMT178-T14",
@@ -325,6 +330,7 @@
     },
     {
       "id": "BASS-II-GMT190-T21",
+      "reference": false,
       "topics": ["extinction"],
       "investigationId": "BASS-II",
       "label": "GMT190-T21",
@@ -348,6 +354,7 @@
     },
     {
       "id": "SAFFIRE-I-1",
+      "reference": false,
       "topics": ["flame-spread"],
       "investigationId": "SAFFIRE-I",
       "label": "Saffire I · muestra 1",
@@ -369,6 +376,7 @@
     },
     {
       "id": "SAFFIRE-IV-1",
+      "reference": false,
       "topics": ["flame-spread"],
       "investigationId": "SAFFIRE-IV-V",
       "label": "Saffire IV · muestra 1",
@@ -390,6 +398,7 @@
     },
     {
       "id": "SAFFIRE-V-E6",
+      "reference": false,
       "topics": ["reduced-pressure", "cabin-heat", "flame-spread"],
       "investigationId": "SAFFIRE-IV-V",
       "label": "Saffire V · evento 6",
@@ -411,6 +420,7 @@
     },
     {
       "id": "SAFFIRE-VI-E5",
+      "reference": false,
       "topics": ["reduced-pressure", "flame-spread"],
       "investigationId": "SAFFIRE-VI",
       "label": "Saffire VI · evento 5",
@@ -431,6 +441,7 @@
     },
     {
       "id": "SAFFIRE-VI-E6",
+      "reference": false,
       "topics": ["reduced-pressure", "cabin-heat", "flame-spread"],
       "investigationId": "SAFFIRE-VI",
       "label": "Saffire VI · evento 6",
@@ -453,6 +464,7 @@
     },
     {
       "id": "SAFFIRE-VI-E8",
+      "reference": false,
       "topics": ["reduced-pressure", "flame-spread"],
       "investigationId": "SAFFIRE-VI",
       "label": "Saffire VI · evento 8",
@@ -474,6 +486,7 @@
     },
     {
       "id": "SAME-1",
+      "reference": false,
       "investigationId": "SAME",
       "label": "SAME · muestra 1",
       "atmosphere": {
@@ -504,6 +517,7 @@
     },
     {
       "id": "SAME-3",
+      "reference": false,
       "investigationId": "SAME",
       "label": "SAME · muestra 3",
       "atmosphere": {
@@ -534,6 +548,7 @@
     },
     {
       "id": "SAME-4",
+      "reference": false,
       "investigationId": "SAME",
       "label": "SAME · muestra 4",
       "atmosphere": {
@@ -564,6 +579,7 @@
     },
     {
       "id": "SAME-R-54",
+      "reference": false,
       "investigationId": "SAME-R",
       "label": "SAME-R · prueba 54",
       "atmosphere": {
@@ -595,6 +611,7 @@
     },
     {
       "id": "SAME-R-77",
+      "reference": false,
       "investigationId": "SAME-R",
       "label": "SAME-R · prueba 77",
       "atmosphere": {
@@ -626,6 +643,7 @@
     },
     {
       "id": "SAME-R-101",
+      "reference": false,
       "investigationId": "SAME-R",
       "label": "SAME-R · prueba 101",
       "atmosphere": {
@@ -657,6 +675,7 @@
     },
     {
       "id": "SAME-R-107",
+      "reference": false,
       "investigationId": "SAME-R",
       "label": "SAME-R · prueba 107",
       "atmosphere": {
@@ -688,6 +707,7 @@
     },
     {
       "id": "FLEX-40CAL01",
+      "reference": false,
       "investigationId": "FLEX",
       "label": "FLEX · 40CAL01",
       "atmosphere": {
@@ -722,6 +742,7 @@
     },
     {
       "id": "FLEX-189F001",
+      "reference": false,
       "investigationId": "FLEX",
       "label": "FLEX · 189F001",
       "atmosphere": {
@@ -756,6 +777,7 @@
     },
     {
       "id": "FLEX-C10H101",
+      "reference": false,
       "investigationId": "FLEX",
       "label": "FLEX · C10H101",
       "atmosphere": {
@@ -792,6 +814,7 @@
     },
     {
       "id": "FLEX-196F001",
+      "reference": false,
       "investigationId": "FLEX",
       "label": "FLEX · 196F001",
       "atmosphere": {

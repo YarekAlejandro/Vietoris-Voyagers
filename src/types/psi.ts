@@ -44,7 +44,8 @@ export interface ExperimentalRun {
   investigationId: string;
   label: string;
   atmosphere: Partial<Atmosphere>;
-  reference?: true;
+  /** True para un perfil nominal completo. False para una corrida experimental del catálogo curado. */
+  reference?: boolean;
   fuel?: string;
   fuelCategory?: FuelCategory;
   configuration?: string;
@@ -55,6 +56,8 @@ export interface ExperimentalRun {
   initial_flow_velocity_cm_s?: number;
   outcome?: string;
   cabin_heat_added_kj?: number;
+  cabin_co_ppm?: number;
+  cabin_co2_ppm?: number;
   steady_flame_length_cm?: number;
   weight_loss_rate_mg_min?: number;
   heater_resistance_ratio?: number;
