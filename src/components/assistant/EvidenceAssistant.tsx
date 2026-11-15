@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowUp, ArrowUpRight, MessageCircleQuestion, Minus, MousePointer2, RotateCcw, Volume2 } from "lucide-react";
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { ArrowUp, ArrowUpRight, MessageCircleQuestion, Minus, MousePointer2, RotateCcw, Volume2, VolumeX } from "lucide-react";
+import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { AssistantPointer, PageAssistantAnswer } from "../../core/si-engine/page-assistant";
+import { VoiceCaptions, type SpeechClock } from "./VoiceCaptions";
 import styles from "./EvidenceAssistant.module.css";
 
 export interface AssistantConversationContext {
@@ -13,6 +14,8 @@ export interface AssistantConversationContext {
 interface EvidenceAssistantProps {
   onAsk: (question: string, context: AssistantConversationContext) => PageAssistantAnswer | Promise<PageAssistantAnswer>;
   onNavigate: (pointer: AssistantPointer) => void;
+  onProgress?: (answer: PageAssistantAnswer, count: number) => void;
+  onClear?: () => void;
   side?: "left" | "right";
   speechEnabled: boolean;
 }
@@ -33,37 +36,53 @@ const unavailable: PageAssistantAnswer = {
   pointers: [],
 };
 
-function WrittenReply({ text, animate }: { text: string; animate: boolean }) {
+type ReadingClock =
+  | { startMs: number; offset: number }
+  | SpeechClock;
+
+function WrittenReply({ text, animate, clock, onProgress }: {
+  text: string; animate: boolean; clock: ReadingClock | null; onProgress: (count: number) => void;
+}) {
   const [count, setCount] = useState(0);
+  const report = useEffectEvent(onProgress);
   useEffect(() => {
-    if (!animate) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setCount(text.length);
-      return;
-    }
-    const start = performance.now();
-    const duration = Math.min(8600, Math.max(550, text.length * 12));
+    if (!animate || !clock) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duration = Math.min(11_000, Math.max(550, text.length * 12));
     let frame = 0;
+    let revealed = "offset" in clock ? clock.offset : 0;
     const tick = (now: number) => {
-      const fraction = Math.min(1, (now - start) / duration);
-      setCount(Math.floor(text.length * fraction));
-      if (fraction < 1) frame = requestAnimationFrame(tick);
+      if ("audio" in clock) {
+        const elapsed = Math.max(0, clock.audio.currentTime - clock.startSeconds);
+        if (elapsed >= clock.duration) revealed = text.length;
+        else if (clock.ends.length === text.length) {
+          while (revealed < clock.ends.length && clock.ends[revealed] <= elapsed) revealed += 1;
+        } else revealed = Math.min(text.length, Math.floor(text.length * elapsed / clock.duration));
+      } else {
+        revealed = Math.min(text.length, clock.offset + Math.floor(text.length * (now - clock.startMs) / duration));
+      }
+      setCount(reduced ? text.length : revealed);
+      report(revealed);
+      if (revealed < text.length) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [text, animate]);
+  }, [text, animate, clock]);
 
   const visible = animate ? count : text.length;
   return <p>
     <span className="sr-only">Respuesta: {text}</span>
-    <span aria-hidden="true">{text.slice(0, visible)}{visible < text.length && <span className={styles.caret} />}</span>
+    <span aria-hidden="true">{animate && !clock ? "Preparando la lectura…" : text.slice(0, visible)}
+      {visible < text.length && <span className={styles.caret} />}</span>
   </p>;
 }
 
-function AssistantReply({ answer, onNavigate, animate }: {
+function AssistantReply({ answer, onNavigate, animate, clock, onProgress }: {
   answer: PageAssistantAnswer | undefined;
   onNavigate: (pointer: AssistantPointer) => void;
   animate: boolean;
+  clock: ReadingClock | null;
+  onProgress: (answer: PageAssistantAnswer, count: number) => void;
 }) {
   if (!answer) {
     return (
@@ -82,7 +101,7 @@ function AssistantReply({ answer, onNavigate, animate }: {
   return (
     <div className={styles.reply} data-assistant-reply>
       {answer.origin && <span className={styles.origin}>{answer.origin === "ai" ? "Respuesta con IA" : "Respuesta local"}</span>}
-      <WrittenReply text={answer.text} animate={animate} />
+      <WrittenReply text={answer.text} animate={animate} clock={clock} onProgress={(count) => onProgress(answer, count)} />
       {answer.pointers.length > 0 && <ul className={styles.pointers}>
         {answer.pointers.map((pointer, index) => <li key={`${pointer.target}:${pointer.selection?.id ?? ""}:${index}`}>
           <button type="button" onClick={() => onNavigate(pointer)}>
@@ -101,7 +120,7 @@ function AssistantReply({ answer, onNavigate, animate }: {
   );
 }
 
-export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEnabled }: EvidenceAssistantProps) {
+export function EvidenceAssistant({ onAsk, onNavigate, onProgress, onClear, side = "right", speechEnabled }: EvidenceAssistantProps) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -109,18 +128,25 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
   const [animatedTurn, setAnimatedTurn] = useState<number | null>(null);
   const [voiceOn, setVoiceOn] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState("");
+  const [readingClock, setReadingClock] = useState<ReadingClock | null>(null);
+  const [captionClock, setCaptionClock] = useState<SpeechClock | null>(null);
+  const shownChars = useRef(0);
   const voiceActive = useRef(false);
   const audioContext = useRef<AudioContext | null>(null);
   const speechSource = useRef<AudioBufferSourceNode | null>(null);
   const previousError = useRef(false);
   const speechRequest = useRef<AbortController | null>(null);
   const launcherRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+  const speechFocus = useRef<{ restore: boolean } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const titleId = useId();
   const previousTurn = turns.at(-1);
   const pending = previousTurn !== undefined && previousTurn.answer === undefined;
+  const speaking = voiceStatus === "Leyendo respuesta";
+  const drawerOpen = open && !speaking;
 
   useEffect(() => () => {
     speechRequest.current?.abort();
@@ -140,7 +166,10 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
     const repeatedError = failed && previousError.current;
     previousError.current = failed;
     const context = audioContext.current;
-    if (!voiceActive.current || !context || repeatedError) return;
+    if (!voiceActive.current || !context || repeatedError) {
+      setReadingClock({ startMs: performance.now(), offset: 0 });
+      return;
+    }
     stopVoice();
     const controller = new AbortController();
     speechRequest.current = controller;
@@ -148,10 +177,12 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
     try {
       const response = await fetch("/api/assistant/speech", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: answer.text }), signal: controller.signal,
+        body: JSON.stringify({ text: answer.text, includeTimings: true }), signal: controller.signal,
       });
       if (!response.ok) throw new Error("Audio no disponible");
-      const buffer = await context.decodeAudioData(await response.arrayBuffer());
+      const { audioBase64, characterEndTimesSeconds, spokenText, spokenStartTimesSeconds, spokenEndTimesSeconds } = await response.json();
+      const bytes = Uint8Array.from(atob(audioBase64), (character) => character.charCodeAt(0));
+      const buffer = await context.decodeAudioData(bytes.buffer);
       if (controller.signal.aborted) return;
       const source = context.createBufferSource();
       source.buffer = buffer;
@@ -161,13 +192,27 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
         if (speechSource.current === source) {
           speechSource.current = null;
           setVoiceStatus("");
+          setOpen(true);
         }
       };
-      source.start();
+      const startSeconds = context.currentTime + 0.04;
+      source.start(startSeconds);
       speechSource.current = source;
+      const clock: SpeechClock = {
+        audio: context, startSeconds, duration: buffer.duration, ends: characterEndTimesSeconds,
+        spokenText: spokenText ?? answer.text, spokenStarts: spokenStartTimesSeconds ?? [],
+        spokenEnds: spokenEndTimesSeconds ?? characterEndTimesSeconds,
+      };
+      speechFocus.current = { restore: drawerRef.current?.contains(document.activeElement) ?? false };
+      if (speechFocus.current.restore) launcherRef.current?.focus({ preventScroll: true });
+      setReadingClock(clock);
+      setCaptionClock(clock);
       setVoiceStatus("Leyendo respuesta");
     } catch {
-      if (!controller.signal.aborted) setVoiceStatus("Voz no disponible");
+      if (!controller.signal.aborted) {
+        setVoiceStatus("Voz no disponible");
+        setReadingClock({ startMs: performance.now(), offset: shownChars.current });
+      }
     }
   }
 
@@ -178,7 +223,10 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
     if (enabled) {
       audioContext.current ??= new AudioContext();
       void audioContext.current.resume().catch(() => {});
-    } else stopVoice();
+    } else {
+      stopVoice();
+      setReadingClock({ startMs: performance.now(), offset: shownChars.current });
+    }
   }
 
   useEffect(() => {
@@ -202,12 +250,18 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
   }, [restored, turns]);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus({ preventScroll: true });
-  }, [open]);
+    if (speaking) return;
+    const afterSpeech = speechFocus.current;
+    speechFocus.current = null;
+    if (open && (!afterSpeech || (afterSpeech.restore &&
+      (document.activeElement === launcherRef.current || document.activeElement === document.body)))) {
+      inputRef.current?.focus({ preventScroll: true });
+    }
+  }, [open, speaking]);
 
   useEffect(() => {
     const transcript = transcriptRef.current;
-    if (!open || !transcript) return;
+    if (!drawerOpen || !transcript) return;
     const latestReply = transcript.querySelectorAll<HTMLElement>("[data-assistant-reply]");
     const reply = turns.at(-1)?.answer ? latestReply[latestReply.length - 1] : undefined;
     if (reply && reply.offsetHeight > transcript.clientHeight - 12) {
@@ -216,13 +270,21 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
     } else {
       transcript.scrollTop = transcript.scrollHeight;
     }
-  }, [open, turns]);
+  }, [drawerOpen, turns]);
+
+  function interruptSpeech() {
+    stopVoice();
+    setOpen(true);
+    setReadingClock({ startMs: performance.now(), offset: shownChars.current });
+  }
 
   function ask(value: string) {
     const cleanQuestion = value.trim();
     if (!cleanQuestion || pending) return;
 
     stopVoice();
+    shownChars.current = 0;
+    setReadingClock(null);
     if (voiceActive.current) void audioContext.current?.resume().catch(() => {});
     setAnimatedTurn(turns.length);
     setQuestion("");
@@ -267,12 +329,15 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
   }
 
   return (
-    <div className={styles.assistant} data-side={side} data-open={open} data-has-turns={turns.length > 0}>
+    <>
+    {captionClock && <VoiceCaptions key={captionClock.startSeconds} clock={captionClock} visible={speaking} />}
+    <div className={styles.assistant} data-side={side} data-open={drawerOpen} data-has-turns={turns.length > 0}>
       <section
         aria-labelledby={titleId}
         className={styles.drawer}
-        inert={!open}
+        inert={!drawerOpen}
         id={panelId}
+        ref={drawerRef}
         onKeyDown={handleKeyDown}
         role="dialog"
       >
@@ -280,11 +345,10 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
           <span className={styles.emblem}><MessageCircleQuestion size={18} aria-hidden="true" /></span>
           <h2 id={titleId}>Asistente de AETHER-SI</h2>
           {speechEnabled && <button type="button" role="switch" aria-checked={voiceOn} aria-label="Voz automática"
-            className={styles.voiceSwitch} onClick={toggleVoice} data-speaking={voiceStatus === "Leyendo respuesta"}
+            className={styles.voiceSwitch} onClick={toggleVoice}
             title={voiceStatus || "Voz automática"}>
             <Volume2 size={14} aria-hidden="true" /> Voz <span aria-hidden="true" />
           </button>}
-          {speechEnabled && <span className="sr-only" role="status">{voiceStatus}</span>}
           {turns.length > 0 && <button
             type="button"
             className={styles.iconButton}
@@ -295,6 +359,7 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
               stopVoice();
               previousError.current = false;
               setAnimatedTurn(null);
+              onClear?.();
               setTurns([]);
               setQuestion("");
               inputRef.current?.focus({ preventScroll: true });
@@ -326,7 +391,11 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
             {turns.map(({ question: asked, answer }, index) => <div className={styles.turn} key={index}>
               <p className={styles.question}><span className="sr-only">Tu pregunta: </span>{asked}</p>
               <div className={styles.answer}>
-                <AssistantReply answer={answer} animate={animatedTurn === index}
+                <AssistantReply answer={answer} animate={animatedTurn === index} clock={readingClock}
+                  onProgress={(reply, count) => {
+                    shownChars.current = count;
+                    onProgress?.(reply, count);
+                  }}
                   onNavigate={(pointer) => {
                   minimize();
                   onNavigate(pointer);
@@ -356,13 +425,17 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right", speechEna
         type="button"
         className={styles.launcher}
         aria-controls={panelId}
-        aria-expanded={open}
-        aria-label={open ? "Minimizar asistente" : "Abrir asistente"}
-        onClick={() => open ? minimize() : setOpen(true)}
+        aria-expanded={drawerOpen}
+        aria-label={speaking ? "Detener narración" : open ? "Minimizar asistente" : "Abrir asistente"}
+        onClick={() => speaking ? interruptSpeech() : open ? minimize() : setOpen(true)}
+        onKeyDown={(event) => { if (speaking && event.key === "Escape") interruptSpeech(); }}
         ref={launcherRef}
       >
-        <MessageCircleQuestion size={19} aria-hidden="true" /> Asistente
+        {speaking ? <VolumeX size={18} aria-hidden="true" /> : <MessageCircleQuestion size={19} aria-hidden="true" />}
+        {speaking ? "Detener voz" : "Asistente"}
       </button>
+      {speechEnabled && <span className="sr-only" role="status">{voiceStatus}</span>}
     </div>
+    </>
   );
 }

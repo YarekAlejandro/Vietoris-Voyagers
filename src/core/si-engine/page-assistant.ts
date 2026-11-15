@@ -160,7 +160,54 @@ function answerCoverage(question: string, context: PageAssistantContext): PageAs
   };
 }
 
-function answerComparison(runs: readonly ExperimentalRun[], context: PageAssistantContext, interpret: boolean): PageAssistantAnswer {
+export function comparisonNarrative(a: ExperimentalRun, b: ExperimentalRun, studies: ReadonlyMap<string, Investigation>) {
+  const rows = compareRuns(a, b, studies);
+  const { confounded } = summarizeChangedDrivers(rows);
+  const matching = (id: string) => rows.find(({ field, status }) => field.id === id && status === "equal");
+  const purpose = (run: ExperimentalRun) => {
+    const scope = run.topics?.includes("flame-spread") && studies.get(run.investigationId)?.summary;
+    return [run.outcome ? `${run.label} documenta ${run.outcome.toLocaleLowerCase("es-MX")}.`
+      : scope ? `${run.label} pertenece a un estudio de propagación de llama. ${scope}` : "",
+    run.steady_flame_length_cm === undefined ? "" : `La fuente de ${run.label} reporta una longitud de llama estable de ${run.steady_flame_length_cm} cm.`]
+      .filter(Boolean).join(" ");
+  };
+  const extinction = [a, b].find((run) => run.topics?.includes("extinction") && run.outcome);
+  const spread = [a, b].find((run) => run !== extinction && run.topics?.includes("flame-spread"));
+  const connection = extinction && spread
+    ? `Ambos aportan evidencia complementaria en microgravedad. ${extinction.label} ayuda a estudiar cuándo se apaga una llama, y ${spread.label} cómo se propaga.`
+    : "";
+  const observations = [connection, purpose(a), purpose(b)].filter(Boolean).join(" ");
+
+  const material = matching("fuel")?.valueA;
+  const gravity = matching("gravity_g")?.valueA;
+  const configuration = matching("configuration")?.valueA;
+  const common = [
+    material !== undefined ? `material ${material}` : "",
+    gravity !== undefined ? `gravedad indicada de ${gravity} g` : "",
+    typeof configuration === "string" ? configuration.toLocaleLowerCase("es-MX") : "",
+  ].filter(Boolean);
+  const similarities = common.length ? `Comparten ${new Intl.ListFormat("es").format(common)}.` : "";
+
+  const fields = ["flow_velocity_cm_s", "oxygen_pct", "pressure_psia", "width_cm", "thickness_mm"] as const;
+  const changes = fields.flatMap((id) => {
+    const row = rows.find(({ field, status }) => field.id === id && status === "changed");
+    if (!row || !("unit" in row.field) || typeof row.valueA !== "number" || typeof row.valueB !== "number") return [];
+    const { field, valueA, valueB } = row;
+    const format = (value: number) => Number(value.toFixed(field.decimals));
+    return [`${field.label.toLocaleLowerCase("es-MX")} de ${format(valueA)} a ${format(valueB)} ${field.unit}`];
+  });
+  const differences = changes.length ? `Al pasar de ${a.label} a ${b.label} cambian ${new Intl.ListFormat("es").format(changes)}.` : "";
+
+  const missingOutcome = a.outcome && !b.outcome ? b : b.outcome && !a.outcome ? a : undefined;
+  const limits = [
+    confounded ? "Varias condiciones cambiaron a la vez. La comparación por sí sola no identifica el efecto de cada factor." : "",
+    extinction && spread && confounded ? "Estos registros no demuestran una transición entre propagación y extinción." : "",
+    missingOutcome ? `La tabla deja vacía la fila de resultado observado para ${missingOutcome.label}.` : "",
+  ].filter(Boolean).join(" ");
+  return [observations, similarities, differences, limits].filter(Boolean);
+}
+
+function answerComparison(runs: readonly ExperimentalRun[], context: PageAssistantContext, interpret: boolean, relevance = false): PageAssistantAnswer {
   const [a, b] = runs.length === 2 ? runs : [context.runs.find(({ id }) => id === context.comparison.a), context.runs.find(({ id }) => id === context.comparison.b)];
   if (!a || !b) return { text: "Elige dos corridas en el comparador para revisar sus diferencias.", pointers: [comparisonPointer] };
 
@@ -174,7 +221,12 @@ function answerComparison(runs: readonly ExperimentalRun[], context: PageAssista
     text: `La comparación de ${a.label} y ${b.label} incluye condiciones de referencia. La tabla distingue su procedencia.`, pointers,
   };
 
-  const rows = compareRuns(a, b, new Map(context.studies.map((study) => [study.id, study])));
+  const studies = new Map(context.studies.map((study) => [study.id, study]));
+  if (relevance) {
+    const explanation = comparisonNarrative(a, b, studies);
+    if (explanation.length) return { text: explanation.join("\n\n"), pointers };
+  }
+  const rows = compareRuns(a, b, studies);
   const { changedVariables, confounded } = summarizeChangedDrivers(rows);
   const deltas = rows.flatMap(({ field, delta, outcome }) => !outcome && delta !== undefined && "unit" in field
     ? [`${field.label} ${delta > 0 ? "+" : ""}${delta.toFixed(field.decimals)} ${"deltaUnit" in field ? field.deltaUnit : field.unit}`] : []);
@@ -186,7 +238,7 @@ function answerComparison(runs: readonly ExperimentalRun[], context: PageAssista
   };
 }
 
-function compareExperiments(question: string, namedRuns: ExperimentalRun[], namedStudies: Investigation[], context: PageAssistantContext, interpret: boolean): PageAssistantAnswer {
+function compareExperiments(question: string, namedRuns: ExperimentalRun[], namedStudies: Investigation[], context: PageAssistantContext, interpret: boolean, relevance: boolean): PageAssistantAnswer {
   const studyById = new Map(context.studies.map((study) => [study.id, study]));
   const ranked = rankRuns(context.runs.filter((run) => !run.reference && !run.psiProfile), studyById, context.profile, context.atmosphere);
   const representative = new Map<string, ExperimentalRun>();
@@ -228,7 +280,7 @@ function compareExperiments(question: string, namedRuns: ExperimentalRun[], name
   const [baseline, ...others] = compared;
   const shortage = compared.length < count ? ` Encontré ${compared.length} registros pertinentes para esta comparación.` : "";
   if (others.length === 1 && "investigationId" in baseline && "investigationId" in others[0]) {
-    const pair = answerComparison([baseline, others[0]], context, interpret);
+    const pair = answerComparison([baseline, others[0]], context, interpret, relevance);
     return { ...pair, text: pair.text + shortage };
   }
   const pairPointers: AssistantPointer[] = [];
@@ -268,7 +320,10 @@ export function answerPageQuestion(question: string, context: PageAssistantConte
     text: `No encontré ${unmatchedId} en el catálogo. Puedes comprobar el identificador con la búsqueda semántica.`, pointers: [searchPointer],
   };
 
-  const comparisonAsked = /\b(?:interpretar|interpretacion|interpreta|comparar|comparame|compara|comparacion|contrasta|contrastar|git diff|entre a y b|a b)\b/.test(normalized) ||
+  const studyNamesWithoutRun = studies.filter((study) => !runs.some((run) => run.investigationId === study.id));
+  const relevance = runs.length + studyNamesWithoutRun.length >= 2 &&
+    /\b(?:relevan\w*|importan\w*|aporta\w*|comun|similitudes?|relacion\w*|complement\w*)\b/.test(normalized);
+  const comparisonAsked = relevance || /\b(?:interpretar|interpretacion|interpreta|comparar|comparame|compara|comparacion|contrasta|contrastar|git diff|entre a y b|a b)\b/.test(normalized) ||
     Boolean(explicit && /\b(?:diferencias?|cambios? entre)\b/.test(normalized));
 
   if (!comparisonAsked && isAssistantHistoryQuestion(question)) {
@@ -285,7 +340,7 @@ export function answerPageQuestion(question: string, context: PageAssistantConte
   if (comparisonAsked) {
     const interpret = /\binterpret\w*\b/.test(normalized);
     if (!explicit && (interpret || /\b(?:entre a y b|a b|git diff)\b/.test(normalized))) return answerComparison([], context, interpret);
-    return compareExperiments(normalized, runs, studies, context, interpret);
+    return compareExperiments(normalized, runs, studies, context, interpret, relevance);
   }
 
   if (/\b(?:escena|3d|webgl|montaje 3d)\b/.test(normalized)) {

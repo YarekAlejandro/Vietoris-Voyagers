@@ -88,12 +88,12 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
         </div>
       </div>
       <div className={`panel-content comparison-content${interpretation ? " with-interpretation" : ""}`}>
-        <div className="comparison-selects">
+        <div className="comparison-selects" id="assistant-diff-runs">
           {(["a", "b"] as const).map((side) => (
             <label key={side}>
               <span className={`side side-${side}`} aria-hidden>{side.toUpperCase()}</span>
               <span className="sr-only">Corrida {side.toUpperCase()}</span>
-              <select value={side === "a" ? a.id : b.id} onChange={(event) => selectRun(side, event.target.value)}>
+              <select id={`assistant-diff-run-${side}`} value={side === "a" ? a.id : b.id} onChange={(event) => selectRun(side, event.target.value)}>
                 <optgroup label="Corridas experimentales">
                   {runs.filter((run) => !run.reference && !run.psiProfile).map((run) => <option value={run.id} key={run.id}>{run.label}</option>)}
                 </optgroup>
@@ -109,7 +109,7 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
             </label>
           ))}
         </div>
-        {drivers.confounded && <div className="comparison-confounding" role="status">
+        {drivers.confounded && <div className="comparison-confounding" id="assistant-diff-confounding" role="status">
           <p>Cambiaron varias condiciones a la vez: la diferencia no puede atribuirse a una sola variable.</p>
           <p>{drivers.changedVariables.join(" · ")}</p>
         </div>}
@@ -123,10 +123,10 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
                 const deltaUnit = "deltaUnit" in field ? field.deltaUnit : unit;
                 const display = (value: typeof valueA) => field.id === "facility" && typeof value === "string" && Object.hasOwn(facilities, value)
                   ? facilities[value as Facility].label : formatValue(value, decimals, unit);
-                return <tr key={field.id} data-status={status} data-outcome={outcome}>
+                return <tr key={field.id} data-status={status} data-outcome={outcome} data-assistant-diff-row={field.id}>
                   <th scope="row">{field.label}</th>
-                  <td>{display(valueA)}{nominalA && <small>Nominal</small>}</td>
-                  <td>{display(valueB)}{nominalB && <small>Nominal</small>}</td>
+                  <td data-assistant-diff-cell={`${field.id}:a`}>{display(valueA)}{nominalA && <small>Nominal</small>}</td>
+                  <td data-assistant-diff-cell={`${field.id}:b`}>{display(valueB)}{nominalB && <small>Nominal</small>}</td>
                   <td>
                     {delta === undefined ? <span className="diff-status">{{
                       equal: "Igual", missing: "Sin dato", changed: "Cambió", nominal: "Valor nominal",

@@ -8,7 +8,7 @@ import { sceneEvidenceForRun } from "./experiment-scene";
 import { compareRuns, diffFields, summarizeChangedDrivers } from "./git-diff";
 import { formatPsiQuantity } from "./live-psi-mapper";
 import { mergePsiCatalog } from "./merge-psi-catalog";
-import { answerPageQuestion, type AssistantPointer, type AssistantTarget, type PageAssistantAnswer } from "./page-assistant";
+import { answerPageQuestion, comparisonNarrative, type AssistantPointer, type AssistantTarget, type PageAssistantAnswer } from "./page-assistant";
 import { computeCoverage } from "./scenario-coverage";
 import { buildEvidenceIndex } from "./semantic-search";
 
@@ -136,7 +136,8 @@ function comparisonFact(comparison: NonNullable<AssistantPointer["comparison"]>,
   const conclusion = drivers.confounded ? "Cambiaron varias condiciones a la vez. La diferencia no puede atribuirse a una sola variable." : "";
   return { id: index === 0 ? "comparison:active" : `comparison:${index + 1}`, text: [`Comparación de A (${a.label}) y B (${b.label})`,
     `Condiciones distintas: ${drivers.changedVariables.join(", ") || "ninguna con diferencia reportada"}`,
-    `Diferencias B menos A: ${deltas.join(" · ") || "sin diferencias cuantificadas"}`, conclusion].filter(Boolean).join(". "),
+    `Diferencias B menos A: ${deltas.join(" · ") || "sin diferencias cuantificadas"}`, conclusion,
+    comparisonNarrative(a, b, studiesById).join(" ")].filter(Boolean).join(". "),
   citations: [a.source, b.source], confounded: drivers.confounded, pointer: { label: guide.comparison[0], target: "comparison", comparison } };
 }
 
@@ -289,7 +290,7 @@ export function validateAssistantGroundedAnswer(output: unknown, facts: readonly
 
   const citedFacts = [...cited.values()];
   const preparedPairs = facts.filter(({ id }) => id.startsWith("comparison:"));
-  if (preparedPairs.length > 1 && preparedPairs.some(({ id }) => !cited.has(id))) return null;
+  if (preparedPairs.some(({ id }) => !cited.has(id))) return null;
   const requested = citedFacts.map((fact) => pointedFact(fact, target)).filter((pointer): pointer is AssistantPointer => !!pointer);
   const pointers = requested.length ? requested : citedFacts.flatMap(({ pointer }) => pointer?.selection ? [pointer] : []);
   const sources = new Map(citedFacts.flatMap(({ source, citations }) =>

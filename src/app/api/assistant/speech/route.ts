@@ -1,3 +1,5 @@
+import { originalSpeechTimings, prepareNarration, speechTimings } from "../../../../lib/llm/assistant-narration";
+
 const maxTextLength = 2600;
 const maxRequestBytes = 16_384;
 const windowMs = 60_000;
@@ -19,8 +21,8 @@ async function readText(request: Request) {
       }
       content += decoder.decode(chunk.value, { stream: true });
     }
-    const { text } = JSON.parse(content + decoder.decode()) ?? {};
-    return typeof text === "string" && text.length <= maxTextLength && text.trim() ? text.trim() : null;
+    const { text, includeTimings } = JSON.parse(content + decoder.decode()) ?? {};
+    return typeof text === "string" && text.length <= maxTextLength && text.trim() ? { text, timed: includeTimings === true } : null;
   } catch {
     return null;
   } finally {
@@ -36,8 +38,8 @@ export async function POST(request: Request) {
     request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") {
     return new Response(null, { status: 400 });
   }
-  const text = await readText(request);
-  if (!text) return new Response(null, { status: 400 });
+  const input = await readText(request);
+  if (!input) return new Response(null, { status: 400 });
 
   const now = Date.now();
   if (now >= rate.until) rate = { count: 0, until: now + windowMs };
@@ -45,17 +47,34 @@ export async function POST(request: Request) {
   rate.count += 1;
 
   try {
-    const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=mp3_44100_128`, {
+    const narration = await prepareNarration(input.text, request.signal);
+    if (!narration.text) return new Response(null, { status: 422 });
+    const format = input.timed ? "with-timestamps" : "stream";
+    const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/${format}?output_format=mp3_44100_128`, {
       method: "POST",
-      headers: { "xi-api-key": apiKey, "content-type": "application/json", accept: "audio/mpeg" },
-      body: JSON.stringify({ text, model_id: "eleven_multilingual_v2" }),
+      headers: { "xi-api-key": apiKey, "content-type": "application/json", accept: input.timed ? "application/json" : "audio/mpeg" },
+      body: JSON.stringify({ text: narration.text, model_id: "eleven_flash_v2_5", language_code: "es",
+        voice_settings: { stability: 0.5 } }),
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(20_000)]),
       cache: "no-store",
     });
-    if (!upstream.ok || !upstream.body || !upstream.headers.get("content-type")?.startsWith("audio/")) {
+    if (!upstream.ok || !upstream.body) {
       console.warn(`[assistant/speech] ElevenLabs respondió ${upstream.status}`);
       return new Response(null, { status: upstream.status === 429 ? 429 : 502 });
     }
+    if (input.timed) {
+      const result = await upstream.json();
+      if (typeof result.audio_base64 !== "string" || !result.audio_base64) return new Response(null, { status: 502 });
+      const ends = speechTimings(narration.text, result.alignment);
+      return Response.json({
+        audioBase64: result.audio_base64,
+        characterEndTimesSeconds: originalSpeechTimings(narration.parts, ends),
+        spokenText: narration.text,
+        spokenStartTimesSeconds: speechTimings(narration.text, result.alignment, "start"),
+        spokenEndTimesSeconds: ends,
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+    if (!upstream.headers.get("content-type")?.startsWith("audio/")) return new Response(null, { status: 502 });
     return new Response(upstream.body, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });
   } catch {
     return new Response(null, { status: 502 });

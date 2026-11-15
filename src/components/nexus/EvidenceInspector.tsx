@@ -73,7 +73,7 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
             <span>{facilities[study.facility].label}</span>
           </div>
           <div>
-            <h3 id="assistant-evidence-record" tabIndex={-1}>{run?.label ?? imported?.acronym ?? study.id}</h3>
+            <h3 id="assistant-evidence-record" data-assistant-run={run?.id} tabIndex={-1}>{run?.label ?? imported?.acronym ?? study.id}</h3>
             <p className="evidence-study-name">{run?.fuel ? `${study.id} · ${run.fuel}` : study.name}</p>
           </div>
           {comparisonId && <div className="inspector-actions" role="group" aria-label="Añadir al comparador">
@@ -90,7 +90,7 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
             {!run && <p>{study.summary}</p>}
           </> : run ? (
             <>
-              <p>{run.configuration}{run.outcome ? ` · ${run.outcome}` : ""}</p>
+              <p id="assistant-evidence-outcome" data-assistant-run={run.id}>{run.configuration}{run.outcome ? ` · ${run.outcome}` : ""}</p>
               <dl className="evidence-readouts">
                 {atmosphereControls.map(({ field, label, unit, decimals }) => {
                   const value = run.atmosphere[field];

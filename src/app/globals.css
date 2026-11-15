@@ -619,6 +619,32 @@ body:has(.cockpit-grid > .panel[data-expanded="true"]) { overflow: hidden; }
   opacity: 0;
   transition: opacity 220ms ease;
 }
+.assistant-trace-layer {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 31;
+}
+.assistant-trace-layer rect {
+  fill: #36e39a0b;
+  stroke: #51e2a7;
+  stroke-width: 1.5;
+  opacity: .65;
+  stroke-dasharray: 1;
+  filter: drop-shadow(0 0 3px #2edd9780);
+  animation: assistant-draw 500ms cubic-bezier(.2, .7, .3, 1) both;
+  transition: opacity 240ms ease, stroke-width 240ms ease;
+}
+.assistant-trace-layer rect[data-active="true"] { opacity: 1; stroke-width: 2.4; }
+@keyframes assistant-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-trace-layer rect { animation: none; transition: none; }
+}
 .assistant-indication[data-visible="true"] {
   opacity: 1;
   animation: assistant-indication-in 220ms ease-out both;

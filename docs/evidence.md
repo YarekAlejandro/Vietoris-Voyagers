@@ -47,3 +47,7 @@ Con `GEMINI_API_KEY` o `ANTHROPIC_API_KEY`, el asistente puede redactar respuest
 Con `ELEVENLABS_API_KEY` y `ELEVENLABS_VOICE_ID` configurados en el servidor, el interruptor **Voz** activa la lectura de las respuestas nuevas. El chat escribe de forma progresiva y el puntero señala el destino después de una pausa. Las animaciones respetan la preferencia de movimiento reducido.
 
 El asistente puede elegir corridas para comparar a partir de un tema o de los experimentos que menciones. Para las comparaciones con más de dos corridas usa una referencia común y enlaza cada par a la tabla A/B.
+
+Al comenzar la narración, el chat se repliega y aparecen subtítulos semitransparentes al pie de la consola. Las palabras se iluminan conforme se pronuncian. El chat vuelve al terminar o al pulsar **Detener voz**. El historial conserva el texto y las fuentes de la respuesta original.
+
+El servidor usa el proveedor de IA configurado para preparar la pronunciación de fechas, siglas, símbolos y unidades antes de enviar el guion a ElevenLabs. La limpieza local también escribe cifras y fechas en palabras, conserva las pausas y quita adornos. La síntesis usa Flash v2.5 con español explícito y estabilidad del 50 %. En las comparaciones A/B, los trazos siguen el ritmo de la narración por frase; con la voz apagada, siguen el ritmo de la escritura.

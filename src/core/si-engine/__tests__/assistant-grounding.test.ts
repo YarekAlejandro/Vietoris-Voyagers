@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { comparisonCues } from "../assistant-cues";
 import { assistantFactsForModel, buildAssistantGrounding, validateAssistantGroundedAnswer } from "../assistant-grounding";
 
 describe("respuestas del asistente con evidencia", () => {
+  it("fundamenta el contraste de GMT45-T4 y Saffire I y permite señalar las filas mencionadas", () => {
+    const facts = buildAssistantGrounding({ question: "GMT45-T4 y Saffire I ¿Qué es lo relevante de ambos experimentos?" });
+    const pair = facts.find(({ id }) => id === "comparison:active");
+    expect(pair?.pointer?.comparison).toEqual({ a: "BASS-II-GMT45-T4", b: "SAFFIRE-I-1" });
+    expect(pair?.text).toContain("longitud de llama estable de 4 cm");
+    expect(pair?.text).toContain("resultado observado");
+    expect(comparisonCues(pair!.text).map(({ selector }) => selector)).toEqual(expect.arrayContaining([
+      '[data-assistant-diff-row="fuel"]', '[data-assistant-diff-row="flow_velocity_cm_s"]',
+      '[data-assistant-diff-row="steady_flame_length_cm"]', "#assistant-diff-confounding",
+    ]));
+  });
   it("elige estudios de humo, incluido uno con evidencia descriptiva", () => {
     const facts = buildAssistantGrounding({ question: "Compara tres experimentos de detección de humo" });
     expect(facts.some(({ id }) => id === "study:DAFT")).toBe(true);
