@@ -7,6 +7,8 @@ export function TopNavbar({ sync }: { sync: { pending: boolean; offline: boolean
   const mode = useAetherStore((state) => state.mode);
   const selectMission = useAetherStore((state) => state.selectMission);
   const setMode = useAetherStore((state) => state.setMode);
+  const setInspectorView = useAetherStore((state) => state.setInspectorView);
+  const atmosphere = useAetherStore((state) => state.atmosphere);
   const area = useAetherStore((state) => state.psiArea);
   const baseline = useAetherStore((state) => state.psiCatalog);
   const catalog = baseline?.area === area ? baseline : null;
@@ -35,6 +37,16 @@ export function TopNavbar({ sync }: { sync: { pending: boolean; offline: boolean
           {missionPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
         </select>
       </label>
+      <button type="button" className="mission-readouts" onClick={() => {
+        setInspectorView("atmosphere");
+        document.getElementById("assistant-atmosphere")?.focus();
+      }} title="Editar atmósfera">
+        <span className="sr-only">Editar atmósfera. Valores actuales:</span>
+        <span><small>O₂</small><b>{atmosphere.oxygen_pct.toFixed(1)} <span>%</span></b></span>
+        <span><small>Presión</small><b>{atmosphere.pressure_psia.toFixed(2)} <span>psia</span></b></span>
+        <span><small>Flujo</small><b>{atmosphere.flow_velocity_cm_s.toFixed(1)} <span>cm/s</span></b></span>
+        <span><small>Gravedad</small><b>{atmosphere.gravity_g.toFixed(3)} <span>g</span></b></span>
+      </button>
       <div className="topbar-right">
         <div className="segments" role="group" aria-label="Modo de visualización">
           <button type="button" aria-pressed={mode === "engineer"} onClick={() => setMode("engineer")}>Ingeniería</button>

@@ -1,5 +1,5 @@
-import { ArrowLeftRight, ExternalLink, Sparkles } from "lucide-react";
-import { useRef, useState } from "react";
+import { ArrowLeftRight, ChartNoAxesColumn, ExternalLink, Grid2X2, Sparkles, Table2, TriangleAlert } from "lucide-react";
+import { useEffect, useRef, useState, type KeyboardEvent, type UIEvent, type WheelEvent } from "react";
 import { compareRuns, comparisonAvailability, reportedComparisonRows, summarizeChangedDrivers } from "../../core/si-engine/git-diff";
 import { buildDiffPayload, interpretationKey, type InterpretRequest } from "../../core/si-engine/interpret";
 import { psiStudyComparisonId } from "../../core/si-engine/merge-psi-catalog";
@@ -9,7 +9,8 @@ import { useAetherStore } from "../../store/useAetherStore";
 import type { ExperimentalRun, Facility, Investigation } from "../../types/psi";
 import { InterpretationCard } from "./InterpretationCard";
 import { SplitHandle } from "./SplitHandle";
-import { PanelSizeButton, type PanelSizeProps } from "./PanelSizeButton";
+import { PanelCollapseButton, PanelSizeButton, type PanelCollapseProps, type PanelSizeProps } from "./PanelSizeButton";
+import { ComparisonMatrix, ComparisonPlots, type ComparisonVisualRow } from "./ComparisonVisuals";
 
 // Mínimos del reparto entre la tabla y la interpretación: encabezado y una fila / título y algo de texto.
 const minTableHeight = 72;
@@ -21,18 +22,29 @@ function formatValue(value: number | string | undefined, decimals = 0, unit = ""
   return unit ? `${value.toFixed(decimals)} ${unit}` : value.toFixed(decimals);
 }
 
-interface ComparisonProps extends PanelSizeProps {
+interface ComparisonProps extends PanelSizeProps, PanelCollapseProps {
   runs: readonly ExperimentalRun[];
   runsById: ReadonlyMap<string, ExperimentalRun>;
   studiesById: ReadonlyMap<string, Investigation>;
   areaStudies: readonly Investigation[];
   guidedSelectors?: readonly string[];
   onInteract: () => void;
+  onInterpretationChange: (open: boolean) => void;
+  onFollowScroll: (scroller: HTMLDivElement) => void;
+  onRestoreAtScrollTop: (scroller: HTMLDivElement, scrollingUp: boolean) => void;
 }
 
 const atmosphereFields = new Set<string>(atmosphereControls.map(({ field }) => field));
+const comparisonViews = [
+  { value: "table", label: "Tabla", Icon: Table2 },
+  { value: "plots", label: "Gráficos", Icon: ChartNoAxesColumn },
+  { value: "matrix", label: "Matriz", Icon: Grid2X2 },
+] as const;
+type ComparisonView = (typeof comparisonViews)[number]["value"];
+type ComparisonFieldId = ComparisonVisualRow["field"]["id"];
 
-export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, guidedSelectors, expanded, onToggleSize, onInteract }: ComparisonProps) {
+export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, guidedSelectors, expanded, onToggleSize,
+  collapsed, onToggleCollapse, onInteract, onInterpretationChange, onFollowScroll, onRestoreAtScrollTop }: ComparisonProps) {
   const comparison = useAetherStore((state) => state.comparison);
   const mode = useAetherStore((state) => state.mode);
   const scenario = useAetherStore((state) => state.atmosphere);
@@ -44,8 +56,37 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, gu
   const [tableHeight, setTableHeight] = useState<number | null>(null);
   const [rowFilter, setRowFilter] = useState<"all" | "changed" | "missing">("all");
   const [showMatches, setShowMatches] = useState(false);
+  const [view, setView] = useState<ComparisonView>("table");
+  const [requestedRow, setRequestedRow] = useState<ComparisonFieldId | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const interpretationRef = useRef<HTMLDivElement>(null);
+  const guided = Boolean(guidedSelectors?.length);
+  useEffect(() => { if (guided) setView("table"); }, [guided]);
+
+  useEffect(() => {
+    if (!requestedRow || view !== "table") return;
+    const row = tableRef.current?.querySelector<HTMLElement>(`[data-assistant-diff-row="${requestedRow}"]`);
+    row?.focus({ preventScroll: true });
+    row?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    setRequestedRow(null);
+  }, [requestedRow, view]);
+
+  function followScroll(event: UIEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget && !collapsed) onFollowScroll(event.currentTarget);
+  }
+
+  function restoreOnWheel(event: WheelEvent<HTMLDivElement>) {
+    const target = event.target;
+    if (target instanceof Element && target.closest("[data-comparison-scroll]") === event.currentTarget) {
+      onRestoreAtScrollTop(event.currentTarget, event.deltaY < 0);
+    }
+  }
+
+  function restoreOnKeyboard(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget && ["ArrowUp", "Home", "PageUp"].includes(event.key)) {
+      onRestoreAtScrollTop(event.currentTarget, true);
+    }
+  }
   const importedStudies = areaStudies.filter((study) => study.importedPsi && !study.importedPsi.profile);
   for (const id of [comparison.a, comparison.b]) {
     if (!id.startsWith("psi-study:")) continue;
@@ -67,7 +108,7 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, gu
   const reported = new Set(reportedComparisonRows(allRows, a, b));
   const rows = allRows.filter((row) => reported.has(row) ||
     ((hasPsiProfile || hasBibliographic || hasNominalProfile) && atmosphereFields.has(row.field.id)));
-  const annotatedRows = rows.map((row) => ({
+  const annotatedRows: ComparisonVisualRow[] = rows.map((row) => ({
     ...row,
     availabilityA: comparisonAvailability(row.field.id, row.valueA, a),
     availabilityB: comparisonAvailability(row.field.id, row.valueB, b),
@@ -85,23 +126,41 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, gu
   const interpretation = current && opened?.kind === "diff" ? opened : null;
   const stale = Boolean(interpretation && current && interpretationKey(interpretation) !== interpretationKey(current));
 
+  function showDataRow(fieldId: ComparisonFieldId) {
+    setView("table");
+    setRowFilter("all");
+    if (rows.some(({ field, status }) => field.id === fieldId && status === "equal")) setShowMatches(true);
+    setRequestedRow(fieldId);
+  }
+
+  function changeView(next: ComparisonView) {
+    if (tableRef.current) tableRef.current.scrollTop = 0;
+    setView(next);
+  }
+
   return (
-    <section className="panel comparison" data-expanded={expanded} aria-labelledby="comparison-title"
-      onClickCapture={onInteract} onChangeCapture={onInteract} onWheelCapture={onInteract}>
+    <section className="panel comparison" data-expanded={expanded} data-collapsed={collapsed} aria-labelledby="comparison-title"
+      onClickCapture={onInteract} onChangeCapture={onInteract}>
       <div className="panel-heading">
         <h2 id="comparison-title" tabIndex={-1}><ArrowLeftRight size={17} aria-hidden /> Comparación experimental</h2>
         <div className="panel-heading-actions">
-          {mode === "engineer" && <span className="panel-meta">Git-Diff · A/B</span>}
-          {current && <button id="assistant-interpret" type="button" className="interpret-toggle" aria-expanded={interpretation !== null} onClick={() => {
-            setOpened(interpretation ? null : current);
-            setTableHeight(null);
-          }}>
-            <Sparkles size={13} aria-hidden /> {interpretation ? "Ocultar interpretación" : "Interpretar"}
-          </button>}
-          <PanelSizeButton name="comparación experimental" expanded={expanded} onToggleSize={onToggleSize} />
+          <div className="comparison-heading-controls" inert={collapsed}>
+            {current && <button id="assistant-interpret" type="button" className="interpret-toggle"
+              aria-controls={interpretation ? "comparison-interpretation" : undefined} aria-expanded={interpretation !== null} onClick={() => {
+                setOpened(interpretation ? null : current);
+                setTableHeight(null);
+                onInterpretationChange(!interpretation);
+              }}>
+              <Sparkles size={14} aria-hidden /> {interpretation ? "Ocultar interpretación" : "Interpretar"}
+            </button>}
+            <PanelSizeButton name="comparación experimental" expanded={expanded} onToggleSize={onToggleSize} />
+          </div>
+          {!expanded && <PanelCollapseButton name="comparación experimental" controls="comparison-body"
+            collapsed={collapsed} onToggleCollapse={onToggleCollapse} />}
         </div>
       </div>
-      <div className={`panel-content comparison-content${interpretation ? " with-interpretation" : ""}`}>
+      <div id="comparison-body" className={`panel-content comparison-content${interpretation ? " with-interpretation" : ""}`}
+        inert={collapsed} data-comparison-scroll="" onScroll={followScroll} onWheel={restoreOnWheel}>
         <div className="comparison-selects" id="assistant-diff-runs">
           {(["a", "b"] as const).map((side) => (
             <label key={side}>
@@ -124,22 +183,33 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, gu
           ))}
         </div>
         {drivers.confounded && <div className="comparison-confounding" id="assistant-diff-confounding" role="status">
-          <p>Cambiaron varias condiciones a la vez: la diferencia no puede atribuirse a una sola variable.</p>
-          <p>{drivers.changedVariables.join(" · ")}</p>
+          <TriangleAlert size={15} aria-hidden />
+          <div>
+            <p>Cambiaron varias condiciones a la vez: la diferencia no puede atribuirse a una sola variable.</p>
+            <p>{drivers.changedVariables.join(" · ")}</p>
+          </div>
         </div>}
         <div className="comparison-toolbar">
-          <div className="segments" role="group" aria-label="Filtrar filas de la comparación">
-            {([["all", "Resumen"], ["changed", "Solo diferencias"], ["missing", "Datos faltantes"]] as const).map(([id, label]) =>
-              <button key={id} type="button" aria-pressed={rowFilter === id} onClick={() => setRowFilter(id)}>{label}</button>)}
+          <div className="segments comparison-views" role="group" aria-label="Vista de la comparación">
+            {comparisonViews.map(({ value, label, Icon }) => <button key={value} type="button" aria-pressed={view === value}
+              onClick={() => changeView(value)}><Icon size={14} aria-hidden /> {label}</button>)}
           </div>
-          {rowFilter === "all" && matchingCount > 0 && <button type="button" className="quiet-button" aria-expanded={showMatches}
-            aria-controls="comparison-rows" onClick={() => setShowMatches(!showMatches)}>
-            {showMatches ? "Plegar" : "Ver"} coincidencias ({matchingCount})
-          </button>}
+          {view === "table" && <div className="comparison-table-tools">
+            <div className="segments" role="group" aria-label="Filtrar filas de la comparación">
+              {([["all", "Resumen"], ["changed", "Solo diferencias"], ["missing", "Datos faltantes"]] as const).map(([id, label]) =>
+                <button key={id} type="button" aria-pressed={rowFilter === id} onClick={() => setRowFilter(id)}>{label}</button>)}
+            </div>
+            {rowFilter === "all" && matchingCount > 0 && <button type="button" className="quiet-button" aria-expanded={showMatches}
+              aria-controls="comparison-rows" onClick={() => setShowMatches(!showMatches)}>
+              {showMatches ? "Plegar" : "Ver"} coincidencias ({matchingCount})
+            </button>}
+          </div>}
         </div>
         <div className="comparison-scroll" ref={tableRef}
+          role="region" aria-label={view === "table" ? "Tabla de comparación A/B" : view === "plots" ? "Gráficos A/B" : "Matriz de evidencia A/B"}
+          tabIndex={0} data-comparison-scroll="" onScroll={followScroll} onWheel={restoreOnWheel} onKeyDown={restoreOnKeyboard}
           style={interpretation && tableHeight !== null ? { flex: `0 0 ${tableHeight}px` } : undefined}>
-          <table>
+          {view === "table" ? <table className="diff-table">
             <thead><tr><th scope="col">Variable</th><th scope="col">Corrida A</th><th scope="col">Corrida B</th><th scope="col">{mode === "engineer" ? "Δ B − A" : "Diferencia"}</th></tr></thead>
             <tbody id="comparison-rows">
               {visibleRows.length === 0 && <tr><td colSpan={4} className="diff-empty" role="status">No hay filas para este filtro.</td></tr>}
@@ -150,7 +220,7 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, gu
                   (availabilityA !== "missing" || availabilityB !== "missing")) ? "not-comparable" : status;
                 const display = (value: typeof valueA) => field.id === "facility" && typeof value === "string" && Object.hasOwn(facilities, value)
                   ? facilities[value as Facility].label : formatValue(value, decimals, unit);
-                return <tr key={field.id} data-status={status} data-outcome={outcome} data-assistant-diff-row={field.id}>
+                return <tr key={field.id} tabIndex={-1} data-status={status} data-outcome={outcome} data-assistant-diff-row={field.id}>
                   <th scope="row">{field.label}</th>
                   {([{ run: a, value: valueA, nominal: nominalA, availability: availabilityA, side: "a" },
                     { run: b, value: valueB, nominal: nominalB, availability: availabilityB, side: "b" }] as const).map(({ run, value, nominal, availability, side }) => {
@@ -181,7 +251,8 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, gu
                 </tr>;
               })}
             </tbody>
-          </table>
+          </table> : view === "plots" ? <ComparisonPlots rows={annotatedRows} a={a} b={b} scenario={scenario} onInspect={showDataRow} />
+            : <ComparisonMatrix rows={annotatedRows} a={a} b={b} onInspect={showDataRow} />}
         </div>
         {interpretation && <SplitHandle
           label="Ajustar alto de la tabla y la interpretación"
@@ -195,7 +266,9 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, gu
           onResize={(height) => { onInteract(); setTableHeight(height); }}
           onReset={() => { onInteract(); setTableHeight(null); }}
         />}
-        {interpretation && <div className="comparison-interpretation" ref={interpretationRef}><InterpretationCard
+        {interpretation && <div id="comparison-interpretation" className="comparison-interpretation" ref={interpretationRef}
+          tabIndex={0} role="region" aria-label="Interpretación de las corridas A/B"
+          data-comparison-scroll="" onScroll={followScroll} onWheel={restoreOnWheel} onKeyDown={restoreOnKeyboard}><InterpretationCard
           request={interpretation}
           stale={stale}
           onRefresh={() => setOpened(current)}

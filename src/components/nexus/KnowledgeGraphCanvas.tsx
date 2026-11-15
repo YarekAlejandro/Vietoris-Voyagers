@@ -59,13 +59,19 @@ function GraphCard({ data }: NodeProps<FlowEvidenceNode>) {
 }
 const nodeTypes = { evidence: GraphCard } satisfies NodeTypes;
 
-function FitGraphOnResize() {
+function FitGraphOnResize({ collapsed }: { collapsed: boolean }) {
   const width = useFlowStore((state) => state.width);
   const height = useFlowStore((state) => state.height);
   const { fitView } = useReactFlow();
   useEffect(() => {
-    if (width > 0 && height > 0) void fitView(fitOptions);
-  }, [width, height, fitView]);
+    if (collapsed || width <= 0 || height <= 0) return;
+    // Espera al último cambio de tamaño para no mover la cámara durante la transición.
+    const timer = window.setTimeout(() => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      void fitView({ ...fitOptions, duration: reduceMotion ? 0 : 160 });
+    }, 100);
+    return () => window.clearTimeout(timer);
+  }, [width, height, fitView, collapsed]);
   return null;
 }
 
@@ -172,21 +178,23 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
   }
 
   return (
-    <section className="panel nexus" data-expanded={expanded} aria-labelledby="nexus-title">
+    <section className="panel nexus" data-expanded={expanded} data-collapsed={collapsed} aria-labelledby="nexus-title">
       <div className="panel-heading graph-heading">
         <h2 id="nexus-title" tabIndex={-1}><Network size={17} aria-hidden /> PSI-Nexus</h2>
         <div className="panel-heading-actions">
-          {!collapsed && <div className="segments" role="group" aria-label="Vista del grafo" onClickCapture={onInteract}>
+          <div className="segments graph-view-controls" inert={collapsed} role="group" aria-label="Vista del grafo" onClickCapture={onInteract}>
             <button type="button" aria-pressed={graphView === "relationships"} onClick={() => { setBridge(null); setGraphView("relationships"); }}>Relaciones</button>
             <button type="button" aria-pressed={graphView === "overview"} onClick={() => setGraphView("overview")}>General</button>
             <button type="button" aria-pressed={Boolean(runStudy)} disabled={currentRunCount === 0} onClick={() => setGraphView("runs")}>Corridas</button>
             <button type="button" aria-pressed={showConditions} disabled={runs.length === 0} onClick={() => setGraphView("conditions")}>Condiciones</button>
-          </div>}
+          </div>
           {!expanded && <PanelCollapseButton name="grafo PSI-Nexus" controls="nexus-body" collapsed={collapsed} onToggleCollapse={onToggleCollapse} />}
-          {!collapsed && <PanelSizeButton name="PSI-Nexus" expanded={expanded} onToggleSize={onToggleSize} />}
+          <div className="graph-view-controls graph-maximize" inert={collapsed}>
+            <PanelSizeButton name="PSI-Nexus" expanded={expanded} onToggleSize={onToggleSize} />
+          </div>
         </div>
       </div>
-      <div id="nexus-body" className="panel-body-contents" hidden={collapsed} onClickCapture={onInteract}>
+      <div id="nexus-body" className="nexus-body" inert={collapsed} onClickCapture={onInteract}>
       {graphView === "relationships" && <div className="bridge-filters" role="group" aria-label="Puentes científicos">
         {bridgeFilters.map(({ label, title }) => <button type="button" key={label} title={title}
           aria-pressed={bridgeFilter?.label === label} onClick={() => {
@@ -228,7 +236,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive, exp
             <Controls position="bottom-right" showInteractive={false}>
               <CenterSelection nodeId={nodes.some(({ id }) => id === highlightedId) ? highlightedId : undefined} />
             </Controls>
-            <FitGraphOnResize />
+            <FitGraphOnResize collapsed={collapsed} />
           </ReactFlow>
         ) : (
           <div className="empty-evidence empty-graph"><Network size={30} aria-hidden /><p>Las conexiones aparecerán aquí al encontrar evidencia.</p></div>

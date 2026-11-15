@@ -21,6 +21,7 @@ import { psiDataset } from "../../data/psi";
 import { missionPresets } from "../../data/mission_presets";
 import { topicsForRun } from "../../data/psi_vocabulary";
 import { usePsiLiveSync } from "../../hooks/usePsiLiveSync";
+import { useComparisonScroll } from "../../hooks/useComparisonScroll";
 import { isCombustion } from "../../lib/psi/records";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { ExperimentalRun } from "../../types/psi";
@@ -56,8 +57,11 @@ async function requestAssistantAnswer(input: AssistantGroundingInput): Promise<P
 export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAiEnabled: boolean; speechEnabled: boolean }) {
   const [expandedPanel, setExpandedPanel] = useState<"graph" | "comparison" | null>(null);
   const [catalogCollapsed, setCatalogCollapsed] = useState(false);
-  const [panelFocus, setPanelFocus] = useState<"graph" | "comparison" | null>(null);
-  const graphCollapsed = panelFocus === "comparison";
+  const [panelFocus, setPanelFocus] = useState<"graph" | "comparison" | "graph-folded" | null>(null);
+  const [comparisonCollapsed, setComparisonCollapsed] = useState(false);
+  const { layoutRef, folded: foldedByScroll, follow: followComparisonScroll,
+    reset: resetComparisonScroll, restoreAtTop } = useComparisonScroll();
+  const graphCollapsed = expandedPanel === "comparison" || panelFocus === "graph-folded" || foldedByScroll;
   const [spotlight, setSpotlight] = useState<SpotlightRequest | null>(null);
   const [annotations, setAnnotations] = useState<{ selectors: string[]; active: string } | null>(null);
   const guidedAnswer = useRef<{ answer: PageAssistantAnswer; cues: ReturnType<typeof comparisonCues>; index: number } | null>(null);
@@ -75,9 +79,38 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
   useEffect(() => () => window.clearTimeout(pointingTimer.current), []);
   const [assistantSide, setAssistantSide] = useState<"left" | "right">("right");
   const toggleGraph = useCallback(() => setExpandedPanel((panel) => panel === "graph" ? null : "graph"), []);
-  const focusGraph = useCallback(() => setPanelFocus("graph"), []);
-  const focusComparison = useCallback(() => setPanelFocus("comparison"), []);
-  const toggleComparison = useCallback(() => setExpandedPanel((panel) => panel === "comparison" ? null : "comparison"), []);
+  const focusGraph = useCallback(() => {
+    resetComparisonScroll();
+    setPanelFocus("graph");
+  }, [resetComparisonScroll]);
+  const focusComparison = useCallback(() => setPanelFocus((focus) => focus === "graph-folded" ? focus : "comparison"), []);
+  const foldGraph = useCallback(() => {
+    resetComparisonScroll();
+    setPanelFocus("graph-folded");
+    setComparisonCollapsed(false);
+  }, [resetComparisonScroll]);
+  const restoreWorkspace = useCallback(() => {
+    resetComparisonScroll();
+    setPanelFocus(null);
+  }, [resetComparisonScroll]);
+  const toggleComparison = useCallback(() => {
+    if (expandedPanel === "comparison") {
+      setExpandedPanel(null);
+      restoreWorkspace();
+    } else {
+      setComparisonCollapsed(false);
+      setExpandedPanel("comparison");
+    }
+  }, [expandedPanel, restoreWorkspace]);
+  function toggleComparisonCollapse() {
+    setComparisonCollapsed(!comparisonCollapsed);
+    if (comparisonCollapsed) restoreWorkspace();
+    else focusGraph();
+  }
+  function changeInterpretation(open: boolean) {
+    if (open) foldGraph();
+    else restoreWorkspace();
+  }
   const profile = useAetherStore((state) => state.profile);
   const atmosphere = useAetherStore((state) => state.atmosphere);
   const coverage = useMemo(() => computeCoverage(atmosphere, psiDataset.runs), [atmosphere]);
@@ -174,7 +207,10 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
 
     if (expandedPanel && expandedPanel !== panel) setExpandedPanel(null);
     if (target === "graph") focusGraph();
-    if (panel === "comparison") focusComparison();
+    if (panel === "comparison") {
+      setComparisonCollapsed(false);
+      focusComparison();
+    }
     if (target === "catalog") setCatalogCollapsed(false);
     if (!visible && studyId) {
       if (!areaStudies.some((study) => study.id === studyId)) state.setPsiArea("all");
@@ -232,6 +268,7 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
     const comparison = useAetherStore.getState().comparison;
     if (guide.index === 0) {
       setExpandedPanel((panel) => panel === "graph" ? null : panel);
+      setComparisonCollapsed(false);
       focusComparison();
       setAssistantSide("left");
       setSpotlight(null);
@@ -309,21 +346,24 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
       <div className="cockpit">
         <TopNavbar sync={sync} />
         <EvidenceSearch search={search} />
-        <main className="cockpit-grid" data-catalog-collapsed={catalogCollapsed}
-          data-graph-collapsed={graphCollapsed} data-graph-focused={panelFocus === "graph"}>
+        <main ref={layoutRef} className="cockpit-grid" data-catalog-collapsed={catalogCollapsed}
+          data-graph-collapsed={graphCollapsed} data-comparison-collapsed={comparisonCollapsed}
+          data-workspace-focus={panelFocus ?? undefined}>
           <RankedDatasetList studies={studies} rankedRuns={rankedRuns} studyScores={studyScores} studiesById={studiesById}
             runsByStudy={runsByStudy} search={search} current={current} view={view}
             collapsed={catalogCollapsed} onToggleCollapse={() => setCatalogCollapsed(!catalogCollapsed)} />
           <KnowledgeGraphCanvas studies={studies} runs={scopedRuns} current={current} searchActive={search.active}
             expanded={expandedPanel === "graph"} onToggleSize={toggleGraph}
-            collapsed={graphCollapsed} onToggleCollapse={graphCollapsed ? focusGraph : focusComparison} onInteract={focusGraph} />
+            collapsed={graphCollapsed} onToggleCollapse={graphCollapsed ? focusGraph : foldGraph} onInteract={focusGraph} />
           <EvidenceInspector study={current ? studiesById.get(runsById.get(current.id)?.investigationId ?? current.id) : undefined}
             run={current?.kind === "run" ? runsById.get(current.id) : undefined}
             search={search} availableRuns={availableRuns} literature={literature} coverage={coverage}
             rankedRun={rank.find(({ run }) => current?.kind === "run" && run.id === current.id)} />
           <ExperimentGitDiff runs={dataset.runs} runsById={runsById} studiesById={studiesById} areaStudies={areaStudies}
             guidedSelectors={annotations?.selectors} expanded={expandedPanel === "comparison"}
-            onToggleSize={toggleComparison} onInteract={focusComparison} />
+            onToggleSize={toggleComparison} collapsed={comparisonCollapsed} onToggleCollapse={toggleComparisonCollapse}
+            onInteract={focusComparison} onInterpretationChange={changeInterpretation}
+            onFollowScroll={followComparisonScroll} onRestoreAtScrollTop={restoreAtTop} />
         </main>
       </div>
       <AssistantSpotlight request={spotlight} />
