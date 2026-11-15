@@ -29,15 +29,47 @@ export const diffFields = [
   { id: "outcome", label: "Resultado observado" },
   { id: "steady_flame_length_cm", label: "Longitud de llama estable", unit: "cm", decimals: 1 },
   { id: "cabin_heat_added_kj", label: "Calor añadido a cabina (estim.)", unit: "kJ", decimals: 0 },
+  { id: "cabin_co_ppm", label: "CO de cabina", unit: "ppm", decimals: 1 },
+  { id: "cabin_co2_ppm", label: "CO₂ de cabina", unit: "ppm", decimals: 1 },
   ...supplementalFields,
 ] as const;
 
 const outcomeFields = new Set<(typeof diffFields)[number]["id"]>([
   "outcome", "steady_flame_length_cm", "cabin_heat_added_kj",
+  "cabin_co_ppm", "cabin_co2_ppm",
   "extinction_droplet_diameter_mm", "burning_rate_mm2_s", "burn_time_s",
 ]);
 
 type ComparisonEvidence = Pick<ExperimentalRun, "investigationId" | "atmosphere"> & Partial<ExperimentalRun>;
+type DiffFieldId = (typeof diffFields)[number]["id"];
+
+const driverGroups: readonly { label: string; fields: readonly DiffFieldId[] }[] = [
+  { label: "Oxígeno", fields: ["oxygen_pct"] },
+  { label: "Presión absoluta", fields: ["pressure_psia"] },
+  { label: "Espesor o dimensión de la muestra", fields: ["thickness_mm", "width_cm", "initial_droplet_diameter_mm"] },
+  { label: "Flujo de referencia", fields: ["flow_velocity_cm_s"] },
+  { label: "Configuración", fields: ["configuration"] },
+  { label: "Material", fields: ["fuel"] },
+  { label: "Gravedad", fields: ["gravity_g"] },
+  { label: "Instalación", fields: ["facility"] },
+];
+
+const relativeDriverThreshold_pct = 1;
+
+export function summarizeChangedDrivers(rows: readonly ReturnType<typeof compareRuns>[number][]) {
+  const changedFields = new Set(rows.filter(({ status, valueA, valueB, relativeDelta_pct }) => (
+    status === "changed" && (
+      typeof valueA === "number" && typeof valueB === "number"
+        ? valueA === 0 || Math.abs(relativeDelta_pct ?? 0) > relativeDriverThreshold_pct
+        : typeof valueA === "string" && typeof valueB === "string"
+    )
+  )).map(({ field }) => field.id));
+  const changedVariables = driverGroups
+    .filter(({ fields }) => fields.some((field) => changedFields.has(field)))
+    .map(({ label }) => label);
+  const changedDrivers = changedVariables.length;
+  return { changedDrivers, changedVariables, confounded: changedDrivers >= 2 };
+}
 
 export function compareRuns(
   a: ComparisonEvidence,
@@ -56,8 +88,8 @@ export function compareRuns(
       ? formatPsiQuantity(profileA, field.decimals) : left[field.id];
     const valueB = profileB && "decimals" in field && typeof profileB.value !== "number"
       ? formatPsiQuantity(profileB, field.decimals) : right[field.id];
-    const nominalA = a.nominal?.fields.some((axis) => axis === field.id) ?? false;
-    const nominalB = b.nominal?.fields.some((axis) => axis === field.id) ?? false;
+    const nominalA = valueA !== undefined && Boolean(a.reference || a.psiProfile || a.nominal?.fields.some((axis) => axis === field.id));
+    const nominalB = valueB !== undefined && Boolean(b.reference || b.psiProfile || b.nominal?.fields.some((axis) => axis === field.id));
     const status = valueA === undefined || valueB === undefined ? "missing"
       : nominalA || nominalB ? "nominal"
         : valueA === valueB ? "equal" : "changed";

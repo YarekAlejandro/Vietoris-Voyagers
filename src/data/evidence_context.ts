@@ -3,13 +3,16 @@ import type { Citation } from "../types/psi";
 export const evidenceSources = {
   bass: { label: "NASA · BASS-II", url: "https://ntrs.nasa.gov/citations/20210011385" },
   saffire: { label: "NASA · Resultados de Saffire", url: "https://ntrs.nasa.gov/citations/20250002675" },
+  saffireFlow: { label: "ICES-2021-266 · Saffire IV–V", url: "https://ntrs.nasa.gov/citations/20210011521" },
+  saffireCabin: { label: "ICES-2024-365 · Saffire VI", url: "https://ntrs.nasa.gov/citations/20240002981" },
+  lunarFlammability: { label: "ICES-2025-392 · Inflamabilidad en gravedad lunar", url: "https://ntrs.nasa.gov/citations/20250002114" },
   smoke: { label: "NASA · SAME y DAFT", url: "https://ntrs.nasa.gov/citations/20070031686" },
-  flex: { label: "NASA · FLEX", url: "https://doi.org/10.60555/mbq8-0451" },
   coolFlames: { label: "NASA · FLEX y CFI-G", url: "https://www.nasa.gov/missions/station/cool-flames-created-during-a-first-for-international-space-station-research/" },
-  coolFlameTemperatures: { label: "NASA · CFI", url: "https://gipoc.grc.nasa.gov/wp/fcf-cir/mdca/cfi/" },
-  efield: { label: "NASA · E-FIELD", url: "https://science.nasa.gov/biological-physical/investigations/e-field-flames/" },
-  artemis: { label: "NASA · Conferencia de Artemis II", url: "https://www.youtube.com/watch?v=_43Ei9eQVww" },
+  artemis: { label: "Wiseman · AIAA Aerospace America", url: "https://aerospaceamerica.aiaa.org/artemis-ii-astronauts-praise-orion-capsule-reflect-on-mission-impact/" },
 } satisfies Record<string, Citation>;
+
+export const artemisSmokeNote = "Un detector de humo se activó en el penúltimo día de la misión. La causa no está confirmada en las fuentes revisadas.";
+export const coolFlameNote = "Los experimentos de gotas documentan que una llama fría puede persistir tras la extinción de la llama visible. Que ese estado reencienda la llama caliente en gotas no está verificado en los datos experimentales. Se trata como hipótesis.";
 
 export const studentDescriptions: Record<string, string> = {
   "BASS-II": "Un ventilador pequeño mueve aire sobre una muestra. Los ensayos muestran cuándo la llama avanza y cuándo se apaga al cambiar el flujo.",
@@ -33,7 +36,7 @@ export const historicalLessons = [
   { label: "Apollo 1", note: "En tierra, la cabina con oxígeno puro presurizado favoreció la rápida propagación del fuego.", url: "https://www.nasa.gov/history/55-years-ago-the-apollo-1-fire-and-its-aftermath/" },
   { label: "Apollo 13", note: "Una falla en un tanque de oxígeno del módulo de servicio cambió el rumbo de la misión.", url: "https://www.nasa.gov/missions/apollo/apollo-13-mission-details/" },
   { label: "Mir · 1997", note: "El incendio de un generador de oxígeno puso a prueba la respuesta de la tripulación.", url: "https://www.nasa.gov/history/25-years-ago-fire-aboard-space-station-mir/" },
-  { label: "Artemis II", note: "La tripulación relató una alarma de humo. Es un caso para discutir cómo verificar una alerta en vuelo.", url: evidenceSources.artemis.url },
+  { label: "Artemis II", note: artemisSmokeNote, url: evidenceSources.artemis.url },
 ];
 
 export const terrestrialApplications = [

@@ -67,6 +67,31 @@ describe("FSRS", () => {
     }
   });
 
+  it("ordena dos corridas sintéticas por cercanía y desglosa las contribuciones con fuente", () => {
+    const near = { ...saffireV, id: "SYNTHETIC-NEAR", atmosphere: { ...iss.atmosphere } };
+    const far = {
+      ...saffireV, id: "SYNTHETIC-FAR",
+      atmosphere: { gravity_g: 1, oxygen_pct: 90, pressure_psia: 30, flow_velocity_cm_s: 50 },
+    };
+    const ranked = rankRuns([far, near], investigationsById, iss, iss.atmosphere);
+    expect(ranked.map(({ run }) => run.id)).toEqual([near.id, far.id]);
+    expect(ranked[0].criteria.find(({ axis }) => axis === "oxygen_pct")).toMatchObject({
+      target: iss.atmosphere.oxygen_pct, distance: 0, contribution_pts: 35,
+      input: { range: [iss.atmosphere.oxygen_pct, iss.atmosphere.oxygen_pct], sources: [near.source] },
+    });
+    expect(ranked[1].criteria.find(({ axis }) => axis === "oxygen_pct")?.distance).toBe(69);
+  });
+
+  it("omite todos los ejes de un registro de referencia y los ejes nominales de una corrida", () => {
+    const reference = runsById.get("E-FIELD-REF-PEAK")!;
+    const run = runsById.get("SAME-1")!;
+    const [ranked] = rankRuns([run], investigationsById, iss, iss.atmosphere);
+    expect(ranked.criteria.find(({ axis }) => axis === "oxygen_pct")).toMatchObject({
+      distance: undefined, input: undefined, contribution_pts: 0,
+    });
+    expect(computeFSRS({ runs: [reference] }, iss.atmosphere).criteria.every(({ input }) => !input)).toBe(true);
+  });
+
   it("maneja un catálogo vacío", () => {
     expect(rankRuns([], investigationsById, iss, iss.atmosphere)).toEqual([]);
   });

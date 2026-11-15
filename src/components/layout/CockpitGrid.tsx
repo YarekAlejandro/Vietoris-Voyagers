@@ -10,6 +10,7 @@ import { ExperimentGitDiff } from "../nexus/ExperimentGitDiff";
 import { buildEvidenceIndex } from "../../core/si-engine/semantic-search";
 import { computeFSRS, rankRuns } from "../../core/si-engine/fsrs-ranker";
 import { mergePsiCatalog } from "../../core/si-engine/merge-psi-catalog";
+import { computeCoverage } from "../../core/si-engine/scenario-coverage";
 import { psiDataset } from "../../data/psi";
 import { topicsForRun } from "../../data/psi_vocabulary";
 import { usePsiLiveSync } from "../../hooks/usePsiLiveSync";
@@ -23,6 +24,7 @@ export function CockpitGrid() {
   const toggleComparison = useCallback(() => setExpandedPanel((panel) => panel === "comparison" ? null : "comparison"), []);
   const profile = useAetherStore((state) => state.profile);
   const atmosphere = useAetherStore((state) => state.atmosphere);
+  const coverage = useMemo(() => computeCoverage(atmosphere, psiDataset.runs), [atmosphere]);
   const query = useAetherStore((state) => state.query);
   const includeStudyRuns = useAetherStore((state) => state.includeStudyRuns);
   const facility = useAetherStore((state) => state.facility);
@@ -65,10 +67,11 @@ export function CockpitGrid() {
   }, [evidenceIndex, query, lookupResults, dataset.investigations]);
   const literature = [...new Map([...(lookupResults?.literature ?? []), ...radar].map((record) => [record.id, record])).values()];
   const rank = useMemo(() => rankRuns(dataset.runs, studiesById, profile, atmosphere), [dataset.runs, studiesById, profile, atmosphere]);
-  const studyScores = useMemo(() => new Map(dataset.investigations.flatMap((study) => (
-    study.importedPsi?.fsrs.status === "sin-datos-suficientes" ? []
-      : [[study.id, computeFSRS({ study, runs: runsByStudy.get(study.id) ?? [] }, atmosphere, profile.priority)] as const]
-  ))), [dataset.investigations, runsByStudy, profile.priority, atmosphere]);
+  const studyScores = useMemo(() => new Map(dataset.investigations.flatMap((study) => {
+    const runs = runsByStudy.get(study.id)?.filter((run) => !run.reference) ?? [];
+    return study.importedPsi?.fsrs.status === "sin-datos-suficientes" || !runs.length
+      ? [] : [[study.id, computeFSRS({ study, runs }, atmosphere, profile.priority)] as const];
+  })), [dataset.investigations, runsByStudy, profile.priority, atmosphere]);
   const areaStudies = useMemo(() => dataset.investigations.filter((study) => (
     !study.importedPsi || area === "all" || isCombustion(study.importedPsi)
   )), [dataset.investigations, area]);
@@ -109,7 +112,7 @@ export function CockpitGrid() {
           expanded={expandedPanel === "graph"} onToggleSize={toggleGraph} />
         <EvidenceInspector study={current ? studiesById.get(runsById.get(current.id)?.investigationId ?? current.id) : undefined}
           run={current?.kind === "run" ? runsById.get(current.id) : undefined}
-          search={search} availableRuns={availableRuns} literature={literature}
+          search={search} availableRuns={availableRuns} literature={literature} coverage={coverage}
           rankedRun={rank.find(({ run }) => current?.kind === "run" && run.id === current.id)} />
         <ExperimentGitDiff runs={dataset.runs} runsById={runsById} studiesById={studiesById} areaStudies={areaStudies}
           expanded={expandedPanel === "comparison"} onToggleSize={toggleComparison} />

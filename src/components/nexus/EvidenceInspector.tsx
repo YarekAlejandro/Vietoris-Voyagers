@@ -14,6 +14,8 @@ import type { NtrsRecord, PsiProfile } from "../../types/psi-live";
 import { AtmosphereSliders } from "../simulator/AtmosphereSliders";
 import { SafetyTriadMatrix } from "../simulator/SafetyTriadMatrix";
 import { NtrsLink, NtrsRadar, ntrsForStudy } from "./NtrsRadar";
+import { ScenarioCoverageCard } from "../simulator/ScenarioCoverageCard";
+import type { ScenarioCoverage } from "../../core/si-engine/scenario-coverage";
 
 function SourceLink({ source }: { source: Citation }) {
   return <a className="source-link" href={source.url} target="_blank" rel="noreferrer">{source.label} <ExternalLink size={13} aria-hidden /></a>;
@@ -26,9 +28,10 @@ interface InspectorProps {
   availableRuns: readonly ExperimentalRun[];
   rankedRun: ReturnType<typeof rankRuns>[number] | undefined;
   literature: readonly NtrsRecord[];
+  coverage: ScenarioCoverage;
 }
 
-export function EvidenceInspector({ study, run, search, availableRuns, rankedRun, literature }: InspectorProps) {
+export function EvidenceInspector({ study, run, search, availableRuns, rankedRun, literature, coverage }: InspectorProps) {
   const view = useAetherStore((state) => state.inspectorView);
   const mode = useAetherStore((state) => state.mode);
   const comparison = useAetherStore((state) => state.comparison);
@@ -57,6 +60,7 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
           <button type="button" aria-label="Radar NTRS" aria-pressed={view === "radar"} onClick={() => setView("radar")}>NTRS</button>
         </div>
       </div>
+      {view !== "radar" && <div className="scenario-coverage"><ScenarioCoverageCard coverage={coverage} /></div>}
       {view === "atmosphere" ? <AtmosphereSliders /> : view === "radar" ? <NtrsRadar literature={literature} /> : study ? (
         <div className="panel-content inspector-content" key={run?.id ?? study.id}>
           <div className="evidence-kind">
@@ -134,8 +138,8 @@ export function EvidenceInspector({ study, run, search, availableRuns, rankedRun
             <p>{bridge.description}</p>
             <SourceLink source={bridge.citation} />
           </div>)}
-          {rankedRun && mode === "engineer" && <div className="search-reason">
-            <strong>FSRS · {rankedRun.score.toFixed(1)} / 100</strong>
+          {rankedRun && !run?.reference && mode === "engineer" && <div className="search-reason">
+            <strong>Similitud con el escenario (FSRS) · {rankedRun.score.toFixed(1)} / 100</strong>
             <p>Combina cercanía al escenario, instrumentación y vínculos experimentales. Bonificación del escenario: {rankedRun.bonus_pts} pts.</p>
           </div>}
           {mode === "student" && <>

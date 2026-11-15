@@ -6,6 +6,7 @@ import { psiStudyComparisonId } from "../../core/si-engine/merge-psi-catalog";
 import { InterpretationCard } from "../nexus/InterpretationCard";
 import type { EvidenceSearchResults } from "../../core/si-engine/semantic-search";
 import { evidenceTopics, facilities } from "../../data/psi_vocabulary";
+import { atmosphereControls } from "../../data/mission_presets";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { EvidenceTopicId, ExperimentalRun, Investigation } from "../../types/psi";
 
@@ -21,17 +22,37 @@ interface DatasetListProps {
 }
 
 function ScoreBadge({ result }: { result: FSRS }) {
-  const level = result.score >= 80 ? "high" : result.score >= 60 ? "mid" : "low";
-  return <span className="fsrs-badge mono" data-level={level}>FSRS {result.score.toFixed(1)}</span>;
+  return <span className="fsrs-badge mono" title="Similitud con el escenario (FSRS)">FSRS {result.score.toFixed(1)}</span>;
 }
 
 function ScoreDetails({ result, label }: { result: FSRS; label: string }) {
   return <div className="fsrs-details">
-    <meter aria-label={`FSRS de ${label}`} min={0} max={100} value={result.score}
-      data-level={result.score >= 80 ? "high" : result.score >= 60 ? "mid" : "low"} />
-    <span title={`Componentes del FSRS · bonificación por escenario: ${result.bonus_pts} pts`}>
-      Atm {Math.round(result.atmosphere_pct)}% · Flujo {Math.round(result.flow_pct)}% · Grav/Puente {Math.round(result.gravityBridge_pct)}%
-    </span>
+    <meter aria-label={`Similitud con el escenario (FSRS) de ${label}`} min={0} max={100} value={result.score} />
+    <p>Atm {Math.round(result.atmosphere_pct)}% · Flujo {Math.round(result.flow_pct)}% · Grav/Puente {Math.round(result.gravityBridge_pct)}%</p>
+    <details className="fsrs-explanation">
+      <summary>¿Por qué este puntaje?</summary>
+      <dl>
+        {atmosphereControls.map(({ field, label, unit, decimals }) => {
+          const criterion = result.criteria.find(({ axis }) => axis === field)!;
+          const { input, target, distance, contribution_pts, weight_pts } = criterion;
+          const range = input?.range.map((value) => value.toFixed(decimals));
+          const rangeLabel = range && [...new Set(range)].join("–");
+          const inputLabel = input?.published ? input.measured ? "Registros y perfil publicado" : "Perfil publicado" : "Registro";
+          return <div key={field}>
+            <dt>{label} · {contribution_pts.toFixed(1)} de {weight_pts} pts</dt>
+            <dd>
+              Escenario {target.toFixed(decimals)} {unit}.
+              {rangeLabel ? ` ${inputLabel} ${rangeLabel} ${unit}. Brecha ${distance!.toFixed(decimals)} ${field === "oxygen_pct" ? "pp" : unit}.`
+                : " Sin dato medido ni perfil publicado para este criterio."}
+              {input?.sources.map((source) => <a key={`${source.url}|${source.label}`} href={source.url} target="_blank" rel="noreferrer">{source.label}</a>)}
+            </dd>
+          </div>;
+        })}
+        <div><dt>Contexto · {result.context.total_pts.toFixed(1)} de {result.context.weight_pts} pts</dt>
+          <dd>Instrumentación {result.context.instrument_pts.toFixed(1)} pts · vínculo entre estudios {result.context.bridge_pts.toFixed(1)} pts · prioridad de misión {result.context.priority_pts.toFixed(1)} pts.</dd></div>
+        {result.bonus_pts > 0 && <div><dt>Bonificación heurística · +{result.bonus_pts} pts</dt><dd>Se aplica según el escenario y el estudio. El índice se limita a 100 pts.</dd></div>}
+      </dl>
+    </details>
   </div>;
 }
 
@@ -58,6 +79,8 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesByI
   const [opened, setOpened] = useState<Extract<InterpretRequest, { kind: "rank" }> | null>(null);
   const hasFilters = facility !== "all" || topic !== null || studyFilter !== null;
   const count = view === "study" ? studies.length : rankedRuns.length;
+  const quantitativeRuns = rankedRuns.filter(({ run }) => !run.reference);
+  const referenceRuns = rankedRuns.filter(({ run }) => run.reference);
   const rankedStudies = [...studies].sort((a, b) =>
     (studyScores.get(b.id)?.score ?? -1) - (studyScores.get(a.id)?.score ?? -1) || a.id.localeCompare(b.id));
 
@@ -90,6 +113,7 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesByI
           Ver todo PSI
           {psiArea === "all" && psiCatalog?.area === "all" && <small>{psiCatalog.disciplines} {psiCatalog.disciplines === 1 ? "disciplina" : "disciplinas"}</small>}
         </label>
+        <p className="fsrs-details">Similitud con el escenario (FSRS)</p>
         {hasFilters && <div className="filter-status">
           {studyFilter ? <button type="button" onClick={() => setStudyFilter(null)}>{studyFilter} <X size={12} aria-hidden /></button> : null}
           <button type="button" onClick={clearFilters}>Quitar filtros</button>
@@ -110,7 +134,7 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesByI
             const count = runsByStudy.get(study.id)?.length ?? 0;
             const active = current?.kind === "study" && current.id === study.id;
             const result = studyScores.get(study.id);
-            const bestRun = rankedRuns.find(({ run }) => run.investigationId === study.id)?.run;
+            const bestRun = [...quantitativeRuns, ...referenceRuns].find(({ run }) => run.investigationId === study.id)?.run;
             const imported = study.importedPsi;
             const comparisonId = bestRun?.id ?? (imported && !imported.profile ? psiStudyComparisonId(study.id) : undefined);
             return (
@@ -142,7 +166,7 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesByI
         </ul>
       ) : (
         <ol className="panel-content ranked-list">
-          {rankedRuns.map((result) => {
+          {[...quantitativeRuns, ...referenceRuns].map((result) => {
             const { run, bounds } = result;
             const imported = studiesById.get(run.investigationId)?.importedPsi;
             const active = current?.kind === "run" && current.id === run.id;
@@ -150,15 +174,15 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesByI
             const request = (): Extract<InterpretRequest, { kind: "rank" }> =>
               ({ kind: "rank", payload: buildRankPayload(result, profile, atmosphere, studiesById), mode, lang: "es" });
             return (
-              <li className="run-card" key={run.id} data-active={active}>
+              <li className="run-card" key={run.id} data-active={active} data-reference={Boolean(run.reference)}>
                 <button type="button" className="run-top" aria-pressed={active} onClick={() => inspect({ kind: "run", id: run.id }, run.investigationId)}>
                   <span>
                     <span className="run-study">{run.investigationId}</span>
                     <strong>{run.label}</strong>
                   </span>
-                  <ScoreBadge result={result} />
+                  {!run.reference && <ScoreBadge result={result} />}
                 </button>
-                <ScoreDetails result={result} label={run.label} />
+                {!run.reference && <ScoreDetails result={result} label={run.label} />}
                 <div className="run-bottom">
                   <span><FlaskConical size={11} aria-hidden /> {run.fuel ?? "Condiciones publicadas"}
                     {run.atmosphere.oxygen_pct !== undefined && !run.nominal?.fields.includes("oxygen_pct") && ` · ${run.atmosphere.oxygen_pct.toFixed(1)}% O₂`}
@@ -169,7 +193,7 @@ export function RankedDatasetList({ studies, rankedRuns, studyScores, studiesByI
                   <div className="run-actions">
                     <button type="button" aria-label={`Comparar ${run.label} en A`} aria-pressed={comparison.a === run.id} onClick={() => selectRun("a", run.id)}>+ A</button>
                     <button type="button" aria-label={`Comparar ${run.label} en B`} aria-pressed={comparison.b === run.id} onClick={() => selectRun("b", run.id)}>+ B</button>
-                    {!run.psiProfile && <button type="button" aria-label="Interpretar puntaje" title="Interpretar puntaje" aria-expanded={interpreting}
+                    {!run.reference && !run.psiProfile && <button type="button" aria-label="Interpretar puntaje" title="Interpretar puntaje" aria-expanded={interpreting}
                       onClick={() => setOpened(interpreting ? null : request())}><Sparkles size={11} aria-hidden /></button>}
                   </div>
                 </div>

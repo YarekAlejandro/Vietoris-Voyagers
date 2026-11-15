@@ -1,6 +1,6 @@
 import { ArrowLeftRight, ExternalLink, Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
-import { compareRuns } from "../../core/si-engine/git-diff";
+import { compareRuns, summarizeChangedDrivers } from "../../core/si-engine/git-diff";
 import { buildDiffPayload, interpretationKey, type InterpretRequest } from "../../core/si-engine/interpret";
 import { psiStudyComparisonId } from "../../core/si-engine/merge-psi-catalog";
 import { atmosphereControls } from "../../data/mission_presets";
@@ -29,10 +29,13 @@ interface ComparisonProps extends PanelSizeProps {
 }
 
 const atmosphereFields = new Set<string>(atmosphereControls.map(({ field }) => field));
+const cabinGasFields = new Set(["cabin_co_ppm", "cabin_co2_ppm"]);
 
 export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, expanded, onToggleSize }: ComparisonProps) {
   const comparison = useAetherStore((state) => state.comparison);
   const mode = useAetherStore((state) => state.mode);
+  const scenario = useAetherStore((state) => state.atmosphere);
+  const profileId = useAetherStore((state) => state.profile.id);
   const selectRun = useAetherStore((state) => state.selectRun);
   // Petición con la que se abrió la interpretación; si A, B o el modo cambian, queda desactualizada.
   const [opened, setOpened] = useState<InterpretRequest | null>(null);
@@ -56,10 +59,16 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
   if (!a || !b) return null;
   const hasPsiProfile = Boolean(a.psiProfile || b.psiProfile);
   const hasBibliographic = bibliographic.has(a.id) || bibliographic.has(b.id);
+  const hasNominalProfile = Boolean(a.reference || b.reference);
+  const comparesSaffireCabin = [a, b].some(({ investigationId }) =>
+    investigationId === "SAFFIRE-IV-V" || investigationId === "SAFFIRE-VI");
   const rows = compareRuns(a, b, studiesById).filter(({ field, valueA, valueB }) =>
-    valueA !== undefined || valueB !== undefined || ((hasPsiProfile || hasBibliographic) && atmosphereFields.has(field.id)));
-  const current: InterpretRequest | null = hasPsiProfile || hasBibliographic ? null
-    : { kind: "diff", payload: buildDiffPayload(a, b, rows, studiesById), mode, lang: "es" };
+    valueA !== undefined || valueB !== undefined ||
+    (comparesSaffireCabin && cabinGasFields.has(field.id)) ||
+    ((hasPsiProfile || hasBibliographic || hasNominalProfile) && atmosphereFields.has(field.id)));
+  const drivers = summarizeChangedDrivers(rows);
+  const current: InterpretRequest | null = hasPsiProfile || hasBibliographic || hasNominalProfile ? null
+    : { kind: "diff", payload: buildDiffPayload(a, b, rows, studiesById), mode, lang: "es", scenario, profileId };
   const interpretation = current && opened?.kind === "diff" ? opened : null;
   const stale = Boolean(interpretation && current && interpretationKey(interpretation) !== interpretationKey(current));
 
@@ -85,8 +94,13 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
               <span className={`side side-${side}`} aria-hidden>{side.toUpperCase()}</span>
               <span className="sr-only">Corrida {side.toUpperCase()}</span>
               <select value={side === "a" ? a.id : b.id} onChange={(event) => selectRun(side, event.target.value)}>
-                <optgroup label="Corridas y perfiles">
-                  {runs.map((run) => <option value={run.id} key={run.id}>{run.label}{run.reference ? " (perfil nominal)" : ""}</option>)}
+                <optgroup label="Corridas experimentales">
+                  {runs.filter((run) => !run.reference && !run.psiProfile).map((run) => <option value={run.id} key={run.id}>{run.label}</option>)}
+                </optgroup>
+                <optgroup label="Perfiles de referencia">
+                  {runs.filter((run) => run.reference || run.psiProfile).map((run) => (
+                    <option value={run.id} key={run.id}>{run.label} {run.reference ? "(perfil nominal)" : "(perfil PSI)"}</option>
+                  ))}
                 </optgroup>
                 {bibliographic.size > 0 && <optgroup label="Fichas sin cifras">
                   {[...bibliographic.values()].map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
@@ -95,6 +109,10 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
             </label>
           ))}
         </div>
+        {drivers.confounded && <div className="comparison-confounding" role="status">
+          <p>Cambiaron varias condiciones a la vez: la diferencia no puede atribuirse a una sola variable.</p>
+          <p>{drivers.changedVariables.join(" · ")}</p>
+        </div>}
         <div className="comparison-scroll" ref={tableRef}
           style={interpretation && tableHeight !== null ? { flex: `0 0 ${tableHeight}px` } : undefined}>
           <table>
@@ -150,8 +168,10 @@ export function ExperimentGitDiff({ runs, runsById, studiesById, areaStudies, ex
           {a.nominal && <span>{a.nominal.basis === b.nominal?.basis ? "A/B" : "A"} · {a.nominal.basis}</span>}
           {b.nominal && b.nominal.basis !== a.nominal?.basis && <span>B · {b.nominal.basis}</span>}
         </div>}
-        {(hasPsiProfile || hasBibliographic) && <div className="comparison-sources">
-          <span>{hasPsiProfile && "Perfil PSI: condiciones publicadas."}{hasBibliographic && " Ficha sin cifras: —."}</span>
+        {(hasPsiProfile || hasBibliographic || hasNominalProfile) && <div className="comparison-sources">
+          {hasPsiProfile && <span>Condiciones publicadas como perfil PSI.</span>}
+          {hasNominalProfile && <span>El perfil nominal muestra condiciones de referencia.</span>}
+          {hasBibliographic && <span>Los campos sin dato se muestran con «—».</span>}
         </div>}
         <div className="comparison-sources">
           {[a, b].map((run, index) => (

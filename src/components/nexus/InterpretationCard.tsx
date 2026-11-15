@@ -1,17 +1,21 @@
 import { AlertTriangle, Check, Copy, RefreshCw, Sparkles } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  interpretationKey, isInterpretation, templateInterpretation,
+  interpretationKey, isInterpretation, localInterpretation,
   type InterpretRequest, type InterpretationResult,
 } from "../../core/si-engine/interpret";
 import { useAetherStore } from "../../store/useAetherStore";
-
-const providerNames = { anthropic: "Claude", gemini: "Gemini" } as const;
+import { computeCoverage } from "../../core/si-engine/scenario-coverage";
+import { missionPresets } from "../../data/mission_presets";
+import { psiDataset, runsById } from "../../data/psi";
 
 // Evita llamadas duplicadas a la misma clave (por ejemplo, el doble efecto de React en desarrollo).
 const inflight = new Set<string>();
 
 async function requestInterpretation(request: InterpretRequest): Promise<{ result: InterpretationResult; failed: boolean }> {
+  const atmosphere = request.kind === "rank" ? request.payload.target : request.scenario ?? missionPresets[0].atmosphere;
+  const coverage = computeCoverage(atmosphere, psiDataset.runs);
+  if (coverage.status === "ninguna") return { result: localInterpretation(request, coverage), failed: false };
   try {
     const response = await fetch("/api/interpret", {
       method: "POST",
@@ -27,7 +31,7 @@ async function requestInterpretation(request: InterpretRequest): Promise<{ resul
   } catch {
     // Sin red o sin servidor: se usa la plantilla local.
   }
-  return { result: { source: "template", ...templateInterpretation(request) }, failed: true };
+  return { result: localInterpretation(request, coverage), failed: true };
 }
 
 interface InterpretationCardProps {
@@ -73,7 +77,7 @@ export function InterpretationCard({ request, chips, stale = false, onRefresh }:
     <div className="interpretation" aria-live="polite" aria-busy={loading}>
       <div className="interpretation-heading">
         <h3><Sparkles size={14} aria-hidden /> Interpretación</h3>
-        {result && <span className={`interpretation-badge ${result.source}`}>{result.source === "ai" ? `Generado por IA${result.provider ? ` · ${providerNames[result.provider]}` : ""}` : "Resumen automático"}</span>}
+        {result && <span className={`interpretation-badge ${result.source}`}>{result.source === "ai" ? "Resumen generado con validación" : "Plantilla determinista"}</span>}
         <div className="interpretation-actions">
           <button type="button" className="icon-button" aria-label="Regenerar interpretación" title="Regenerar" disabled={loading}
             onClick={() => (stale && onRefresh ? onRefresh() : void load(true))}>
@@ -96,7 +100,10 @@ export function InterpretationCard({ request, chips, stale = false, onRefresh }:
           {result.caveats.map((caveat, index) => <li key={index}><AlertTriangle size={12} aria-hidden /> {caveat}</li>)}
         </ul>}
       </div>}
-      <div className="interpretation-chips">{chips}</div>
+      <div className="interpretation-chips">{chips}{result?.fieldsUsed.flatMap((id) => {
+        const run = runsById.get(id);
+        return run ? [<a className="chip" key={id} href={run.source.url} target="_blank" rel="noreferrer">{run.label}</a>] : [];
+      })}</div>
     </div>
   );
 }

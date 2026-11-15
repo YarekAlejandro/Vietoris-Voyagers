@@ -1,6 +1,7 @@
 import type { Atmosphere, Citation, EnvironmentPreset, ExperimentalRun, Investigation } from "../../types/psi";
 import type { compareRuns } from "./git-diff";
 import { oxygenPartialPressure_psia, type rankRuns } from "./fsrs-ranker";
+import type { ScenarioCoverage } from "./scenario-coverage";
 
 // Lógica pura para la interpretación con IA: el modelo solo redacta, los números salen de aquí.
 
@@ -127,7 +128,7 @@ export interface RankPayload {
 }
 
 export type InterpretRequest =
-  | { kind: "diff"; payload: DiffPayload; mode: InterpretMode; lang: InterpretLang }
+  | { kind: "diff"; payload: DiffPayload; mode: InterpretMode; lang: InterpretLang; scenario?: Atmosphere; profileId?: string }
   | { kind: "rank"; payload: RankPayload; mode: InterpretMode; lang: InterpretLang };
 
 export interface Interpretation {
@@ -138,8 +139,6 @@ export interface Interpretation {
 
 export interface InterpretationResult extends Interpretation {
   source: "ai" | "template";
-  /** Proveedor que redactó el texto cuando `source` es "ai". */
-  provider?: "anthropic" | "gemini";
 }
 
 function payloadRun(run: ExperimentalRun, investigations: ReadonlyMap<string, Investigation>): PayloadRun {
@@ -413,6 +412,29 @@ export function templateInterpretation(request: InterpretRequest): Interpretatio
     : rankTemplate(request.payload, request.lang);
 }
 
+export function coverageAbstention(lang: InterpretLang, nearest: string | null): InterpretationResult {
+  return {
+    source: "template",
+    paragraphs: [lang === "en" ? "No direct evidence for this scenario." : "Sin evidencia directa para este escenario."],
+    caveats: nearest ? [`${lang === "en" ? "Closest record" : "Corrida más cercana"} · ${nearest}`] : [],
+    fieldsUsed: nearest ? [nearest] : [],
+  };
+}
+
+export function localInterpretation(request: InterpretRequest, coverage?: ScenarioCoverage): InterpretationResult {
+  if (coverage?.status === "ninguna") return coverageAbstention(request.lang, coverage.closest?.runId ?? null);
+  const template = templateInterpretation(request);
+  return { source: "template", ...template,
+    caveats: [...coverageCaveats(request.lang, coverage?.status), ...template.caveats] };
+}
+
+export function coverageCaveats(lang: InterpretLang, status: ScenarioCoverage["status"] | undefined): string[] {
+  if (status !== "parcial") return [];
+  return [lang === "en"
+    ? "Partial coverage. No single run matches all four conditions within the tolerances."
+    : "Cobertura parcial. Ninguna corrida coincide en las cuatro condiciones dentro de las tolerancias."];
+}
+
 // ---------- Validación de números ----------
 
 // Un número que no está pegado a letras (así se ignoran CO2, E6 o PSI-25). Acepta coma decimal.
@@ -477,7 +499,7 @@ const isRun = (value: unknown) => isObject(value) && typeof value.id === "string
   typeof value.oxygen_partial_pressure_nominal === "boolean" && typeof value.reference === "boolean" &&
   isObject(value.source) && typeof value.source.label === "string" && typeof value.source.url === "string";
 const isValue = (value: unknown) => typeof value === "number" || typeof value === "string";
-const isAtmosphere = (value: unknown) => isObject(value) &&
+const isAtmosphere = (value: unknown): value is Atmosphere => isObject(value) &&
   atmosphereAxes.every((axis) => typeof value[axis] === "number");
 const isMeasuredAtmosphere = (value: unknown) => isObject(value) && atmosphereAxes.every((axis) => isMeasured(value[axis]));
 
@@ -505,7 +527,11 @@ export function parseInterpretRequest(body: unknown): InterpretRequest | null {
   if (!isObject(body) || !withinLimits(body)) return null;
   const { kind, payload, mode, lang } = body;
   if ((mode !== "engineer" && mode !== "student") || (lang !== "es" && lang !== "en")) return null;
-  if (kind === "diff" && isDiffPayload(payload)) return { kind, payload, mode, lang };
+  if (kind === "diff" && isDiffPayload(payload) && (body.scenario === undefined || isAtmosphere(body.scenario)) &&
+      (body.profileId === undefined || typeof body.profileId === "string")) {
+    return { kind, payload, mode, lang, ...(body.scenario ? { scenario: body.scenario } : {}),
+      ...(body.profileId ? { profileId: body.profileId } : {}) };
+  }
   if (kind === "rank" && isRankPayload(payload)) return { kind, payload, mode, lang };
   return null;
 }
@@ -517,7 +543,7 @@ export function isInterpretation(value: unknown): value is Interpretation {
 }
 
 export function interpretationKey(request: InterpretRequest) {
-  if (request.kind === "diff") return `diff|${request.payload.runs.a.id}|${request.payload.runs.b.id}|${request.mode}|${request.lang}`;
+  if (request.kind === "diff") return `diff|${request.payload.runs.a.id}|${request.payload.runs.b.id}|${request.mode}|${request.lang}${request.scenario ? `|${JSON.stringify(request.scenario)}|${request.profileId ?? ""}` : ""}`;
   const { gravity_g, oxygen_pct, pressure_psia, flow_velocity_cm_s } = request.payload.target;
   const atmosphere = [gravity_g, oxygen_pct, pressure_psia, flow_velocity_cm_s].join(",");
   return `rank|${request.payload.run.id}|${request.payload.profile.id}|${atmosphere}|${request.mode}|${request.lang}`;
