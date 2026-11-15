@@ -5,8 +5,13 @@ import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent 
 import type { AssistantPointer, PageAssistantAnswer } from "../../core/si-engine/page-assistant";
 import styles from "./EvidenceAssistant.module.css";
 
+export interface AssistantConversationContext {
+  previousQuestion?: string;
+  previousSelection?: AssistantPointer["selection"];
+}
+
 interface EvidenceAssistantProps {
-  onAsk: (question: string) => PageAssistantAnswer | Promise<PageAssistantAnswer>;
+  onAsk: (question: string, context: AssistantConversationContext) => PageAssistantAnswer | Promise<PageAssistantAnswer>;
   onNavigate: (pointer: AssistantPointer) => void;
   side?: "left" | "right";
 }
@@ -17,7 +22,7 @@ interface Turn {
 }
 
 const examples = [
-  "¿Qué estudió FLEX?",
+  "¿Qué fue Saffire-VI y cuándo ocurrió?",
   "¿Qué cambió entre A y B?",
   "¿Dónde cambio el oxígeno?",
 ];
@@ -26,6 +31,46 @@ const unavailable: PageAssistantAnswer = {
   text: "No pude preparar una respuesta. Prueba con el nombre de un estudio o de una sección de la consola.",
   pointers: [],
 };
+
+function AssistantReply({ answer, onNavigate }: {
+  answer: PageAssistantAnswer | undefined;
+  onNavigate: (pointer: AssistantPointer) => void;
+}) {
+  if (!answer) {
+    return (
+      <p className={styles.waiting}>
+        <span className={styles.waitingDots} aria-hidden="true"><i /><i /><i /></span>
+        Preparando la respuesta…
+      </p>
+    );
+  }
+
+  const sources = new Map(answer.sources?.map((source) => [source.url, source]));
+  for (const { source } of answer.pointers) {
+    if (source && !sources.has(source.url)) sources.set(source.url, source);
+  }
+
+  return (
+    <div className={styles.reply} data-assistant-reply>
+      {answer.origin && <span className={styles.origin}>{answer.origin === "ai" ? "Respuesta con IA" : "Respuesta local"}</span>}
+      <p><span className="sr-only">Respuesta: </span>{answer.text}</p>
+      {answer.pointers.length > 0 && <ul className={styles.pointers}>
+        {answer.pointers.map((pointer, index) => <li key={`${pointer.target}:${pointer.selection?.id ?? ""}:${index}`}>
+          <button type="button" onClick={() => onNavigate(pointer)}>
+            <MousePointer2 size={13} aria-hidden="true" /> {pointer.label}
+          </button>
+        </li>)}
+      </ul>}
+      {sources.size > 0 && <ul className={styles.sources} aria-label="Fuentes de la respuesta">
+        {Array.from(sources.values(), (source) => <li key={source.url}>
+          <a href={source.url} target="_blank" rel="noreferrer">
+            <ArrowUpRight size={13} aria-hidden="true" /> {source.label}
+          </a>
+        </li>)}
+      </ul>}
+    </div>
+  );
+}
 
 export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: EvidenceAssistantProps) {
   const [open, setOpen] = useState(false);
@@ -45,7 +90,15 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
 
   useEffect(() => {
     const transcript = transcriptRef.current;
-    if (open && transcript) transcript.scrollTop = transcript.scrollHeight;
+    if (!open || !transcript) return;
+    const latestReply = transcript.querySelectorAll<HTMLElement>("[data-assistant-reply]");
+    const reply = turns.at(-1)?.answer ? latestReply[latestReply.length - 1] : undefined;
+    if (reply && reply.offsetHeight > transcript.clientHeight - 12) {
+      const top = transcript.scrollTop + reply.getBoundingClientRect().top - transcript.getBoundingClientRect().top - 10;
+      transcript.scrollTop = top;
+    } else {
+      transcript.scrollTop = transcript.scrollHeight;
+    }
   }, [open, turns]);
 
   function ask(value: string) {
@@ -55,7 +108,10 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
     setQuestion("");
     inputRef.current?.focus({ preventScroll: true });
     try {
-      const result = onAsk(cleanQuestion);
+      const result = onAsk(cleanQuestion, {
+        previousQuestion: previousTurn?.question,
+        previousSelection: previousTurn?.answer?.pointers.find(({ selection }) => selection)?.selection,
+      });
       if (result instanceof Promise) {
         setTurns((history) => [...history, { question: cleanQuestion }]);
         const finish = (answer: PageAssistantAnswer) => {
@@ -88,11 +144,11 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
   }
 
   return (
-    <div className={styles.assistant} data-side={side}>
+    <div className={styles.assistant} data-side={side} data-open={open} data-has-turns={turns.length > 0}>
       <section
         aria-labelledby={titleId}
         className={styles.drawer}
-        hidden={!open}
+        inert={!open}
         id={panelId}
         onKeyDown={handleKeyDown}
         role="dialog"
@@ -138,24 +194,10 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
             {turns.map(({ question: asked, answer }, index) => <div className={styles.turn} key={index}>
               <p className={styles.question}><span className="sr-only">Tu pregunta: </span>{asked}</p>
               <div className={styles.answer}>
-                {answer ? <p><span className="sr-only">Respuesta: </span>{answer.text}</p>
-                  : <p className={styles.waiting}>Preparando la respuesta…</p>}
-                {!!answer?.pointers.length && <ul className={styles.pointers}>
-                  {answer.pointers.map((pointer, pointerIndex) => <li
-                    className={styles.pointer}
-                    key={`${pointer.target}:${pointer.selection?.id ?? ""}:${pointerIndex}`}
-                  >
-                    <button type="button" onClick={() => {
-                      minimize();
-                      onNavigate(pointer);
-                    }}>
-                      <MousePointer2 size={13} aria-hidden="true" /> {pointer.label}
-                    </button>
-                    {pointer.source && <a href={pointer.source.url} target="_blank" rel="noreferrer">
-                      <ArrowUpRight size={12} aria-hidden="true" /> {pointer.source.label}
-                    </a>}
-                  </li>)}
-                </ul>}
+                <AssistantReply answer={answer} onNavigate={(pointer) => {
+                  minimize();
+                  onNavigate(pointer);
+                }} />
               </div>
             </div>)}
           </div>
@@ -168,7 +210,7 @@ export function EvidenceAssistant({ onAsk, onNavigate, side = "right" }: Evidenc
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             autoComplete="off"
-            maxLength={240}
+            maxLength={400}
             placeholder="Escribe una pregunta…"
           />
           <button type="submit" aria-label="Enviar pregunta" disabled={pending || !question.trim()}>

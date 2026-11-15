@@ -31,7 +31,8 @@ export function resolveProvider(env: Env): ResolvedProvider | null {
     return apiKey ? { id, call: providers[id].call, apiKey, model } : null;
   };
 
-  if (requested === "anthropic" || requested === "gemini") return pick(requested);
+  if (requested === "anthropic" || requested === "claude") return pick("anthropic");
+  if (requested === "gemini") return pick("gemini");
   if (requested) {
     console.error(`[interpret] AI_PROVIDER desconocido: ${requested}`);
     return null;

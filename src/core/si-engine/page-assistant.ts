@@ -6,6 +6,7 @@ import { compareRuns, diffFields, summarizeChangedDrivers } from "./git-diff";
 import { formatPsiQuantity } from "./live-psi-mapper";
 import { computeCoverage, type ScenarioCoverage } from "./scenario-coverage";
 import type { EvidenceSearchResults } from "./semantic-search";
+import { findAssistantHistory, formatAssistantHistory, isAssistantHistoryQuestion } from "./assistant-history";
 
 type Selection = { kind: "study" | "run"; id: string };
 type Comparison = { a: string; b: string };
@@ -25,7 +26,9 @@ export interface AssistantPointer {
 export interface PageAssistantAnswer {
   text: string;
   pointers: AssistantPointer[];
-  mayClassify?: boolean;
+  sources?: readonly Citation[];
+  origin?: "ai" | "local";
+  unanswered?: boolean;
 }
 
 export interface PageAssistantContext {
@@ -198,6 +201,17 @@ export function answerPageQuestion(question: string, context: PageAssistantConte
     text: `No encontré ${unmatchedId} en el catálogo. Puedes comprobar el identificador con la búsqueda semántica.`, pointers: [searchPointer],
   };
 
+  if (isAssistantHistoryQuestion(question)) {
+    const contextual = /^(?:y )?(?:cuando|en que fecha)(?: (?:fue|ocurrio|se hizo|se realizo|se publico))?$/.test(normalized) ||
+      /\b(?:este estudio|esta mision|este experimento|su fecha|su lanzamiento|el reingreso)\b/.test(normalized);
+    const study = explicitStudy ?? (contextual ? selectedStudy : undefined);
+    if (study) {
+      const history = formatAssistantHistory(findAssistantHistory(study.id), question);
+      if (history) return { text: history.text, sources: history.citations, pointers: [evidencePointer(study)] };
+      return { text: `${study.summary} La ficha no incluye una fecha confirmada para ese hito.`, pointers: [evidencePointer(study)] };
+    }
+  }
+
   if (/\b(?:interpretar|interpretacion|interpreta|comparar|comparame|compara|comparacion|git diff|entre a y b|a b)\b/.test(normalized) ||
     (explicit && /\b(?:diferencias?|cambios? entre)\b/.test(normalized))) {
     const interpret = /\binterpret\w*\b/.test(normalized);
@@ -283,21 +297,5 @@ export function answerPageQuestion(question: string, context: PageAssistantConte
   if (matches.length) return answerEvidence(matches, normalized);
 
   return { text: "No encontré evidencia en el catálogo para esa pregunta. Prueba con el nombre de un estudio, un identificador de corrida o un tema como humo y polvo.",
-    pointers: [searchPointer], mayClassify: true };
-}
-
-const intentQuestions: Record<AssistantTarget, string> = {
-  search: "¿Dónde está el buscador?",
-  catalog: "¿Dónde está el catálogo?",
-  graph: "Muéstrame el grafo",
-  inspector: "¿Qué muestra la ficha actual?",
-  coverage: "¿Cuál es la cobertura?",
-  comparison: "¿Qué cambió entre A y B?",
-  atmosphere: "¿Dónde ajusto la atmósfera?",
-  scene: "¿Dónde está la escena 3D?",
-  interpret: "¿Dónde puedo interpretar A/B?",
-};
-
-export function answerAssistantIntent(intent: AssistantTarget, context: PageAssistantContext) {
-  return answerPageQuestion(intentQuestions[intent], context);
+    pointers: [searchPointer], unanswered: true };
 }

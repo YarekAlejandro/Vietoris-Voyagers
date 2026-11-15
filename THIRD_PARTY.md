@@ -38,4 +38,15 @@ La respuesta de detalle de [PSI-10](https://psi.nasa.gov/physci/repo/data/invest
 
 El catálogo normaliza valores puntuales y enlaza las fichas de NASA PSI, artículos, documentación de NASA y literatura de NTRS. Las citas y condiciones de distribución se consultan en cada registro. Las publicaciones NTRS conservan los derechos y avisos de su registro bibliográfico, entre ellas los informes sin una declaración CC0 verificada. [Catálogo curado y sus citas](src/data/psi_seed_data.json) · [NTRS](https://ntrs.nasa.gov/)
 
+### Fuentes de la cronología del asistente
+
+La base histórica incorpora hechos resumidos y enlaza los documentos originales.
+
+| Publicación | Condiciones declaradas |
+| --- | --- |
+| NASA. [Operaciones de Saffire I](https://www.nasa.gov/centers-and-facilities/glenn/nasa-ignites-fire-experiment-aboard-space-cargo-ship/), [misión Cygnus NG-19](https://www.nasa.gov/mission/nasas-northrop-grumman-crs-19/) y [cierre de Saffire VI](https://www.nasa.gov/centers-and-facilities/glenn/flame-burns-out-on-nasas-long-running-spacecraft-fire-experiment/) | NASA permite el uso factual con atribución sujeto a sus pautas. [Pautas de NASA](https://www.nasa.gov/nasa-brand-center/images-and-media/) |
+| NASA JPL. [Informe anual de Microdevices Laboratory 2024, p. 13](https://microdevices.jpl.nasa.gov/interactivepdfs/pdf/2024%20MDL%20Annual%20Report.pdf) | El informe declara © 2024 California Institute of Technology. |
+| NASA NTRS. [Resultados preliminares de Saffire VI](https://ntrs.nasa.gov/citations/20240007488) | Distribución pública. El registro advierte que partes del documento pueden estar protegidas por derechos de autor. |
+| NASA NTRS. [SAME en la EEI](https://ntrs.nasa.gov/citations/20130004397) y [resultados de SAME-R](https://ntrs.nasa.gov/citations/20130000422) | Ambos registros declaran que el uso público está permitido. El primero se identifica como obra del Gobierno de Estados Unidos. |
+
 Claude y Gemini son servicios opcionales de redacción. Su uso se rige por los términos del proveedor que se configure. [Anthropic](https://www.anthropic.com/legal) · [Google](https://ai.google.dev/gemini-api/terms)

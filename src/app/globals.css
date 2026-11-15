@@ -609,32 +609,53 @@ body:has(.cockpit-grid > .panel[data-expanded="true"]) { overflow: hidden; }
 .comparison[data-expanded="true"] td { padding: 6px 8px; }
 
 [data-assistant-highlighted="true"] {
-  outline: 2px solid #6cf8de;
-  outline-offset: -2px;
-  border-radius: 5px;
-  background-color: #163a44;
   scroll-margin-block: 10px;
 }
-.assistant-spotlight {
+.assistant-indication {
   position: fixed;
+  inset: 0;
   z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.assistant-indication[data-visible="true"] {
+  opacity: 1;
+  animation: assistant-indication-in 220ms ease-out both;
+}
+.assistant-target-frame,
+.assistant-spotlight {
+  position: absolute;
+  inset: 0 auto auto 0;
+  transition: transform 350ms cubic-bezier(.22, .8, .25, 1);
+}
+.assistant-target-frame {
+  border: 1px solid #86ead6;
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px #6cf8de18, inset 0 0 16px #6cf8de12;
+  transition-property: transform, width, height;
+}
+.assistant-spotlight {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid #6cf8de;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #6cf8de75;
   border-radius: 50%;
-  color: #6cf8de;
-  background: #0c2d35;
-  box-shadow: 0 0 0 3px #6cf8de30;
-  pointer-events: none;
-  animation: assistant-point-in 220ms ease-out both;
+  color: #bcf7eb;
+  background: #102c37;
+  box-shadow: 0 3px 12px #07161ccf;
 }
-@keyframes assistant-point-in {
-  from { opacity: 0; transform: translate(6px, 6px) scale(.85); }
-  to { opacity: 1; transform: translate(0) scale(1); }
+@keyframes assistant-indication-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-@media (prefers-reduced-motion: reduce) { .assistant-spotlight { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .assistant-indication, .assistant-target-frame, .assistant-spotlight {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 
 @media (max-width: 900px) {
   .comparison[data-expanded="true"] .comparison-content.with-interpretation > .comparison-scroll {

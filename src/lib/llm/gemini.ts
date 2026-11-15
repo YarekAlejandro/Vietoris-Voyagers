@@ -7,15 +7,16 @@ const endpoint = "https://generativelanguage.googleapis.com/v1beta/interactions"
 // Fija la revisión del formato de respuesta que usan los ejemplos de la documentación.
 const apiRevision = "2026-05-20";
 
-export function buildGeminiBody({ system, userContent, schema, model }: Omit<ProviderArgs, "apiKey" | "signal">) {
+export function buildGeminiBody({ system, userContent, schema, model, maxOutputTokens }: Omit<ProviderArgs, "apiKey" | "signal">) {
+  const selectedModel = model || geminiDefaultModel;
   return {
-    model: model || geminiDefaultModel,
+    model: selectedModel,
     system_instruction: system,
     input: userContent,
     generation_config: {
       // En Gemini el límite incluye los tokens de razonamiento.
-      max_output_tokens: 600,
-      thinking_level: "minimal",
+      max_output_tokens: maxOutputTokens ?? 600,
+      ...(selectedModel === geminiDefaultModel ? { thinking_level: "minimal" } : {}),
     },
     response_format: { type: "text", mime_type: "application/json", schema },
   };

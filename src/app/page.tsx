@@ -1,5 +1,6 @@
 import { CockpitGrid } from "../components/layout/CockpitGrid";
+import { resolveProvider } from "../lib/llm";
 
 export default function Home() {
-  return <CockpitGrid assistantAiEnabled={process.env.ENABLE_ASSISTANT_AI === "true"} />;
+  return <CockpitGrid assistantAiEnabled={Boolean(resolveProvider(process.env))} />;
 }

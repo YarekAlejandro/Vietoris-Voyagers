@@ -8,9 +8,10 @@ import { KnowledgeGraphCanvas } from "../nexus/KnowledgeGraphCanvas";
 import { EvidenceInspector } from "../nexus/EvidenceInspector";
 import { ExperimentGitDiff } from "../nexus/ExperimentGitDiff";
 import { AssistantSpotlight, type SpotlightRequest } from "../assistant/AssistantSpotlight";
-import { EvidenceAssistant } from "../assistant/EvidenceAssistant";
+import { EvidenceAssistant, type AssistantConversationContext } from "../assistant/EvidenceAssistant";
 import { buildEvidenceIndex } from "../../core/si-engine/semantic-search";
-import { answerAssistantIntent, answerPageQuestion, type AssistantPointer, type PageAssistantContext } from "../../core/si-engine/page-assistant";
+import { answerPageQuestion, type AssistantPointer, type PageAssistantAnswer, type PageAssistantContext } from "../../core/si-engine/page-assistant";
+import type { AssistantGroundingInput } from "../../core/si-engine/assistant-grounding";
 import { computeFSRS, rankRuns } from "../../core/si-engine/fsrs-ranker";
 import { mergePsiCatalog } from "../../core/si-engine/merge-psi-catalog";
 import { computeCoverage } from "../../core/si-engine/scenario-coverage";
@@ -34,17 +35,17 @@ const assistantPanels = {
   interpret: ["#assistant-interpret", "Interpretar"],
 } as const satisfies Record<AssistantPointer["target"], readonly [string, string]>;
 
-async function requestAssistantIntent(question: string): Promise<keyof typeof assistantPanels | null> {
+async function requestAssistantAnswer(input: AssistantGroundingInput): Promise<PageAssistantAnswer | null> {
   try {
     const response = await fetch("/api/assistant", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ question }),
-      signal: AbortSignal.timeout(4500),
+      body: JSON.stringify(input),
+      signal: AbortSignal.timeout(10500),
     });
     if (!response.ok) return null;
-    const { intent } = await response.json();
-    return typeof intent === "string" && Object.hasOwn(assistantPanels, intent) ? intent as keyof typeof assistantPanels : null;
+    const { answer } = await response.json();
+    return typeof answer?.text === "string" && Array.isArray(answer.pointers) ? answer : null;
   } catch {
     return null;
   }
@@ -181,21 +182,37 @@ export function CockpitGrid({ assistantAiEnabled }: { assistantAiEnabled: boolea
     });
   }
 
-  function askAssistant(question: string) {
+  function askAssistant(question: string, { previousQuestion, previousSelection }: AssistantConversationContext) {
     const areaStudyIds = new Set(areaStudies.map(({ id }) => id));
+    const stateAtQuestion = useAetherStore.getState();
     const context: PageAssistantContext = {
       studies: areaStudies, runs: dataset.runs.filter(({ investigationId }) => areaStudyIds.has(investigationId)),
-      search: evidenceIndex.search, coverage, profile, atmosphere, selection: current, comparison: useAetherStore.getState().comparison,
+      search: evidenceIndex.search, coverage, profile, atmosphere, selection: previousSelection ?? current, comparison: stateAtQuestion.comparison,
       sceneEnabled: process.env.NEXT_PUBLIC_EXPERIMENT_SCENE !== "false",
     };
-    const answer = answerPageQuestion(question, context);
-    if (answer.mayClassify && assistantAiEnabled) {
-      setSpotlight(null);
-      return requestAssistantIntent(question).then((intent) => intent ? answerAssistantIntent(intent, context) : answer);
+    const local = answerPageQuestion(question, context);
+    const localPointer = local.pointers[0];
+    const directControl = localPointer?.target === "scene" || localPointer?.target === "atmosphere" ||
+      (localPointer?.target === "graph" && Boolean(localPointer.selection));
+    if (assistantAiEnabled && navigator.onLine && !directControl) {
+      return requestAssistantAnswer({
+        question, previousQuestion, selection: context.selection ?? undefined, comparison: context.comparison,
+        profileId: profile.id, atmosphere,
+      }).then((answer) => {
+        const latest = useAetherStore.getState();
+        const isSameView = latest.selection === stateAtQuestion.selection && latest.query === stateAtQuestion.query &&
+          latest.inspectorView === stateAtQuestion.inspectorView && latest.comparison === stateAtQuestion.comparison && latest.profile === profile;
+        const exactReadout = answer && localPointer?.evidenceField && answer.pointers[0]?.target === "inspector" &&
+          answer.pointers[0]?.selection?.id === localPointer.selection?.id;
+        const result: PageAssistantAnswer = !answer ? { ...local, origin: "local" }
+          : exactReadout ? { ...answer, pointers: [localPointer, ...answer.pointers.slice(1)] } : answer;
+        if (isSameView && result.pointers[0] && !result.unanswered) pointTo(result.pointers[0], false);
+        return result;
+      });
     }
-    if (answer.pointers[0] && !answer.mayClassify) pointTo(answer.pointers[0], false);
+    if (localPointer && !local.unanswered) pointTo(localPointer, false);
     else setSpotlight(null);
-    return answer;
+    return local;
   }
 
   return (

@@ -3,13 +3,15 @@ import { failed, succeeded, type LlmProvider, type ProviderArgs } from "./types"
 // API de Anthropic (Messages) con fetch, sin SDK, como pide el brief.
 export const anthropicDefaultModel = "claude-haiku-5-5";
 
-export function buildAnthropicBody({ system, userContent, schema, model }: Omit<ProviderArgs, "apiKey" | "signal">) {
+export function buildAnthropicBody({ system, userContent, schema, model, maxOutputTokens }: Omit<ProviderArgs, "apiKey" | "signal">) {
+  const selectedModel = model || anthropicDefaultModel;
+  const supportsEffort = selectedModel === anthropicDefaultModel;
   return {
-    model: model || anthropicDefaultModel,
-    max_tokens: 400,
+    model: selectedModel,
+    max_tokens: maxOutputTokens ?? 400,
     // Sin razonamiento para que no consuma los 400 tokens; Haiku 5.5 lo permite con effort ≤ high.
     thinking: { type: "disabled" },
-    output_config: { effort: "low", format: { type: "json_schema", schema } },
+    output_config: { ...(supportsEffort ? { effort: "low" } : {}), format: { type: "json_schema", schema } },
     system,
     messages: [{ role: "user", content: userContent }],
   };

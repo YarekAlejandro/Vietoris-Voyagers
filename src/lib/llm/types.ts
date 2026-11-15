@@ -9,6 +9,7 @@ export interface ProviderArgs {
   userContent: string;
   schema: Record<string, unknown>;
   model?: string;
+  maxOutputTokens?: number;
   apiKey: string;
   signal: AbortSignal;
 }

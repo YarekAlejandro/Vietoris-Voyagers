@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { missionPresets } from "../../../data/mission_presets";
 import { psiDataset, runsById } from "../../../data/psi";
-import { answerAssistantIntent, answerPageQuestion, type PageAssistantContext } from "../page-assistant";
+import { answerPageQuestion, type PageAssistantContext } from "../page-assistant";
 import { computeCoverage } from "../scenario-coverage";
 import { buildEvidenceIndex } from "../semantic-search";
 
@@ -57,17 +57,20 @@ describe("asistente del panel", () => {
     expect(matches.pointers[0].target).toBe("inspector");
     expect(matches.pointers[0].source?.url).toMatch(/^https:/);
     const unknown = answerPageQuestion("¿Qué tiempo hará mañana?", context);
-    expect(unknown.mayClassify).toBe(true);
+    expect(unknown.unanswered).toBe(true);
     expect(unknown.pointers).toEqual([{ target: "search", label: "Señalar el buscador" }]);
     const absentRun = answerPageQuestion("¿Qué midió FLEX-C10H999?", context);
     expect(absentRun.text).toContain("No encontré FLEX-C10H999");
-    expect(absentRun.mayClassify).toBeUndefined();
     expect(answerPageQuestion("¿Qué estudió PSI-69?", context).pointers[0].selection).toEqual({ kind: "study", id: "FLEX" });
   });
 
-  it("señala solo controles existentes para los intents de interfaz", () => {
-    for (const target of ["search", "catalog", "graph", "inspector", "coverage", "comparison", "atmosphere", "scene", "interpret"] as const) {
-      expect(answerAssistantIntent(target, context).pointers[0].target).toBe(target);
+  it("señala los controles de interfaz que el usuario pide", () => {
+    for (const [question, target] of [
+      ["¿Dónde está el buscador?", "search"], ["¿Dónde está el catálogo?", "catalog"], ["Muéstrame el grafo", "graph"],
+      ["¿Qué muestra la ficha actual?", "inspector"], ["¿Cuál es la cobertura?", "coverage"], ["¿Qué cambió entre A y B?", "comparison"],
+      ["¿Dónde está la escena 3D?", "scene"], ["¿Dónde puedo interpretar A/B?", "interpret"],
+    ]) {
+      expect(answerPageQuestion(question, context).pointers[0].target).toBe(target);
     }
     expect(answerPageQuestion("¿Dónde cambio el oxígeno?", context).pointers[0]).toMatchObject({
       target: "atmosphere", atmosphereField: "oxygen_pct",
