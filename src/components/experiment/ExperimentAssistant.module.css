@@ -67,7 +67,7 @@
   align-items: center;
   gap: 28px clamp(20px, 5vw, 70px);
   min-height: 340px;
-  padding-block: 27px;
+  padding-block: 20px;
   border-bottom: 1px solid var(--trazo);
 }
 .heroCopy { min-width: 0; }
@@ -107,7 +107,7 @@
 .describe, .profile { padding: 0 0 17px; }
 .describe { border-bottom: 1px solid var(--trazo); margin-bottom: 18px; }
 .describe h2, .paneHeading h2 { display: flex; align-items: center; gap: 8px; font-weight: 720; font-size: clamp(23px, 2vw, 29px); line-height: 1.15; letter-spacing: -.025em; }
-.describe textarea { width: 100%; min-height: 100px; margin-top: 12px; }
+.describe textarea { width: 100%; min-height: 90px; margin-top: 12px; }
 .workspace :is(textarea, input:not([type="range"])) {
   border: 1px solid #535e85;
   border-radius: 6px;
@@ -132,6 +132,7 @@
 .workspace button:disabled, .workspace fieldset:disabled button { opacity: 1; color: var(--niebla); }
 .workspace :is(.primary,.secondary):disabled { border-color: var(--trazo); background: var(--panel); }
 .history, .hint { margin-top: 8px; color: var(--niebla); font-size: 13px; }
+.inlineStage { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--luz); font-size: 14px; }
 .history ol { display: grid; gap: 6px; max-height: 200px; margin-top: 6px; overflow: auto; }
 .history li { padding: 7px 9px; border-left: 2px solid var(--trazo); overflow-wrap: anywhere; }
 .history small { color: var(--luz); font-size: 13px; }
@@ -177,7 +178,7 @@
 .operation > div { align-items: center; }
 .operation button { margin-left: auto; }
 .notice svg { flex-shrink: 0; }
-.error { border-color: #967980; background: #292134; }
+.error { display: grid; gap: 3px; border-color: #967980; background: #292134; }
 
 .resultPane { min-width: 0; }
 .map {
@@ -191,7 +192,7 @@
 .map figcaption { display: grid; gap: 2px; margin-bottom: 12px; }
 .map figcaption strong { font: 720 20px/1.2 "Bricolage Grotesque", system-ui, sans-serif; }
 .map figcaption span, .map > p, .mapLegend { color: var(--niebla); font-size: 13px; }
-.map svg { display: block; width: 100%; height: auto; overflow: visible; }
+.map svg { display: block; width: 100%; max-width: 620px; height: auto; margin-inline: auto; overflow: visible; }
 .gridLine { stroke: var(--trazo); stroke-width: 1; }
 .plotAxis { fill: none; stroke: var(--niebla); stroke-width: 1; }
 .axisText { fill: var(--niebla); font-size: 11px; }
@@ -259,11 +260,16 @@
   .hero { grid-template-columns: minmax(0,1fr); gap: 20px; min-height: 0; }
   .workspace { padding-top: 8px; }
 }
-@media (max-width: 540px) {
+@media (max-width: 640px) {
   .assumptions { grid-template-columns: minmax(0,1fr); }
-  .axisText { font-size: 19px; }
+  .axisText { font-size: clamp(13px, 4.9vw, 19px); }
   .plotPoint text { font-size: 17px; }
   .parameterTable { font-size: 13px; }
   .parameterTable :is(th,td) { padding-inline: 4px; }
+}
+@media (max-width: 480px) {
+  :global(body):has(.workspace) :global(.workspace-navigation a svg) { display: none; }
+  :global(body):has(.workspace) :global(.workspace-navigation a) { padding-inline: 6px; }
+  .field:has(input[id="experiment-field-pressure_kpa"]), .field:has(input[id="experiment-field-flow_cm_s"]) { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { .workspace :global(.spinning) { animation: none; } }

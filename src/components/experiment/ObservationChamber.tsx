@@ -25,7 +25,7 @@ export function ObservationChamber({ profile }: { profile: ExperimentProfile }) 
   const oxygen = Math.min(1, Math.max(0, ((oxygen_pct ?? 15) - 15) / 45));
   const flow = flowDirection === "sin flujo" ? 0 : Math.min(1, Math.max(0, (flow_cm_s ?? 0) / 30));
   const opposite = flowDirection === "opuesto";
-  const geometry = geometryKey(profile.geometry ?? profile.material ?? "");
+  const geometry = geometryKey(profile.geometry ?? (profile.material?.trim().toLowerCase() === "pmma" ? "placa" : ""));
   const style = {
     "--width": .80 + oxygen * .68 - flow * (opposite ? .16 : -.44),
     "--height": .78 + oxygen * .62 + gravity * .74 - flow * (opposite ? .4 : .08),

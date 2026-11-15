@@ -291,7 +291,7 @@ export function ExperimentAssistant() {
         <section className={styles.describe} aria-labelledby="experiment-description-title">
           <h2 id="experiment-description-title">Ficha del experimento</h2>
           <label className="sr-only" htmlFor="experiment-message">Descripción del experimento</label>
-          <textarea id="experiment-message" value={draft} disabled={busy} maxLength={maxExperimentText} rows={4}
+          <textarea id="experiment-message" value={draft} disabled={busy} maxLength={maxExperimentText} rows={3}
             placeholder="Describe el material, las condiciones y qué quieres estudiar. También puedes escribir «¿Y si bajo el O₂ a 18%?»." onChange={(event) => setDraft(event.target.value)} />
           <div className={styles.describeActions}>
             <button type="button" className={styles.secondary} onClick={() => void extract()} disabled={busy || !draft.trim()}
@@ -299,6 +299,9 @@ export function ExperimentAssistant() {
             {draft && <button type="button" className={styles.tertiary} onClick={() => { setDraft(""); setInterpretedDraft(""); }} disabled={busy}>Limpiar texto</button>}
           </div>
           {!draft.trim() && <p className={styles.hint} id="experiment-extract-hint">Escribe una descripción para activar la interpretación.</p>}
+          {phase === "extracting" && <p className={styles.inlineStage} aria-hidden="true">
+            <LoaderCircle size={16} className="spinning" /> {phaseLabels.extracting}
+          </p>}
           {history.length > 0 && <details className={styles.history}>
             <summary>Historial de refinamientos ({history.length})</summary>
             <ol>{history.map((turn, index) => <li key={index}><p>{turn.text}</p><small>{turn.detail}</small></li>)}</ol>
@@ -340,7 +343,7 @@ export function ExperimentAssistant() {
             <button type="button" className={styles.tertiary} onClick={() => { active.current?.abort(); setNotice("Solicitud cancelada."); }}>Cancelar</button>
           </div>}
         </div>
-        {error && <p className={styles.error} role="alert">{error}</p>}
+        {error && <div className={styles.error} role="alert"><strong>Solicitud incompleta</strong><p>{error}</p></div>}
       </div>
 
       <ExperimentResults profile={profile} result={result} hypotheses={hypotheses} hypothesisSource={hypothesisSource} note={note}
