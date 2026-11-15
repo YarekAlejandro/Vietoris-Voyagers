@@ -149,9 +149,13 @@ export function buildAssistantGrounding(input: AssistantGroundingInput) {
     selection: input.selection ?? null, comparison: input.comparison ?? { a: "", b: "" } };
   const local = answerPageQuestion(input.question, context);
   const exact = namedSelections(input.question);
-  const refersBack = /\b(?:su|sus|ese|esa|eso|ellos|ellas|anterior|cuando|que fecha|cual fue|how long|when did|that|it)\b/.test(normalized(input.question));
+  const question = normalized(input.question);
+  const refersBack = /^(?:y|and)\s/.test(question) ||
+    /\b(?:su|sus|ese|esa|eso|ellos|ellas|anterior|cuando|que fecha|cual fue|que (?:paso|encontraron|observaron|midieron)|how long|when did|that|it)\b/.test(question);
   const previousQuestions = input.history?.map(({ question }) => question) ?? [input.previousQuestion ?? ""];
-  const previous = !exact.length && refersBack ? [...previousQuestions].reverse().flatMap(namedSelections) : [];
+  const previous = !exact.length && refersBack
+    ? [...previousQuestions].reverse().map(namedSelections).find((selections) => selections.length) ?? []
+    : [];
   const facts = new Map<string, GroundingFact>();
   const add = (fact: GroundingFact) => { if (!facts.has(fact.id)) facts.set(fact.id, fact); };
   const pointerForRun = new Map(local.pointers.flatMap((pointer) => pointer.selection?.kind === "run" ? [[pointer.selection.id, pointer] as const] : []));
@@ -164,7 +168,7 @@ export function buildAssistantGrounding(input: AssistantGroundingInput) {
     if (run) add(runFact(run, pointerForRun.get(run.id)));
     if (!study) continue;
     studyFacts(study).forEach(add);
-    if (!run && /\b(?:corrida|corridas|datos|medidas|mediciones|muestra|muestras|resultados|presion|oxigeno|hallazgos)\b/.test(normalized(input.question))) {
+    if (!run && /\b(?:corrida|corridas|datos|medidas|mediciones|muestra|muestras|resultados|presion|oxigeno|hallazgos|encontraron|observaron|midieron)\b/.test(question)) {
       catalog.runs.filter(({ investigationId }) => investigationId === study.id).slice(0, 3).forEach((record) => add(runFact(record)));
     }
   }

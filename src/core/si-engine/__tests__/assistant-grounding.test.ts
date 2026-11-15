@@ -64,6 +64,16 @@ describe("respuestas del asistente con evidencia", () => {
     expect(different.some(({ dates }) => dates?.includes("2023-12-22"))).toBe(false);
   });
 
+  it("recupera corridas del último estudio mencionado para un seguimiento abierto", () => {
+    const facts = buildAssistantGrounding({ question: "¿Y qué encontraron?", history: [
+      { question: "¿Qué fue SAME-R?", answer: "Estudió aerosoles." },
+      { question: "Háblame de Saffire VI.", answer: "Estudió combustión." },
+    ] });
+    expect(facts.some(({ id }) => id === "study:SAFFIRE-VI")).toBe(true);
+    expect(facts.some(({ id }) => id === "study:SAME-R")).toBe(false);
+    expect(facts.some(({ id }) => id.startsWith("run:SAFFIRE-VI"))).toBe(true);
+  });
+
   it("rechaza cifras cambiadas, fechas recompuestas, fuentes inventadas y enlaces del modelo", () => {
     const facts = buildAssistantGrounding({ question: "¿Cuándo ocurrió Saffire VI?" });
     const closing = facts.find(({ milestone, dates }) => milestone === "conclusion" && dates?.includes("2024-01-09"));

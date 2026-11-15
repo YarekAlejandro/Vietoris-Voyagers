@@ -33,7 +33,7 @@ const instructions = `Prepara un guion para una voz de ElevenLabs. El JSON conti
 Devuelve exactamente un segmento por cada segmento de entrada y conserva su orden. Redacta en español. Conserva las afirmaciones, comparaciones, fechas, nombres, cantidades, signos y unidades. No resumas ni agregues información.
 Di el nombre completo de las siglas cuando su significado sea claro en contexto. Por ejemplo, EEI, ISS e IIS en este contexto son Estación Espacial Internacional. Integra el nombre con su artículo y omite la sigla redundante entre paréntesis. Después de la primera mención, puedes decir «la estación» si el referente sigue claro. Conserva los nombres propios de experimentos y los códigos. Si una sigla es ambigua, no inventes su significado.
 Usa puntuación de conversación: puntos entre ideas completas y comas solo donde pide una pausa la sintaxis. Evita rayas y puntos suspensivos usados como adorno, y nunca separes el sujeto de su verbo para marcar una pausa. Conserva la apertura y el cierre de preguntas y exclamaciones. Verbaliza las barras según el contexto (o, barra, por), el signo igual y las monedas. No asumas una divisa para un signo ambiguo.
-Mantén una cadencia de conversación: une fragmentos breves que forman una misma idea y agrupa las enumeraciones cortas en una frase. Conserva el sentido y las cifras.
+Habla con la cadencia de quien explica un hallazgo a un colega. Usa verbos activos y orden natural. Da énfasis con el orden de las palabras, no con exclamaciones añadidas ni pausas teatrales. Enlaza fragmentos cortos que completan la misma idea, aunque la frase atraviese dos segmentos. Un salto de línea simple no pide una pausa. Separa las ideas completas con un punto breve. Conserva el sentido y las cifras.
 En español, escribe cifras, fechas, números romanos y unidades como se pronuncian según el contexto: «SAFFIRE-VI» como «Saffire seis», «2.2 cm/s» como «dos punto dos centímetros por segundo» y «+3.8 pp» como «más tres punto ocho puntos porcentuales». Pronuncia fórmulas como «oxígeno» para O₂ cuando corresponda y distingue CO de CO₂. Trata los códigos alfanuméricos como identificadores: pronuncia sus letras y números sin cambiar el código. Quita Markdown, URLs, emojis y separadores ornamentales. No incluyas indicaciones escénicas ni etiquetas de voz. Puedes devolver una cadena vacía para un segmento que solo sea decoración o un enlace.`;
 
 export function cleanNarration(text: string) {
@@ -78,6 +78,7 @@ export function cleanNarration(text: string) {
     .replace(/[·•→]+/g, " ")
     .replace(/\s+[–—-]\s+/g, ", ")
     .replace(/\.{2,}\s+(?=\p{Ll})/gu, " ")
+    .replace(/\.{2,}(?=\s|$)/g, ".")
     .replace(/[^\p{L}\p{M}\p{N}\s.,;:¿?¡!—'"/-]+/gu, " ")
     .replace(/\s+/g, " ")
     .replace(/\s+([.,;:?!])/g, "$1")
@@ -129,17 +130,20 @@ export async function prepareNarration(text: string, signal: AbortSignal): Promi
 
   let script = "";
   let captionText = "";
+  let previousEnd = 0;
   const captionParts: NarrationPart[] = [];
   const parts = segments.map(({ segment, index }, position) => {
     const part = finishNarration(spoken[position]);
-    const previous = segments[position - 1]?.segment ?? "";
-    const captionSeparator = /\r?\n\s*$/.test(previous) ? "\n" : " ";
     if (/[\p{L}\p{N}]/u.test(part)) {
-      // Un salto de formato no exige otra pausa si la frase ya tiene puntuación.
-      const separator = /\r?\n\s*$/.test(previous) && !/[.!?;,:]$/.test(script) ? ". " : " ";
+      const gap = text.slice(previousEnd, index);
+      const captionSeparator = gap.includes("\n") ? "\n" : " ";
+      // Solo una separación de párrafo justifica añadir una pausa a un fragmento sin puntuación.
+      const paragraphBreak = /\r?\n[\t ]*\r?\n/.test(gap);
+      const separator = paragraphBreak && !/[.!?;,:]$/.test(script) ? ". " : " ";
       script += (script ? separator : "") + part;
       captionText += (captionText ? captionSeparator : "") + captions[position];
       captionParts.push({ originalEnd: captionText.length, spokenEnd: script.length });
+      previousEnd = index + segment.trimEnd().length;
     }
     return { originalEnd: index + segment.length, spokenEnd: script.length };
   });

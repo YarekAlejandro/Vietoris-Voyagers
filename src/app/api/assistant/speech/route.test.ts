@@ -44,7 +44,7 @@ describe("narración del asistente", () => {
     expect(mock.mock.calls[1][0]).toContain("api.elevenlabs.io");
     expect(JSON.parse(String(mock.mock.calls[1][1]?.body)).text).toBe(segments.join(" "));
     expect(JSON.parse(String(mock.mock.calls[1][1]?.body))).toMatchObject({
-      model_id: "eleven_flash_v2_5", language_code: "es", voice_settings: { stability: 0.4, speed: 1.15 },
+      model_id: "eleven_flash_v2_5", language_code: "es", voice_settings: { stability: 0.35, speed: 1.15 },
     });
     const result = await response.json();
     expect(result.spokenText).toBe(segments.join(" "));
@@ -83,5 +83,13 @@ describe("narración del asistente", () => {
     const result = await POST(received("El ISS... recibió polvos de PMMA.\nLos datos de IIS y de la EEI coinciden."));
     const { spokenText } = await result.json();
     expect(spokenText).toBe("La Estación Espacial Internacional recibió polvos de polimetilmetacrilato. Los datos de la Estación Espacial Internacional y de la Estación Espacial Internacional coinciden.");
+  });
+
+  it("enlaza una oración partida y conserva la pausa entre párrafos", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "");
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockImplementation(async (_url, init) => audioResponse(JSON.parse(String(init?.body)).text)));
+    const result = await POST(received("La llama se propagó\nen la muestra\n\nDespués se apagó…"));
+    const { spokenText } = await result.json();
+    expect(spokenText).toBe("La llama se propagó en la muestra. Después se apagó.");
   });
 });
