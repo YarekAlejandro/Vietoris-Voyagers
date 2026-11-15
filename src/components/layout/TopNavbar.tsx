@@ -1,12 +1,21 @@
-import { Orbit, Radio, SlidersHorizontal } from "lucide-react";
+import { ExternalLink, Orbit, Radio, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { missionPresets } from "../../data/mission_presets";
 import { useAetherStore } from "../../store/useAetherStore";
 
-export function TopNavbar() {
+export function TopNavbar({ sync }: { sync: { pending: boolean; offline: boolean; refresh: () => void } }) {
   const profile = useAetherStore((state) => state.profile);
   const mode = useAetherStore((state) => state.mode);
   const selectMission = useAetherStore((state) => state.selectMission);
   const setMode = useAetherStore((state) => state.setMode);
+  const area = useAetherStore((state) => state.psiArea);
+  const baseline = useAetherStore((state) => state.psiCatalog);
+  const catalog = baseline?.area === area ? baseline : null;
+  const status = sync.offline && catalog?.status !== "snapshot" ? "local" : catalog?.status ?? "local";
+  const timestamp = status === "snapshot" ? catalog?.snapshotGeneratedAt : catalog?.fetchedAt;
+  const label = status === "live" ? `NASA PSI Live · ${catalog?.count} estudios` : status === "partial" ? "Parcial"
+    : status === "snapshot" ? "Snapshot" : "Motor local";
+  const date = timestamp ? new Intl.DateTimeFormat("es-MX", status === "snapshot" ? { dateStyle: "short", timeZone: "UTC" }
+    : { dateStyle: "short", timeStyle: "short" }).format(new Date(timestamp)) : null;
 
   return (
     <header className="topbar">
@@ -31,7 +40,19 @@ export function TopNavbar() {
           <button type="button" aria-pressed={mode === "engineer"} onClick={() => setMode("engineer")}>Ingeniería</button>
           <button type="button" aria-pressed={mode === "student"} onClick={() => setMode("student")}>Estudiante</button>
         </div>
-        <span className="system-state"><Radio size={14} aria-hidden /> Motor local</span>
+        <div className="psi-sync">
+          <span className="system-state" data-status={status} role="status" aria-live="polite">
+            <Radio size={14} aria-hidden />
+            <span>{label}{status === "snapshot" && date ? ` · ${date}` : ""}</span>
+            {status !== "snapshot" && date && <time dateTime={timestamp}>{date}</time>}
+          </span>
+          <button type="button" className="icon-button" onClick={sync.refresh} disabled={sync.pending}
+            aria-label="Actualizar catálogo NASA PSI" title="Actualizar catálogo NASA PSI">
+            <RefreshCw size={14} className={sync.pending ? "spinning" : undefined} aria-hidden />
+          </button>
+          <a className="icon-button" href="https://psi.nasa.gov/physci/repo/search" target="_blank" rel="noreferrer"
+            aria-label="Abrir el catálogo oficial de NASA PSI" title="Abrir el catálogo oficial de NASA PSI"><ExternalLink size={14} aria-hidden /></a>
+        </div>
       </div>
     </header>
   );

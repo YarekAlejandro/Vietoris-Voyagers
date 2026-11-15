@@ -73,6 +73,9 @@ a:hover { color: var(--text); text-decoration: underline; }
 .mission-select > span { gap: 6px; color: var(--muted); font-size: 12px; }
 .topbar-right { gap: 15px; margin-left: auto; }
 .system-state { display: inline-flex; gap: 6px; align-items: center; color: var(--accent); font-size: 11px; white-space: nowrap; }
+.psi-sync { display: flex; align-items: center; gap: 3px; }
+.system-state[data-status="snapshot"], .system-state[data-status="partial"] { color: var(--amber); }
+.system-state time { color: var(--muted); font-size: 10px; margin-inline: 3px; }
 
 select {
   min-width: 0;
@@ -201,6 +204,12 @@ select {
 .quiet-button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #3b516a; color: var(--text); }
 
 .ranking-controls { display: grid; gap: 7px; padding: 9px 9px 0; }
+.psi-area-control { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; cursor: pointer; }
+.psi-area-control input { accent-color: var(--accent); }
+.psi-area-control small { margin-left: auto; }
+.psi-badge, .ntrs-badge { width: fit-content; font-size: 10px; line-height: 1.4; font-weight: 650; color: var(--accent); }
+.psi-badge[data-origin="snapshot"] { color: var(--amber); }
+.ntrs-badge { color: var(--blue); }
 .result-segments button { flex: 1; }
 .result-segments button span { margin-left: 3px; font-variant-numeric: tabular-nums; font-size: 10px; }
 .filter-selects { display: grid; grid-template-columns: .84fr 1.16fr; gap: 6px; }
@@ -290,6 +299,9 @@ meter::-moz-meter-bar { border-radius: 3px; background: var(--score-color); }
 }
 .graph-card-text { display: grid; min-width: 0; gap: 2px; }
 .graph-card-text strong { font-size: 13px; font-weight: 710; line-height: 1.12; }
+.graph-node-facility .graph-card-text strong, .graph-node-study .graph-card-text strong {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
 .graph-card-text small { color: var(--muted); font-size: 10px; }
 .graph .react-flow__edge-path { stroke: #6b86ad; stroke-width: 1.6px; }
 .graph .graph-edge-active .react-flow__edge-path { stroke: var(--blue); stroke-width: 2px; }
@@ -353,6 +365,17 @@ meter::-moz-meter-bar { border-radius: 3px; background: var(--score-color); }
 .evidence-readouts dt { color: var(--muted); font-size: 10px; }
 .evidence-readouts dd { margin-top: 1px; color: var(--accent); font-size: 12px; }
 .evidence-readouts small { color: var(--muted); font-size: 9px; }
+.inspector-heading { flex-wrap: wrap; }
+.psi-profile { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.psi-profile dd { overflow-wrap: anywhere; }
+.psi-note { color: var(--muted); }
+.psi-identity { display: grid; gap: 5px; padding: 8px; border: 1px solid var(--line); border-radius: 5px; }
+.psi-identity > span, .ntrs-radar time { font-size: 10px; color: var(--muted); }
+.psi-identity ul { display: grid; gap: 4px; padding: 5px 0 0 12px; list-style: disc; }
+.psi-identity summary, .ntrs-radar summary { width: fit-content; color: var(--blue); font-size: 11px; cursor: pointer; }
+.ntrs-radar > ul { display: grid; gap: 7px; }
+.ntrs-radar li { display: grid; gap: 4px; padding: 7px; border: 1px solid var(--line); border-radius: 5px; }
+.ntrs-radar time { margin-left: auto; }
 .observation strong { color: var(--amber); }
 .source-link { display: inline; width: fit-content; font-size: 11px; }
 .source-link svg { display: inline-block; vertical-align: -2px; }
@@ -476,6 +499,10 @@ body[data-resizing="row"], body[data-resizing="row"] * { cursor: row-resize !imp
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinning { animation: none; } }
 
+@media (max-width: 1100px) {
+  .topbar { flex-wrap: wrap; gap: 8px 14px; }
+}
+
 @media (max-width: 900px) {
   .cockpit { height: auto; min-height: 100dvh; }
   .cockpit-grid { grid-template-columns: minmax(220px, .85fr) minmax(0, 1.3fr); grid-template-areas: "results graph" "detail detail" "compare compare"; grid-template-rows: auto; }
@@ -505,7 +532,8 @@ body[data-resizing="row"], body[data-resizing="row"] * { cursor: row-resize !imp
   .topbar { padding: 9px 12px; gap: 8px; }
   .mission-select { order: 1; width: 100%; }
   .mission-select select { flex: 1; }
-  .system-state { display: none; }
+  .topbar-right { display: contents; }
+  .psi-sync { order: 2; width: 100%; }
   .explore-band { margin-inline: 12px; padding-inline: 0; gap: 8px; }
   .cockpit-grid { display: flex; flex-direction: column; padding-inline: 12px; }
   .ranking { max-height: 365px; }

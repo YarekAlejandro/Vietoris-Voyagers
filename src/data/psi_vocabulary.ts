@@ -5,6 +5,10 @@ export const facilities = {
   CYGNUS: { label: "Cygnus", name: "Vehículo Cygnus", aliases: ["cygnus spacecraft", "cargo spacecraft"] },
   CIR: { label: "CIR", name: "Combustion Integrated Rack", aliases: ["rack de combustión"] },
   ISS: { label: "Cabina ISS", name: "Estación Espacial Internacional", aliases: ["international space station"] },
+  SUBORBITAL: { label: "Cohete suborbital (New Shepard)", name: "Cohete suborbital", aliases: ["sounding rocket", "New Shepard"] },
+  LUNAR: { label: "Superficie lunar (planificado)", name: "Superficie lunar", aliases: ["lunar surface", "superficie lunar"] },
+  GROUND: { label: "Estudio en tierra / modelado", name: "Investigación en tierra", aliases: ["ground investigation", "estudio terrestre"] },
+  UNCLASSIFIED: { label: "Sin clasificar", name: "Instalación sin clasificar", aliases: [] },
 } satisfies Record<Facility, { label: string; name: string; aliases: string[] }>;
 
 export const pillarLabels = {
@@ -48,6 +52,9 @@ export const evidenceTopics = {
   ] },
   suppression: { label: "Supresión con CO₂", aliases: [
     "supresión", "supresor", "supresores", "supresión con CO2", "dióxido de carbono", "CO2", "suppression", "carbon dioxide",
+  ] },
+  "partial-gravity": { label: "Gravedad parcial", aliases: [
+    "partial gravity", "gravedad lunar", "lunar gravity", "gravedad marciana", "martian gravity",
   ] },
 } satisfies Record<EvidenceTopicId, { label: string; aliases: string[] }>;
 

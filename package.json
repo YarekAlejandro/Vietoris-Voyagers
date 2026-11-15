@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters && node --check scripts/probe-psi-api.mjs && node --check scripts/build-psi-snapshot.mjs",
     "typecheck": "tsc --noEmit",
+    "snapshot:psi": "node --env-file-if-exists=.env.local scripts/build-psi-snapshot.mjs",
     "test": "vitest run --pool=threads"
   },
   "dependencies": {

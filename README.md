@@ -16,6 +16,7 @@ Conocida como **AETHER-SI**, la herramienta está orientada a apoyar la investig
 - Comparación de condiciones y resultados.
 - Trazabilidad hacia las fuentes documentadas.
 - Vocabulario de conceptos y sinónimos en español e inglés.
+- Sincronización del catálogo con NASA PSI y Radar de publicaciones NTRS, con respaldo local.
 
 ## Cómo funciona
 
@@ -48,27 +49,28 @@ La búsqueda local combina los conceptos consultados y muestra por qué aparece 
 Ejecuta estas verificaciones antes de entregar cambios:
 
 ```sh
+npm run lint
 npm test
 npm run typecheck
 npm run build
 ```
 
-La aplicación se ejecuta como servidor de Next.js (`npm run build` y `npm start`, o mediante Vercel). El botón **Interpretar** utiliza la ruta `/api/interpret`; por eso, el proyecto no genera el directorio estático `out/`.
+La aplicación se ejecuta como servidor de Next.js (`npm run build` y `npx next start`, o mediante Vercel). Las rutas `/api/interpret` y `/api/psi/search` necesitan servidor.
 
 ### Estado del catálogo
 
-El catálogo incluye actualmente:
+La base curada incluye:
 
 - 15 estudios.
 - 23 corridas normalizadas.
 - 5 perfiles nominales PSI.
 - Observaciones documentadas con cobertura parcial.
 
-Este conjunto es una versión inicial del catálogo y puede evolucionar con nuevas fuentes y normalizaciones.
+El catálogo incorpora las investigaciones nuevas de **Combustion Science** y permite explorar otras disciplinas con **Ver todo PSI**. La app conserva la base curada y usa un snapshot versionado cuando PSI no responde. Consulta [la integración NASA PSI](docs/psi-live.md) para ver los endpoints y regenerar el respaldo.
 
 ### Interpretación con IA
 
-El comparador y cada corrida del ranking ofrecen un botón **Interpretar**. Este redacta un párrafo sobre la comparación A/B o el puntaje FSRS. El modelo se limita a redactar; el análisis y los datos se preparan localmente.
+El comparador y las corridas curadas del ranking ofrecen **Interpretar**. El modelo redacta una explicación de la comparación A/B o del puntaje FSRS a partir del análisis preparado localmente.
 
 El texto puede generarse con Anthropic (Claude) o Google (Gemini). Copia `.env.example` a `.env.local` y configura las variables que necesites:
 

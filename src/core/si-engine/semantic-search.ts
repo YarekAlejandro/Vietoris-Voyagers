@@ -55,8 +55,8 @@ function tokens(text: string): string[] {
 
 export function buildEvidenceIndex({ investigations, runs }: PsiDataset) {
   const studyById = new Map(investigations.map((study) => [study.id, study]));
-  const concepts: SearchConcept[] = [...evidenceConcepts, ...investigations.map(({ id, name }): SearchConcept => ({
-    key: `study:${id}`, label: id, aliases: [name], kind: "study",
+  const concepts: SearchConcept[] = [...evidenceConcepts, ...investigations.map(({ id, name, psi, importedPsi }): SearchConcept => ({
+    key: `study:${id}`, label: id, aliases: [name, ...(psi ? [psi.accession] : []), ...(importedPsi?.acronym ? [importedPsi.acronym] : [])], kind: "study",
   }))];
   const phrases = concepts.flatMap((concept) => [concept.label, ...concept.aliases].map((alias) => ({
     concept, words: tokens(alias),
@@ -81,18 +81,27 @@ export function buildEvidenceIndex({ investigations, runs }: PsiDataset) {
   const indexed = documents.map((document) => {
     const { study } = document;
     const run = document.type === "run" ? document.run : undefined;
+    const imported = study.importedPsi;
     const metadata = run
       ? [run.id, run.label, run.fuel, run.configuration, run.outcome, run.source.label]
-      : [study.id, study.name, study.summary, study.source.label];
+      : [study.id, study.name, study.summary, study.source.label, imported?.acronym, imported?.keywords,
+        imported?.researchArea, imported?.projectType, ...(imported?.hardware ?? [])];
     const keys = new Set([`study:${study.id}`, `facility:${study.facility}`]);
-    if (study.facility !== "CYGNUS") keys.add("platform:iss");
-    if (!run || (run.atmosphere.gravity_g !== undefined && run.atmosphere.gravity_g < 1e-4)) keys.add("gravity:micro");
+    if (["ISS", "CIR", "MSG"].includes(study.facility) || imported?.flightPlatform?.includes("International Space Station")) keys.add("platform:iss");
+    if ((run?.atmosphere.gravity_g !== undefined && run.atmosphere.gravity_g < 1e-4) ||
+        (!run && (!imported || imported.projectType === "Microgravity Investigation"))) keys.add("gravity:micro");
     const topics = run ? topicsForRun(run) : study.topics;
     for (const topic of topics) keys.add(`topic:${topic}`);
-    for (const material of searchMaterials) {
-      if (run && tokens(run.fuel).includes(material.id)) keys.add(`material:${material.id}`);
-    }
     const fields = metadata.map((value) => tokens(value ?? ""));
+    for (const material of searchMaterials) {
+      if (run?.fuel && tokens(run.fuel).includes(material.id)) keys.add(`material:${material.id}`);
+      if (imported && !run && [material.label, ...material.aliases].some((alias) => {
+        const phrase = ` ${tokens(alias).join(" ")} `;
+        return fields.some((words) => ` ${words.join(" ")} `.includes(phrase));
+      })) {
+          keys.add(`material:${material.id}`);
+      }
+    }
     return { document, keys, fields, words: new Set(fields.flat()) };
   });
 

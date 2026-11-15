@@ -34,7 +34,7 @@ export function EvidenceSearch({ search }: { search: EvidenceSearchResults }) {
             placeholder="Buscar por concepto, material o estudio…"
             title="Búsqueda por conceptos en español e inglés"
             aria-describedby="search-help"
-            maxLength={160}
+            maxLength={80}
           />
           {query.length > 0 && <button type="button" aria-label="Borrar búsqueda" onClick={() => {
             setQuery("");

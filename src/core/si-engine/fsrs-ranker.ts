@@ -28,10 +28,11 @@ export function computeFSRS(
   const coverage: Coverage = {};
   for (const run of item.runs) {
     for (const axis of dimensions) {
-      const value = reportedRunValue(run, axis);
+      const value = run.psiProfile?.[axis]?.value ?? reportedRunValue(run, axis);
       if (value === undefined) continue;
+      const [min, max] = typeof value === "number" ? [value, value] : value;
       const range = coverage[axis];
-      coverage[axis] = range ? [Math.min(value, range[0]), Math.max(value, range[1])] : [value, value];
+      coverage[axis] = range ? [Math.min(min, range[0]), Math.max(max, range[1])] : [min, max];
     }
   }
   function similarity(axis: Dimension) {
@@ -47,7 +48,7 @@ export function computeFSRS(
   const pressure = similarity("pressure_psia");
   const gravity = similarity("gravity_g");
   const flow = similarity("flow_velocity_cm_s");
-  const instrument = item.study ? 0.4 : 0;
+  const instrument = item.study && (!item.study.importedPsi || item.study.importedPsi.hardware.length) ? 0.4 : 0;
   const bridge = documentedBridges.has(id) ? 0.35 : 0;
   const pillar = priority && item.study?.safetyPillars.includes(priority) ? 0.25 : 0;
   const hardware = instrument + bridge + pillar;
@@ -76,7 +77,7 @@ export function rankRuns(
 ) {
   const bounds = dimensions.map((axis) => {
     const values = runs.flatMap((run) => {
-      const value = run.reference ? undefined : reportedRunValue(run, axis);
+      const value = run.reference || run.psiProfile ? undefined : reportedRunValue(run, axis);
       return value === undefined ? [] : [value];
     });
     const value = target[axis];
@@ -91,7 +92,7 @@ export function rankRuns(
   return runs.map((run) => {
     const runBounds: Bound[] = [];
     for (const { axis, low, high, exact } of bounds) {
-      if (exact || run.reference) continue;
+      if (exact || run.reference || run.psiProfile) continue;
       const value = reportedRunValue(run, axis);
       if (value === low) runBounds.push({ axis, side: "inferior", outside: high === Infinity });
       if (value === high) runBounds.push({ axis, side: "superior", outside: low === -Infinity });

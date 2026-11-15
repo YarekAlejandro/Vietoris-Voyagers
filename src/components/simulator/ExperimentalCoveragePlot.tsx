@@ -18,7 +18,7 @@ export function ExperimentalCoveragePlot({ runs, current }: {
   const comparison = useAetherStore((state) => state.comparison);
   const inspect = useAetherStore((state) => state.inspect);
   const [hovered, setHovered] = useState<string | null>(null);
-  const plottedRuns = runs.filter((run): run is PlottableRun => !run.reference &&
+  const plottedRuns = runs.filter((run): run is PlottableRun => !run.reference && !run.psiProfile &&
     run.atmosphere.oxygen_pct !== undefined && run.atmosphere.flow_velocity_cm_s !== undefined &&
     !run.nominal?.fields.some((field) => field === "oxygen_pct" || field === "flow_velocity_cm_s"));
   const omittedCount = runs.length - plottedRuns.length;
@@ -73,7 +73,7 @@ export function ExperimentalCoveragePlot({ runs, current }: {
             const index = group.findIndex(({ id }) => current?.kind === "run" && current.id === id);
             const next = group[(index + 1) % group.length];
             setHovered(next.id);
-            inspect({ kind: "run", id: next.id });
+            inspect({ kind: "run", id: next.id }, next.investigationId);
           }
 
           return <g key={hit.atmosphere.flow_velocity_cm_s + ":" + hit.atmosphere.oxygen_pct}

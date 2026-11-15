@@ -1,9 +1,12 @@
+import type { ImportedPsiEvidence, PsiIdentity, PsiProfile } from "./psi-live";
+
 export type SafetyPillar = "PREVENTION" | "DETECTION" | "SUPPRESSION";
 export type FuelCategory = "SOLID_POLYMER" | "SOLID_FABRIC" | "AEROSOL_SMOKE_DUST" | "LIQUID_DROPLET" | "GAS";
-export type Facility = "MSG" | "CYGNUS" | "CIR" | "ISS";
+export type Facility = "MSG" | "CYGNUS" | "CIR" | "ISS" | "SUBORBITAL" | "LUNAR" | "GROUND" | "UNCLASSIFIED";
 export type EvidenceTopicId =
   | "solids" | "flame-spread" | "low-flow" | "extinction" | "reduced-pressure"
-  | "cabin-heat" | "smoke-detection" | "cold-flames" | "electric-field" | "liquid-droplets" | "suppression";
+  | "cabin-heat" | "smoke-detection" | "cold-flames" | "electric-field" | "liquid-droplets" | "suppression"
+  | "partial-gravity";
 
 export interface Atmosphere {
   gravity_g: number;
@@ -32,6 +35,8 @@ export interface Investigation {
   topics: readonly EvidenceTopicId[];
   summary: string;
   source: Citation;
+  psi?: PsiIdentity;
+  importedPsi?: ImportedPsiEvidence;
 }
 
 export interface ExperimentalRun {
@@ -40,9 +45,10 @@ export interface ExperimentalRun {
   label: string;
   atmosphere: Partial<Atmosphere>;
   reference?: true;
-  fuel: string;
-  fuelCategory: FuelCategory;
-  configuration: string;
+  fuel?: string;
+  fuelCategory?: FuelCategory;
+  configuration?: string;
+  psiProfile?: PsiProfile;
   topics?: readonly EvidenceTopicId[];
   width_cm?: number;
   thickness_mm?: number;

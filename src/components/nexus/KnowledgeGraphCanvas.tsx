@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Background, BaseEdge, Controls, Handle, MarkerType, Position, ReactFlow, type Edge, type EdgeProps, type Node, type NodeProps, type NodeTypes, type XYPosition } from "@xyflow/react";
 import { AudioLines, Boxes, FlaskConical, Network, Tag } from "lucide-react";
 import { buildKnowledgeGraph, type GraphEdge, type GraphNode } from "../../core/si-engine/knowledge-graph";
-import { runsById } from "../../data/psi";
 import { evidenceTopics } from "../../data/psi_vocabulary";
 import { useAetherStore, type EvidenceSelection } from "../../store/useAetherStore";
 import type { ExperimentalRun, Investigation } from "../../types/psi";
@@ -49,7 +48,7 @@ function GraphCard({ data }: NodeProps<FlowEvidenceNode>) {
       {data.kind !== "facility" && <Handle type="target" position={Position.Left} isConnectable={false} />}
       {data.kind === "study" && <Handle id="bridge-in" className="bridge-in" type="target" position={Position.Right} isConnectable={false} />}
       <span className="graph-node-icon"><Icon size={15} aria-hidden /></span>
-      <span className="graph-card-text"><strong>{data.label}</strong><small>{data.context}</small></span>
+      <span className="graph-card-text"><strong title={data.label}>{data.label}</strong><small>{data.context}</small></span>
       {(data.kind === "facility" || data.kind === "study") && <Handle type="source" position={Position.Right} isConnectable={false} />}
       {data.kind === "study" && <Handle id="bridge-out" className="bridge-out" type="source" position={Position.Right} isConnectable={false} />}
     </div>
@@ -78,7 +77,8 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
   const [dragged, setDragged] = useState<Record<string, XYPosition>>({});
   const bridgeFilter = graphView === "relationships" && !searchActive && !topic && facility === "all"
     ? bridgeFilters.find(({ label }) => label === bridge) : undefined;
-  const currentStudyId = current?.kind === "run" ? runsById.get(current.id)?.investigationId : current?.id;
+  const graphRuns = useMemo(() => new Map(runs.map((run) => [run.id, run])), [runs]);
+  const currentStudyId = current?.kind === "run" ? graphRuns.get(current.id)?.investigationId : current?.id;
   const currentRunCount = runs.filter(({ investigationId }) => investigationId === currentStudyId).length;
   const showConditions = graphView === "conditions";
   const runStudy = graphView === "runs" && currentRunCount > 0 ? currentStudyId : undefined;
@@ -88,7 +88,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
     const study = studies.find(({ id }) => id === currentStudyId);
     const related = bridgeFilter ? studies.filter(({ id }) => bridgeFilter.studies.includes(id))
       : graphView === "relationships" && study && !topic && !searchActive
-      ? studies.filter((candidate) => candidate.topics.some((id) => study.topics.includes(id)))
+      ? studies.filter((candidate) => candidate.id === study.id || candidate.topics.some((id) => study.topics.includes(id)))
       : studies;
     return buildKnowledgeGraph(related, runs, { topic: topic ?? undefined, runStudy });
   }, [studies, runs, currentStudyId, topic, runStudy, graphView, searchActive, bridgeFilter]);
@@ -99,7 +99,9 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
       const items = graph.nodes.filter((node) => node.kind === kind);
       return items.map((node, row): FlowEvidenceNode => {
         const highlighted = node.id === highlightedId;
-        const context = node.kind === "run" ? runsById.get(node.entityId)?.fuel ?? "Corrida" : kindLabels[node.kind];
+        const context = node.kind === "run" ? graphRuns.get(node.entityId)?.fuel ?? "Perfil PSI"
+          : node.kind === "study" && node.psiOrigin ? `${node.psiOrigin === "live" ? "LIVE PSI" : "Snapshot"} · ${node.entityId}`
+            : kindLabels[node.kind];
         return {
           id: node.id, type: "evidence",
           position: dragged[node.id] ?? { x: column * 236, y: (row - (items.length - 1) / 2) * 67 },
@@ -130,12 +132,13 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
       };
     });
     return { nodes, edges };
-  }, [graph, runStudy, highlightedId, facility, topic, dragged]);
+  }, [graph, runStudy, highlightedId, facility, topic, dragged, graphRuns]);
 
   function selectNode({ data }: FlowEvidenceNode) {
     if (data.kind === "facility") setFacility(facility === data.entityId ? "all" : data.entityId);
     if (data.kind === "topic") setTopic(topic === data.entityId ? null : data.entityId);
-    if (data.kind === "run" || data.kind === "study") inspect({ kind: data.kind, id: data.entityId });
+    if (data.kind === "run") inspect({ kind: "run", id: data.entityId }, graphRuns.get(data.entityId)?.investigationId);
+    if (data.kind === "study") inspect({ kind: "study", id: data.entityId });
   }
 
   return (
@@ -164,7 +167,7 @@ export function KnowledgeGraphCanvas({ studies, runs, current, searchActive }: G
             key={nodes.map(({ id }) => id).join("|")}
             nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             fitView fitViewOptions={fitOptions}
-            colorMode="dark" minZoom={0.25} maxZoom={1.8}
+            colorMode="dark" minZoom={nodes.length > 35 ? 0.08 : 0.25} maxZoom={1.8}
             nodesDraggable nodesConnectable={false} edgesFocusable={false}
             onNodesChange={(changes) => {
               const moved = changes.flatMap((change) => change.type === "position" && change.position ? [[change.id, change.position] as const] : []);

@@ -1,4 +1,5 @@
 import type { ExperimentalRun, Investigation } from "../../types/psi";
+import { formatPsiQuantity } from "./live-psi-mapper";
 
 export const supplementalFields = [
   { id: "weight_loss_rate_mg_min", label: "Tasa de pérdida de masa", unit: "mg/min", decimals: 1 },
@@ -36,17 +37,25 @@ const outcomeFields = new Set<(typeof diffFields)[number]["id"]>([
   "extinction_droplet_diameter_mm", "burning_rate_mm2_s", "burn_time_s",
 ]);
 
+type ComparisonEvidence = Pick<ExperimentalRun, "investigationId" | "atmosphere"> & Partial<ExperimentalRun>;
+
 export function compareRuns(
-  a: ExperimentalRun,
-  b: ExperimentalRun,
+  a: ComparisonEvidence,
+  b: ComparisonEvidence,
   investigations: ReadonlyMap<string, Investigation>,
 ) {
   const left = { ...a, ...a.atmosphere, facility: investigations.get(a.investigationId)?.facility };
   const right = { ...b, ...b.atmosphere, facility: investigations.get(b.investigationId)?.facility };
+  const leftProfile = new Map(Object.entries(a.psiProfile ?? {}));
+  const rightProfile = new Map(Object.entries(b.psiProfile ?? {}));
 
   return diffFields.map((field) => {
-    const valueA = left[field.id];
-    const valueB = right[field.id];
+    const profileA = leftProfile.get(field.id);
+    const profileB = rightProfile.get(field.id);
+    const valueA = profileA && "decimals" in field && typeof profileA.value !== "number"
+      ? formatPsiQuantity(profileA, field.decimals) : left[field.id];
+    const valueB = profileB && "decimals" in field && typeof profileB.value !== "number"
+      ? formatPsiQuantity(profileB, field.decimals) : right[field.id];
     const nominalA = a.nominal?.fields.some((axis) => axis === field.id) ?? false;
     const nominalB = b.nominal?.fields.some((axis) => axis === field.id) ?? false;
     const status = valueA === undefined || valueB === undefined ? "missing"

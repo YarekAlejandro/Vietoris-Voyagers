@@ -54,7 +54,7 @@ export const studyBridges = [
 
 export type GraphNode =
   | { id: string; kind: "facility"; entityId: Facility; label: string }
-  | { id: string; kind: "study"; entityId: string; label: string }
+  | { id: string; kind: "study"; entityId: string; label: string; psiOrigin?: "live" | "snapshot" }
   | { id: string; kind: "topic"; entityId: EvidenceTopicId; label: string }
   | { id: string; kind: "run"; entityId: string; label: string };
 
@@ -83,7 +83,9 @@ export function buildKnowledgeGraph(
     : [];
   const nodes: GraphNode[] = [
     ...facilityIds.map((id): GraphNode => ({ id: `facility:${id}`, kind: "facility", entityId: id, label: facilities[id].label })),
-    ...studies.map(({ id }): GraphNode => ({ id: `study:${id}`, kind: "study", entityId: id, label: id })),
+    ...studies.map(({ id, importedPsi }): GraphNode => ({
+      id: `study:${id}`, kind: "study", entityId: id, label: importedPsi?.acronym ?? id, psiOrigin: importedPsi?.origin,
+    })),
     ...topicIds.map((id): GraphNode => ({ id: `topic:${id}`, kind: "topic", entityId: id, label: evidenceTopics[id].label })),
     ...visibleRuns.map(({ id, label }): GraphNode => ({ id: `run:${id}`, kind: "run", entityId: id, label })),
   ];
