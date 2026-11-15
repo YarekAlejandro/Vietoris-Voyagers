@@ -36,9 +36,6 @@ const unavailable: PageAssistantAnswer = {
   pointers: [],
 };
 
-// ElevenLabs synthesizes at 1.2×. The browser supplies the rest of the requested speed.
-const speechPlaybackRate = 1.3 / 1.2;
-
 type ReadingClock =
   | { startMs: number; offset: number }
   | SpeechClock;
@@ -56,7 +53,7 @@ function WrittenReply({ text, animate, clock, onProgress }: {
     let revealed = "offset" in clock ? clock.offset : 0;
     const tick = (now: number) => {
       if ("audio" in clock) {
-        const elapsed = Math.max(0, clock.audio.currentTime - clock.startSeconds) * clock.playbackRate;
+        const elapsed = Math.max(0, clock.audio.currentTime - clock.startSeconds);
         if (elapsed >= clock.duration) revealed = text.length;
         else if (clock.ends.length === text.length) {
           while (revealed < clock.ends.length && clock.ends[revealed] <= elapsed) revealed += 1;
@@ -189,7 +186,6 @@ export function EvidenceAssistant({ onAsk, onNavigate, onProgress, onClear, side
       if (controller.signal.aborted) return;
       const source = context.createBufferSource();
       source.buffer = buffer;
-      source.playbackRate.value = speechPlaybackRate;
       source.connect(context.destination);
       source.onended = () => {
         source.disconnect();
@@ -203,7 +199,7 @@ export function EvidenceAssistant({ onAsk, onNavigate, onProgress, onClear, side
       source.start(startSeconds);
       speechSource.current = source;
       const clock: SpeechClock = {
-        audio: context, startSeconds, playbackRate: speechPlaybackRate, duration: buffer.duration, ends: characterEndTimesSeconds,
+        audio: context, startSeconds, duration: buffer.duration, ends: characterEndTimesSeconds,
         spokenText: captionText ?? answer.text, spokenStarts: captionStartTimesSeconds ?? [],
         spokenEnds: captionEndTimesSeconds ?? characterEndTimesSeconds,
       };

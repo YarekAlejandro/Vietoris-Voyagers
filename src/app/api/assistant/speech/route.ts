@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { "xi-api-key": apiKey, "content-type": "application/json", accept: input.timed ? "application/json" : "audio/mpeg" },
       body: JSON.stringify({ text: narration.text, model_id: "eleven_flash_v2_5", language_code: "es",
-        voice_settings: { stability: 0.4, speed: 1.2 } }),
+        voice_settings: { stability: 0.4, speed: 1.15 } }),
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(20_000)]),
       cache: "no-store",
     });

@@ -322,7 +322,7 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
     const pairs = local.pointers.filter(({ comparison }) => comparison);
     const directControl = localPointer?.target === "scene" || localPointer?.target === "atmosphere" ||
       (localPointer?.target === "graph" && Boolean(localPointer.selection));
-    if (assistantAiEnabled && navigator.onLine && !directControl) {
+    if (assistantAiEnabled && navigator.onLine) {
       return requestAssistantAnswer({
         question, history, selection: context.selection ?? undefined, comparison: context.comparison,
         profileId: profile.id, atmosphere,
@@ -334,6 +334,9 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
           answer.pointers[0]?.selection?.id === localPointer.selection?.id;
         const result: PageAssistantAnswer = !answer ? { ...local, origin: "local" }
           : exactReadout ? { ...answer, pointers: [localPointer, ...answer.pointers.slice(1)] } : answer;
+        if (answer && directControl && localPointer) {
+          result.pointers = [localPointer, ...answer.pointers.filter(({ target }) => target !== localPointer.target)];
+        }
         if (answer && pairs.length) result.pointers = [...pairs, ...answer.pointers.filter(({ comparison }) => !comparison)];
         if (!isSameView) guidanceEnabled.current = false;
         if (isSameView && result.pointers[0] && !result.unanswered && !narratedPair(result.pointers)) schedulePoint(result.pointers[0], false, () => {
