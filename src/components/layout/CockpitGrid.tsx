@@ -352,7 +352,7 @@ export function CockpitGrid({ assistantAiEnabled, speechEnabled }: { assistantAi
           <RankedDatasetList studies={studies} rankedRuns={rankedRuns} studyScores={studyScores} studiesById={studiesById}
             runsByStudy={runsByStudy} search={search} current={current} view={view}
             collapsed={catalogCollapsed} onToggleCollapse={() => setCatalogCollapsed(!catalogCollapsed)} />
-          <KnowledgeGraphCanvas studies={studies} runs={scopedRuns} runsById={runsById} current={current} searchActive={search.active}
+          <KnowledgeGraphCanvas studies={studies} runs={scopedRuns} runsById={runsById} studiesById={studiesById} current={current} searchActive={search.active}
             expanded={expandedPanel === "graph"} onToggleSize={toggleGraph}
             collapsed={graphCollapsed} onToggleCollapse={graphCollapsed ? focusGraph : foldGraph} onInteract={focusGraph} />
           <EvidenceInspector study={current ? studiesById.get(runsById.get(current.id)?.investigationId ?? current.id) : undefined}
